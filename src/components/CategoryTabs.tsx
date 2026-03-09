@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Category } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface Props {
   categories: Category[];
@@ -25,7 +25,6 @@ const CategoryTabs = ({ categories, activeId, onSelect }: Props) => {
     return () => observer.disconnect();
   }, []);
 
-  // Auto-scroll active tab into view
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
@@ -41,35 +40,38 @@ const CategoryTabs = ({ categories, activeId, onSelect }: Props) => {
       <nav
         className={cn(
           "sticky top-0 z-30 transition-all duration-300",
-          isSticky ? "bg-background/80 backdrop-blur-xl shadow-lg border-b border-border/30" : ""
+          isSticky ? "bg-background/80 backdrop-blur-xl shadow-lg border-b border-border/30" : "bg-background"
         )}
       >
         <div
           ref={scrollRef}
-          className="flex gap-2 px-4 py-3 overflow-x-auto scrollbar-hide"
+          className="flex gap-2 px-4 py-3 overflow-x-auto scrollbar-hide scroll-smooth"
         >
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              data-cat-id={cat.id}
-              onClick={() => onSelect(cat.id)}
-              className={cn(
-                "relative px-5 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors",
-                activeId === cat.id
-                  ? "text-primary-foreground"
-                  : "text-foreground/70 hover:text-foreground"
-              )}
-            >
-              {activeId === cat.id && (
-                <motion.div
-                  layoutId="activeCategoryTab"
-                  className="absolute inset-0 bg-primary rounded-full"
-                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                />
-              )}
-              <span className="relative z-10">{cat.name}</span>
-            </button>
-          ))}
+          {categories.map((cat) => {
+            const isActive = activeId === cat.id;
+            return (
+              <button
+                key={cat.id}
+                data-cat-id={cat.id}
+                onClick={() => onSelect(cat.id)}
+                className={cn(
+                  "relative px-5 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors duration-200",
+                  // Use a specific hex or theme color if primary-foreground is too bright
+                  isActive ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="activeCategoryTab"
+                    className="absolute inset-0 bg-primary rounded-full"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                    style={{ zIndex: 0 }}
+                  />
+                )}
+                <span className="relative z-10">{cat.name}</span>
+              </button>
+            );
+          })}
         </div>
       </nav>
     </>
