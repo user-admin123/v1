@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectPortal } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Upload, Link, X, Loader2 } from "lucide-react";
 import VegBadge from "@/components/VegBadge";
@@ -42,15 +42,18 @@ const ItemFormDialog = ({
   imageUrlInput, setImageUrlInput, uploadingImage, onSave, onImageUpload, onImageUrlApply,
 }: Props) => (
   <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent className="glass-card border-border/30 sm:max-w-md max-h-[85vh] overflow-y-auto">
-      <DialogHeader>
-        <DialogTitle className="text-foreground">
-          {editingItem ? "Edit Item" : "Add Item"}
-        </DialogTitle>
-        <DialogDescription>Fill in the item details below.</DialogDescription>
-      </DialogHeader>
+    <DialogContent className="glass-card border-border/30 sm:max-w-md max-h-[90vh] flex flex-col p-0 overflow-hidden">
+      <div className="p-6 pb-2">
+        <DialogHeader>
+          <DialogTitle className="text-foreground">
+            {editingItem ? "Edit Item" : "Add Item"}
+          </DialogTitle>
+          <DialogDescription>Fill in the item details below.</DialogDescription>
+        </DialogHeader>
+      </div>
       
-      <div className="space-y-3 mt-2">
+      {/* Added a dedicated scroll area so the dialog handles the list better */}
+      <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-4">
         <div className="space-y-1">
           <Label>Name *</Label>
           <Input
@@ -87,23 +90,25 @@ const ItemFormDialog = ({
               value={itemForm.category_id}
               onValueChange={(v) => setItemForm({ ...itemForm, category_id: v })}
             >
-              <SelectTrigger className="bg-muted/50 w-full min-w-0 overflow-hidden">
+              <SelectTrigger className="bg-muted/50 w-full min-w-0">
                 <div className="line-clamp-1 text-left break-all">
                   <SelectValue placeholder="Select Category" />
                 </div>
               </SelectTrigger>
-              {/* position="popper" prevents the menu from jumping/clipping on mobile */}
-              <SelectContent 
-                position="popper" 
-                sideOffset={4} 
-                className="max-w-[300px] w-[var(--radix-select-trigger-width)]"
-              >
-                {categories.map((c) => (
-                  <SelectItem key={c.id} value={c.id} className="min-w-0">
-                    <span className="line-clamp-1 break-all">{c.name}</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
+              <SelectPortal>
+                <SelectContent 
+                  position="popper" 
+                  sideOffset={5} 
+                  /* Adding max-height and overflow here is critical for mobile */
+                  className="z-[100] max-h-[250px] min-w-[var(--radix-select-trigger-width)] bg-popover"
+                >
+                  {categories.map((c) => (
+                    <SelectItem key={c.id} value={c.id} className="min-w-0">
+                      <span className="line-clamp-1 break-all">{c.name}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </SelectPortal>
             </Select>
           </div>
         </div>
@@ -114,19 +119,21 @@ const ItemFormDialog = ({
             value={itemForm.item_type}
             onValueChange={(v) => setItemForm({ ...itemForm, item_type: v as ItemType })}
           >
-            <SelectTrigger className="bg-muted/50 w-full min-w-0 overflow-hidden">
+            <SelectTrigger className="bg-muted/50 w-full">
               <div className="line-clamp-1 text-left">
                 <SelectValue placeholder="Select type" />
               </div>
             </SelectTrigger>
-            <SelectContent position="popper" sideOffset={4} className="w-[var(--radix-select-trigger-width)]">
-              <SelectItem value="veg">
-                <span className="flex items-center gap-2"><VegBadge type="veg" /> Vegetarian</span>
-              </SelectItem>
-              <SelectItem value="nonveg">
-                <span className="flex items-center gap-2"><VegBadge type="nonveg" /> Non-Vegetarian</span>
-              </SelectItem>
-            </SelectContent>
+            <SelectPortal>
+              <SelectContent position="popper" sideOffset={5} className="z-[100] bg-popover">
+                <SelectItem value="veg">
+                  <span className="flex items-center gap-2"><VegBadge type="veg" /> Vegetarian</span>
+                </SelectItem>
+                <SelectItem value="nonveg">
+                  <span className="flex items-center gap-2"><VegBadge type="nonveg" /> Non-Vegetarian</span>
+                </SelectItem>
+              </SelectContent>
+            </SelectPortal>
           </Select>
         </div>
 
@@ -151,9 +158,7 @@ const ItemFormDialog = ({
               type="button"
               onClick={() => setImageInputMode("upload")}
               className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                imageInputMode === "upload"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
+                imageInputMode === "upload" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Upload className="w-3 h-3" /> Upload
@@ -162,9 +167,7 @@ const ItemFormDialog = ({
               type="button"
               onClick={() => setImageInputMode("url")}
               className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                imageInputMode === "url"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
+                imageInputMode === "url" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Link className="w-3 h-3" /> URL
@@ -172,7 +175,7 @@ const ItemFormDialog = ({
           </div>
 
           {imageInputMode === "upload" ? (
-            <label className={`flex items-center gap-2 cursor-pointer bg-muted/50 border border-input rounded-md px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground transition-colors ${uploadingImage ? "opacity-60 pointer-events-none" : ""}`}>
+            <label className={`flex items-center gap-2 cursor-pointer bg-muted/50 border border-input rounded-md px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground ${uploadingImage ? "opacity-60 pointer-events-none" : ""}`}>
               {uploadingImage ? (
                 <><Loader2 className="w-4 h-4 animate-spin" /><span>Uploading...</span></>
               ) : (
@@ -193,10 +196,9 @@ const ItemFormDialog = ({
               </Button>
             </div>
           )}
-          <p className="text-xs text-muted-foreground">Upload max 2MB or paste an image URL</p>
         </div>
 
-        <div className="flex items-center justify-between py-1">
+        <div className="flex items-center justify-between border-t border-border/10 pt-2">
           <Label>Available</Label>
           <Switch
             checked={itemForm.available}
@@ -204,7 +206,7 @@ const ItemFormDialog = ({
           />
         </div>
 
-        <Button onClick={onSave} className="w-full shrink-0 mt-2" disabled={uploadingImage}>
+        <Button onClick={onSave} className="w-full shrink-0" disabled={uploadingImage}>
           {editingItem ? "Update Item" : "Add Item"}
         </Button>
       </div>
