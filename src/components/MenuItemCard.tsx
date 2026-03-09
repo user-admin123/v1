@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
 import VegBadge from "@/components/VegBadge";
 import { Minus, Plus } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
 
 interface Props {
   item: MenuItem;
@@ -15,36 +14,16 @@ interface Props {
 }
 
 const MenuItemCard = ({ item, onSelect, quantity, onAdd, onRemove }: Props) => {
-  const cardRef = useRef<HTMLDivElement>(null);
-  const [isInView, setIsInView] = useState(false);
-
-  useEffect(() => {
-    const el = cardRef.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => setIsInView(entry.isIntersecting),
-      { threshold: 0.6, rootMargin: "-80px 0px -40% 0px" }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
   return (
     <motion.div
-      ref={cardRef}
       id={`menu-item-${item.id}`}
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
       transition={{ duration: 0.35 }}
       className={cn(
-        "rounded-2xl overflow-hidden w-full transition-all duration-300 cursor-pointer",
-        "glass-card",
-        !item.available && "opacity-50 grayscale",
-        isInView
-          ? "ring-1 ring-primary/30 shadow-[0_0_20px_-4px_hsl(var(--primary)/0.15)] scale-[1.01]"
-          : "scale-100"
+        "glass-card rounded-2xl overflow-hidden w-full transition-all cursor-pointer",
+        !item.available && "opacity-50 grayscale"
       )}
       onClick={() => onSelect(item)}
     >
