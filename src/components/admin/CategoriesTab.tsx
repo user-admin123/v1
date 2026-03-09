@@ -31,7 +31,7 @@ const CategoriesTab = ({
   onDragEnd,
 }: Props) => (
   <div className="space-y-3 mt-3">
-
+    
     {/* Add Category */}
     <div className="flex gap-2">
       <Input
@@ -41,13 +41,14 @@ const CategoriesTab = ({
         className="bg-muted/50"
         onKeyDown={(e) => e.key === "Enter" && onAddCategory()}
       />
+
       <Button onClick={onAddCategory} size="icon" className="shrink-0">
         <Plus className="w-4 h-4" />
       </Button>
     </div>
 
     {/* Category List */}
-    {categories.map((cat, idx) => (
+    {categories?.map((cat, idx) => (
       <div
         key={cat.id}
         className="flex items-center gap-2 glass-surface rounded-lg p-2 cursor-grab active:cursor-grabbing min-w-0"
@@ -57,16 +58,19 @@ const CategoriesTab = ({
         onDragEnd={onDragEnd}
         onDragOver={(e) => e.preventDefault()}
       >
-        {/* Drag Handle */}
         <GripVertical className="w-4 h-4 text-muted-foreground shrink-0" />
 
         {editingCat?.id === cat.id ? (
           <>
             <Input
-              value={editingCat.name}
-              onChange={(e) =>
-                onSetEditingCat({ ...editingCat, name: e.target.value })
-              }
+              value={editingCat?.name || ""}
+              onChange={(e) => {
+                if (!editingCat) return;
+                onSetEditingCat({
+                  ...editingCat,
+                  name: e.target.value,
+                });
+              }}
               className="flex-1 bg-muted/50 h-8 text-sm min-w-0"
             />
 
@@ -90,7 +94,6 @@ const CategoriesTab = ({
           </>
         ) : (
           <>
-            {/* Category Name */}
             <span
               className="flex-1 min-w-0 text-sm text-foreground font-sans truncate"
               title={cat.name}
@@ -98,7 +101,6 @@ const CategoriesTab = ({
               {cat.name}
             </span>
 
-            {/* Edit Button */}
             <Button
               size="sm"
               variant="ghost"
@@ -108,7 +110,6 @@ const CategoriesTab = ({
               <Edit className="w-3 h-3" />
             </Button>
 
-            {/* Delete Button */}
             <Button
               size="sm"
               variant="ghost"
@@ -124,4 +125,4 @@ const CategoriesTab = ({
   </div>
 );
 
-export default CategoriesTab;p
+export default CategoriesTab;
