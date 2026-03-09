@@ -49,7 +49,6 @@ const ItemFormDialog = ({
         </DialogTitle>
         <DialogDescription>Fill in the item details below.</DialogDescription>
       </DialogHeader>
-      
       <div className="space-y-3 mt-2">
         <div className="space-y-1">
           <Label>Name *</Label>
@@ -59,7 +58,6 @@ const ItemFormDialog = ({
             className="bg-muted/50"
           />
         </div>
-
         <div className="space-y-1">
           <Label>Description</Label>
           <Textarea
@@ -69,7 +67,6 @@ const ItemFormDialog = ({
             rows={2}
           />
         </div>
-
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
             <Label>Price *</Label>
@@ -80,24 +77,19 @@ const ItemFormDialog = ({
               className="bg-muted/50"
             />
           </div>
-          
           <div className="space-y-1 min-w-0">
             <Label>Category *</Label>
             <Select
               value={itemForm.category_id}
               onValueChange={(v) => setItemForm({ ...itemForm, category_id: v })}
             >
+              {/* Added min-w-0 and overflow-hidden to the trigger */}
               <SelectTrigger className="bg-muted/50 w-full min-w-0 overflow-hidden">
                 <div className="line-clamp-1 text-left break-all">
-                  <SelectValue placeholder="Select Category" />
+                  <SelectValue />
                 </div>
               </SelectTrigger>
-              {/* position="popper" prevents the menu from jumping/clipping on mobile */}
-              <SelectContent 
-                position="popper" 
-                sideOffset={4} 
-                className="max-w-[300px] w-[var(--radix-select-trigger-width)]"
-              >
+              <SelectContent className="max-w-[300px]">
                 {categories.map((c) => (
                   <SelectItem key={c.id} value={c.id} className="min-w-0">
                     <span className="line-clamp-1 break-all">{c.name}</span>
@@ -107,7 +99,6 @@ const ItemFormDialog = ({
             </Select>
           </div>
         </div>
-
         <div className="space-y-1">
           <Label>Type *</Label>
           <Select
@@ -116,10 +107,10 @@ const ItemFormDialog = ({
           >
             <SelectTrigger className="bg-muted/50 w-full min-w-0 overflow-hidden">
               <div className="line-clamp-1 text-left">
-                <SelectValue placeholder="Select type" />
+                <SelectValue />
               </div>
             </SelectTrigger>
-            <SelectContent position="popper" sideOffset={4} className="w-[var(--radix-select-trigger-width)]">
+            <SelectContent>
               <SelectItem value="veg">
                 <span className="flex items-center gap-2"><VegBadge type="veg" /> Vegetarian</span>
               </SelectItem>
@@ -145,7 +136,6 @@ const ItemFormDialog = ({
               </button>
             </div>
           )}
-          
           <div className="flex gap-1 bg-muted/50 rounded-lg p-1">
             <button
               type="button"
@@ -170,7 +160,6 @@ const ItemFormDialog = ({
               <Link className="w-3 h-3" /> URL
             </button>
           </div>
-
           {imageInputMode === "upload" ? (
             <label className={`flex items-center gap-2 cursor-pointer bg-muted/50 border border-input rounded-md px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground transition-colors ${uploadingImage ? "opacity-60 pointer-events-none" : ""}`}>
               {uploadingImage ? (
@@ -188,7 +177,7 @@ const ItemFormDialog = ({
                 className="bg-muted/50 flex-1 min-w-0"
                 placeholder="https://..."
               />
-              <Button type="button" size="sm" onClick={onImageUrlApply} disabled={!imageUrlInput.trim()} className="shrink-0">
+              <Button size="sm" onClick={onImageUrlApply} disabled={!imageUrlInput.trim()} className="shrink-0">
                 Preview
               </Button>
             </div>
@@ -196,15 +185,14 @@ const ItemFormDialog = ({
           <p className="text-xs text-muted-foreground">Upload max 2MB or paste an image URL</p>
         </div>
 
-        <div className="flex items-center justify-between py-1">
+        <div className="flex items-center justify-between">
           <Label>Available</Label>
           <Switch
             checked={itemForm.available}
             onCheckedChange={(v) => setItemForm({ ...itemForm, available: v })}
           />
         </div>
-
-        <Button onClick={onSave} className="w-full shrink-0 mt-2" disabled={uploadingImage}>
+        <Button onClick={onSave} className="w-full shrink-0" disabled={uploadingImage}>
           {editingItem ? "Update Item" : "Add Item"}
         </Button>
       </div>
