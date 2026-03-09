@@ -31,8 +31,7 @@ const CategoriesTab = ({
   onDragEnd,
 }: Props) => (
   <div className="space-y-3 mt-3">
-    
-    {/* Add Category */}
+    {/* New Category Input */}
     <div className="flex gap-2">
       <Input
         value={catName}
@@ -41,52 +40,41 @@ const CategoriesTab = ({
         className="bg-muted/50"
         onKeyDown={(e) => e.key === "Enter" && onAddCategory()}
       />
-
-      <Button onClick={onAddCategory} size="icon" className="shrink-0">
+      <Button onClick={onAddCategory} size="icon">
         <Plus className="w-4 h-4" />
       </Button>
     </div>
 
-    {/* Category List */}
-    {categories?.map((cat, idx) => (
+    {/* Categories List */}
+    {categories.map((cat, idx) => (
       <div
         key={cat.id}
-        className="flex items-center gap-2 glass-surface rounded-lg p-2 cursor-grab active:cursor-grabbing min-w-0"
+        className="flex items-center gap-2 glass-surface rounded-lg p-2 cursor-grab active:cursor-grabbing"
         draggable
         onDragStart={() => onDragStart(idx)}
         onDragEnter={() => onDragEnter(idx)}
         onDragEnd={onDragEnd}
         onDragOver={(e) => e.preventDefault()}
       >
+        {/* Drag Handle */}
         <GripVertical className="w-4 h-4 text-muted-foreground shrink-0" />
 
+        {/* Editing Mode */}
         {editingCat?.id === cat.id ? (
           <>
             <Input
-              value={editingCat?.name || ""}
-              onChange={(e) => {
-                if (!editingCat) return;
-                onSetEditingCat({
-                  ...editingCat,
-                  name: e.target.value,
-                });
-              }}
-              className="flex-1 bg-muted/50 h-8 text-sm min-w-0"
+              value={editingCat.name}
+              onChange={(e) =>
+                onSetEditingCat({ ...editingCat, name: e.target.value })
+              }
+              className="flex-1 bg-muted/50 h-8 text-sm"
             />
-
-            <Button
-              size="sm"
-              variant="ghost"
-              className="shrink-0"
-              onClick={onSaveEditCat}
-            >
+            <Button size="sm" variant="ghost" onClick={onSaveEditCat}>
               Save
             </Button>
-
             <Button
               size="sm"
               variant="ghost"
-              className="shrink-0"
               onClick={() => onSetEditingCat(null)}
             >
               <X className="w-3 h-3" />
@@ -94,13 +82,15 @@ const CategoriesTab = ({
           </>
         ) : (
           <>
+            {/* Category Name with truncation and tooltip */}
             <span
-              className="flex-1 min-w-0 text-sm text-foreground font-sans truncate"
+              className="flex-1 text-sm text-foreground font-sans truncate"
               title={cat.name}
             >
               {cat.name}
             </span>
 
+            {/* Edit Button */}
             <Button
               size="sm"
               variant="ghost"
@@ -110,6 +100,7 @@ const CategoriesTab = ({
               <Edit className="w-3 h-3" />
             </Button>
 
+            {/* Delete Button */}
             <Button
               size="sm"
               variant="ghost"
