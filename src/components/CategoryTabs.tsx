@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Category } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 
 interface Props {
   categories: Category[];
@@ -25,6 +25,7 @@ const CategoryTabs = ({ categories, activeId, onSelect }: Props) => {
     return () => observer.disconnect();
   }, []);
 
+  // Auto-scroll active tab into view
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
@@ -49,23 +50,31 @@ const CategoryTabs = ({ categories, activeId, onSelect }: Props) => {
         >
           {categories.map((cat) => {
             const isActive = activeId === cat.id;
+            
             return (
               <button
                 key={cat.id}
                 data-cat-id={cat.id}
-                onClick={() => onSelect(cat.id)}
+                onClick={(e) => {
+                  onSelect(cat.id);
+                  // Force the browser to remove focus from the clicked button
+                  e.currentTarget.blur();
+                }}
                 className={cn(
                   "relative px-5 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors duration-200",
-                  // Use a specific hex or theme color if primary-foreground is too bright
-                  isActive ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                  "outline-none select-none", 
+                  isActive
+                    ? "text-primary-foreground"
+                    // focus:text-muted-foreground prevents the text from staying white 
+                    // if the button is clicked and then the user scrolls away
+                    : "text-muted-foreground hover:text-foreground focus:text-muted-foreground"
                 )}
               >
                 {isActive && (
                   <motion.div
                     layoutId="activeCategoryTab"
                     className="absolute inset-0 bg-primary rounded-full"
-                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                    style={{ zIndex: 0 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
                   />
                 )}
                 <span className="relative z-10">{cat.name}</span>
