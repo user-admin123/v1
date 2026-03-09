@@ -1,7 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Category, MenuItem, ItemType, RestaurantInfo } from "@/lib/types";
 import { toast } from "@/hooks/use-toast";
-import { uploadImage } from "@/lib/storage";
 
 interface UseAdminStateProps {
   categories: Category[];
@@ -24,6 +23,7 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
   const [deletedCategoryIds, setDeletedCategoryIds] = useState<string[]>([]);
   const [deletedItemIds, setDeletedItemIds] = useState<string[]>([]);
 
+  // Sync drafts when props change (e.g. after save)
   useEffect(() => {
     setDraftCategories(categories);
     setDraftItems(items);
@@ -100,7 +100,6 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
   });
   const [imageInputMode, setImageInputMode] = useState<"upload" | "url">("upload");
   const [imageUrlInput, setImageUrlInput] = useState("");
-  const [uploadingImage, setUploadingImage] = useState(false);
 
   const resetItemForm = useCallback(() => {
     setItemForm({
@@ -166,23 +165,19 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
     setHasChanges(true);
   }, []);
 
-  // --- Image handling (Supabase Storage) ---
-  const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // --- Image handling ---
+  const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
       toast({ title: "Image too large", description: "Max 2MB allowed.", variant: "destructive" });
       return;
     }
-    setUploadingImage(true);
-    try {
-      const url = await uploadImage(file);
-      setItemForm((prev) => ({ ...prev, image_url: url }));
-    } catch {
-      toast({ title: "Upload failed", description: "Could not upload image.", variant: "destructive" });
-    } finally {
-      setUploadingImage(false);
-    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setItemForm((prev) => ({ ...prev, image_url: reader.result as string }));
+    };
+    reader.readAsDataURL(file);
   }, []);
 
   const handleImageUrlApply = useCallback(() => {
@@ -191,23 +186,19 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
     }
   }, [imageUrlInput]);
 
-  const handleLogoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
       toast({ title: "Image too large", description: "Max 2MB allowed.", variant: "destructive" });
       return;
     }
-    setUploadingImage(true);
-    try {
-      const url = await uploadImage(file);
-      setDraftRestaurant((prev) => ({ ...prev, logo_url: url }));
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setDraftRestaurant((prev) => ({ ...prev, logo_url: reader.result as string }));
       setHasChanges(true);
-    } catch {
-      toast({ title: "Upload failed", description: "Could not upload logo.", variant: "destructive" });
-    } finally {
-      setUploadingImage(false);
-    }
+    };
+    reader.readAsDataURL(file);
   }, []);
 
   // --- Save all ---
@@ -242,18 +233,23 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
   }, [deleteConfirm, deleteCategory, deleteItem]);
 
   return {
+    // Draft state
     draftCategories, draftItems, draftRestaurant,
     setDraftRestaurant, hasChanges, markChanged,
+    // Category
     catName, setCatName, editingCat, setEditingCat,
     addCategory, saveEditCat,
     handleDragStart, handleDragEnter, handleDragEnd,
+    // Item
     editingItem, itemFormOpen, setItemFormOpen, itemForm, setItemForm,
     imageInputMode, setImageInputMode, imageUrlInput, setImageUrlInput,
-    uploadingImage,
     openNewItem, openEditItem, saveItem, toggleAvailability,
     handleImageUpload, handleImageUrlApply,
+    // Logo
     handleLogoUpload,
+    // Save
     saving, saveAllChanges,
+    // Delete confirmation
     deleteConfirm, setDeleteConfirm, handleConfirmDelete,
   };
 }
