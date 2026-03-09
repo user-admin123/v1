@@ -53,17 +53,15 @@ const CategoryTabs = ({ categories, activeId, onSelect }: Props) => {
               <button
                 key={cat.id}
                 data-cat-id={cat.id}
-                // blur() on click is the simplest way to stop the "manual click" focus bug
-                onClick={(e) => {
-                  onSelect(cat.id);
-                  e.currentTarget.blur();
-                }}
+                onClick={() => onSelect(cat.id)}
                 className={cn(
                   "relative px-5 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors outline-none",
-                  // Force text color based ONLY on the isActive state
-                  isActive
-                    ? "text-primary-foreground" 
-                    : "text-foreground/70 hover:text-foreground focus:text-foreground/70"
+                  // SIMPLE COLOR FIX:
+                  // If active: White text.
+                  // If NOT active: Dark text (even if focused/clicked).
+                  isActive 
+                    ? "text-white" 
+                    : "text-slate-600 hover:text-slate-900 focus:text-slate-600 active:text-slate-600"
                 )}
               >
                 {isActive && (
