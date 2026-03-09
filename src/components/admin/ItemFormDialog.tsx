@@ -76,16 +76,24 @@ const ItemFormDialog = ({
               className="bg-muted/50"
             />
           </div>
-          <div className="space-y-1">
+          <div className="space-y-1 min-w-0">
             <Label>Category *</Label>
             <Select
               value={itemForm.category_id}
               onValueChange={(v) => setItemForm({ ...itemForm, category_id: v })}
             >
-              <SelectTrigger className="bg-muted/50"><SelectValue /></SelectTrigger>
-              <SelectContent>
+              <SelectTrigger className="bg-muted/50 w-full overflow-hidden">
+                <div className="truncate text-left">
+                  <SelectValue />
+                </div>
+              </SelectTrigger>
+              <SelectContent className="max-w-[300px]">
                 {categories.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  <SelectItem key={c.id} value={c.id}>
+                    <span className="block truncate" title={c.name}>
+                      {c.name}
+                    </span>
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -97,7 +105,9 @@ const ItemFormDialog = ({
             value={itemForm.item_type}
             onValueChange={(v) => setItemForm({ ...itemForm, item_type: v as ItemType })}
           >
-            <SelectTrigger className="bg-muted/50"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="bg-muted/50">
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="veg">
                 <span className="flex items-center gap-2"><VegBadge type="veg" /> Vegetarian</span>
@@ -116,6 +126,7 @@ const ItemFormDialog = ({
             <div className="relative w-full h-40 rounded-xl overflow-hidden bg-muted border border-border/30">
               <img src={itemForm.image_url} alt="Preview" className="w-full h-full object-cover" />
               <button
+                type="button"
                 onClick={() => { setItemForm({ ...itemForm, image_url: "" }); setImageUrlInput(""); }}
                 className="absolute top-2 right-2 rounded-full bg-card/80 p-1.5 text-muted-foreground hover:text-foreground"
               >
@@ -125,6 +136,7 @@ const ItemFormDialog = ({
           )}
           <div className="flex gap-1 bg-muted/50 rounded-lg p-1">
             <button
+              type="button"
               onClick={() => setImageInputMode("upload")}
               className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                 imageInputMode === "upload"
@@ -135,6 +147,7 @@ const ItemFormDialog = ({
               <Upload className="w-3 h-3" /> Upload
             </button>
             <button
+              type="button"
               onClick={() => setImageInputMode("url")}
               className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                 imageInputMode === "url"
