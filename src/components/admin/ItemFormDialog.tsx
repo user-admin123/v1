@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Upload, Link, X, Loader2 } from "lucide-react";
+import { Upload, Link, X } from "lucide-react";
 import VegBadge from "@/components/VegBadge";
 
 interface ItemForm {
@@ -30,7 +30,6 @@ interface Props {
   setImageInputMode: (mode: "upload" | "url") => void;
   imageUrlInput: string;
   setImageUrlInput: (url: string) => void;
-  uploadingImage?: boolean;
   onSave: () => void;
   onImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onImageUrlApply: () => void;
@@ -39,7 +38,7 @@ interface Props {
 const ItemFormDialog = ({
   open, onOpenChange, editingItem, categories,
   itemForm, setItemForm, imageInputMode, setImageInputMode,
-  imageUrlInput, setImageUrlInput, uploadingImage, onSave, onImageUpload, onImageUrlApply,
+  imageUrlInput, setImageUrlInput, onSave, onImageUpload, onImageUrlApply,
 }: Props) => (
   <Dialog open={open} onOpenChange={onOpenChange}>
     <DialogContent className="glass-card border-border/30 sm:max-w-md max-h-[85vh] overflow-y-auto">
@@ -77,23 +76,16 @@ const ItemFormDialog = ({
               className="bg-muted/50"
             />
           </div>
-          <div className="space-y-1 min-w-0">
+          <div className="space-y-1">
             <Label>Category *</Label>
             <Select
               value={itemForm.category_id}
               onValueChange={(v) => setItemForm({ ...itemForm, category_id: v })}
             >
-              {/* Added min-w-0 and overflow-hidden to the trigger */}
-              <SelectTrigger className="bg-muted/50 w-full min-w-0 overflow-hidden">
-                <div className="line-clamp-1 text-left break-all">
-                  <SelectValue />
-                </div>
-              </SelectTrigger>
-              <SelectContent className="max-w-[300px]">
+              <SelectTrigger className="bg-muted/50"><SelectValue /></SelectTrigger>
+              <SelectContent>
                 {categories.map((c) => (
-                  <SelectItem key={c.id} value={c.id} className="min-w-0">
-                    <span className="line-clamp-1 break-all">{c.name}</span>
-                  </SelectItem>
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -105,11 +97,7 @@ const ItemFormDialog = ({
             value={itemForm.item_type}
             onValueChange={(v) => setItemForm({ ...itemForm, item_type: v as ItemType })}
           >
-            <SelectTrigger className="bg-muted/50 w-full min-w-0 overflow-hidden">
-              <div className="line-clamp-1 text-left">
-                <SelectValue />
-              </div>
-            </SelectTrigger>
+            <SelectTrigger className="bg-muted/50"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="veg">
                 <span className="flex items-center gap-2"><VegBadge type="veg" /> Vegetarian</span>
@@ -121,14 +109,13 @@ const ItemFormDialog = ({
           </Select>
         </div>
 
-        {/* Image Section */}
+        {/* Image */}
         <div className="space-y-2">
           <Label>Image</Label>
           {itemForm.image_url && (
             <div className="relative w-full h-40 rounded-xl overflow-hidden bg-muted border border-border/30">
               <img src={itemForm.image_url} alt="Preview" className="w-full h-full object-cover" />
               <button
-                type="button"
                 onClick={() => { setItemForm({ ...itemForm, image_url: "" }); setImageUrlInput(""); }}
                 className="absolute top-2 right-2 rounded-full bg-card/80 p-1.5 text-muted-foreground hover:text-foreground"
               >
@@ -138,7 +125,6 @@ const ItemFormDialog = ({
           )}
           <div className="flex gap-1 bg-muted/50 rounded-lg p-1">
             <button
-              type="button"
               onClick={() => setImageInputMode("upload")}
               className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                 imageInputMode === "upload"
@@ -149,7 +135,6 @@ const ItemFormDialog = ({
               <Upload className="w-3 h-3" /> Upload
             </button>
             <button
-              type="button"
               onClick={() => setImageInputMode("url")}
               className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                 imageInputMode === "url"
@@ -161,23 +146,20 @@ const ItemFormDialog = ({
             </button>
           </div>
           {imageInputMode === "upload" ? (
-            <label className={`flex items-center gap-2 cursor-pointer bg-muted/50 border border-input rounded-md px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground transition-colors ${uploadingImage ? "opacity-60 pointer-events-none" : ""}`}>
-              {uploadingImage ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /><span>Uploading...</span></>
-              ) : (
-                <><Upload className="w-4 h-4" /><span>{itemForm.image_url ? "Change image" : "Choose image file"}</span></>
-              )}
-              <input type="file" accept="image/*" onChange={onImageUpload} className="hidden" disabled={uploadingImage} />
+            <label className="flex items-center gap-2 cursor-pointer bg-muted/50 border border-input rounded-md px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <Upload className="w-4 h-4" />
+              <span>{itemForm.image_url ? "Change image" : "Choose image file"}</span>
+              <input type="file" accept="image/*" onChange={onImageUpload} className="hidden" />
             </label>
           ) : (
             <div className="flex gap-2">
               <Input
                 value={imageUrlInput}
                 onChange={(e) => setImageUrlInput(e.target.value)}
-                className="bg-muted/50 flex-1 min-w-0"
+                className="bg-muted/50 flex-1"
                 placeholder="https://..."
               />
-              <Button size="sm" onClick={onImageUrlApply} disabled={!imageUrlInput.trim()} className="shrink-0">
+              <Button size="sm" onClick={onImageUrlApply} disabled={!imageUrlInput.trim()}>
                 Preview
               </Button>
             </div>
@@ -192,7 +174,7 @@ const ItemFormDialog = ({
             onCheckedChange={(v) => setItemForm({ ...itemForm, available: v })}
           />
         </div>
-        <Button onClick={onSave} className="w-full shrink-0" disabled={uploadingImage}>
+        <Button onClick={onSave} className="w-full">
           {editingItem ? "Update Item" : "Add Item"}
         </Button>
       </div>
