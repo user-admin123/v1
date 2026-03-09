@@ -25,6 +25,7 @@ const CategoryTabs = ({ categories, activeId, onSelect }: Props) => {
     return () => observer.disconnect();
   }, []);
 
+  // Auto-scroll active tab into view
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
@@ -40,41 +41,36 @@ const CategoryTabs = ({ categories, activeId, onSelect }: Props) => {
       <nav
         className={cn(
           "sticky top-0 z-30 transition-all duration-300",
-          isSticky ? "bg-background/80 backdrop-blur-xl shadow-lg border-b border-border/30" : "bg-background"
+          isSticky ? "bg-background/80 backdrop-blur-xl shadow-lg border-b border-border/30" : ""
         )}
       >
         <div
           ref={scrollRef}
           className="flex gap-2 px-4 py-3 overflow-x-auto scrollbar-hide"
         >
-          {categories.map((cat) => {
-            const isActive = activeId === cat.id;
-            return (
-              <button
-                key={cat.id}
-                data-cat-id={cat.id}
-                onClick={() => onSelect(cat.id)}
-                className={cn(
-                  "relative px-5 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors outline-none",
-                  // SIMPLE COLOR FIX:
-                  // If active: White text.
-                  // If NOT active: Dark text (even if focused/clicked).
-                  isActive 
-                    ? "text-white" 
-                    : "text-slate-600 hover:text-slate-900 focus:text-slate-600 active:text-slate-600"
-                )}
-              >
-                {isActive && (
-                  <motion.div
-                    layoutId="activeCategoryTab"
-                    className="absolute inset-0 bg-primary rounded-full"
-                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                  />
-                )}
-                <span className="relative z-10">{cat.name}</span>
-              </button>
-            );
-          })}
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              data-cat-id={cat.id}
+              onClick={() => onSelect(cat.id)}
+              className={cn(
+                "relative px-5 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors outline-none",
+                // Updated text color logic to override focus/active states
+                activeId === cat.id
+                  ? "text-primary-foreground"
+                  : "text-foreground/70 hover:text-foreground focus:text-foreground/70 active:text-foreground/70"
+              )}
+            >
+              {activeId === cat.id && (
+                <motion.div
+                  layoutId="activeCategoryTab"
+                  className="absolute inset-0 bg-primary rounded-full"
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                />
+              )}
+              <span className="relative z-10">{cat.name}</span>
+            </button>
+          ))}
         </div>
       </nav>
     </>
