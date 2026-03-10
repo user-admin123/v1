@@ -14,7 +14,7 @@ interface Props {
 const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
   const qrRef = useRef<HTMLDivElement>(null);
 
-  // --- KEEPING YOUR ORIGINAL PRINT FUNCTION UNCHANGED ---
+  // --- KEEPING ORIGINAL PRINT FUNCTION UNCHANGED ---
   const handlePrint = () => {
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
@@ -56,7 +56,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
     const svg = qrRef.current?.querySelector("svg");
     if (!svg) return;
 
-    // 1. Setup Canvas
+    // 1. Setup Canvas Context
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
@@ -64,66 +64,96 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
     canvas.width = 500;
     canvas.height = 700;
 
-    // 2. Draw Background (Match your theme)
+    // 2. Background Layer
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // 3. Draw Header Text
+    // 3. Header Styling
     ctx.textAlign = "center";
-    ctx.fillStyle = "#1a1a2e"; // Your primary text color
-    ctx.font = "bold 32px sans-serif";
+    ctx.fillStyle = "#1a1a2e"; // Dark color for name
+    ctx.font = "bold 34px sans-serif";
     ctx.fillText(restaurant.name, canvas.width / 2, 80);
     
     if (restaurant.tagline) {
       ctx.font = "italic 18px sans-serif";
-      ctx.fillStyle = "#6b7280"; // muted-foreground
+      ctx.fillStyle = "#6b7280"; // Gray color for tagline
       ctx.fillText(restaurant.tagline, canvas.width / 2, 115);
     }
 
-    // 4. Convert SVG to Image and draw on Canvas
+    // 4. Convert QR SVG to Image
     const svgData = new XMLSerializer().serializeToString(svg);
     const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
     const url = URL.createObjectURL(svgBlob);
     
-    const img = new Image();
-    img.onload = async () => {
-      // Draw QR Code (Centered, slightly larger for quality)
-      ctx.drawImage(img, 100, 160, 300, 300);
-      
-      ctx.fillStyle = "#7c3aed"; // Primary color
-      ctx.font = "600 20px sans-serif";
-      ctx.fillText("📱 Scan for Menu", canvas.width / 2, 520);
+    const qrImg = new Image();
+    const logoImg = new Image();
+
+    qrImg.onload = () => {
+      // Draw QR Code onto Canvas
+      const qrSize = 320;
+      const qrX = (canvas.width - qrSize) / 2;
+      const qrY = 160;
+      ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+
+      // 5. Draw Logo at Center of QR (Manually layering)
+      if (restaurant.logo_url && restaurant.show_qr_logo !== false) {
+        logoImg.onload = () => {
+          const logoSize = qrSize * 0.22; // 22% of QR code size
+          const lx = qrX + (qrSize - logoSize) / 2;
+          const ly = qrY + (qrSize - logoSize) / 2;
+          
+          // Draw white square background behind logo (mimics 'excavate')
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(lx - 4, ly - 4, logoSize + 8, logoSize + 8);
+
+          // Draw actual logo image
+          ctx.drawImage(logoImg, lx, ly, logoSize, logoSize);
+          generateFinalFile();
+        };
+        logoImg.src = restaurant.logo_url;
+      } else {
+        generateFinalFile();
+      }
+    };
+
+    const generateFinalFile = () => {
+      // 6. Footer Decoration
+      ctx.fillStyle = "#7c3aed"; // Your primary theme color
+      ctx.font = "600 22px sans-serif";
+      ctx.fillText("📱 Scan to view our menu", canvas.width / 2, 540);
       
       ctx.font = "12px monospace";
       ctx.fillStyle = "#9ca3af";
-      ctx.fillText(menuUrl, canvas.width / 2, 560);
+      ctx.fillText(menuUrl, canvas.width / 2, 580);
 
-      // 5. Convert Canvas to File and Share
+      // 7. Share Process
       canvas.toBlob(async (blob) => {
         if (!blob) return;
-        const file = new File([blob], "menu-qr.png", { type: "image/png" });
+        const file = new File([blob], "restaurant-menu.png", { type: "image/png" });
 
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           try {
             await navigator.share({
               files: [file],
               title: `${restaurant.name} Menu`,
+              text: `Check out our digital menu at ${restaurant.name}!`,
             });
           } catch (e) {
-            console.log("Share failed or cancelled");
+            console.log("Share cancelled");
           }
         } else {
           toast({ title: "Sharing not supported on this browser" });
         }
         URL.revokeObjectURL(url);
-      });
+      }, "image/png");
     };
-    img.src = url;
+
+    qrImg.src = url;
   };
 
   return (
     <div className="mt-3 flex flex-col items-center gap-4">
-      {/* Visual Preview */}
+      {/* UI PREVIEW */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border" ref={qrRef}>
         <QRCodeSVG
           value={menuUrl}
@@ -142,11 +172,12 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
         {restaurant.show_qr_logo !== false && restaurant.logo_url && (
           <>
             <br />
-            <span className="text-xs text-primary">Logo embedded ✓</span>
+            <span className="text-xs text-primary font-medium">Logo embedded ✓</span>
           </>
         )}
       </p>
 
+      {/* ACTION BUTTONS */}
       <Button className="w-full" onClick={onViewFullscreen}>
         <Eye className="w-4 h-4 mr-2" />View QR Display
       </Button>
