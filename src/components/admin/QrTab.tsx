@@ -13,46 +13,35 @@ interface Props {
 const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
   const qrRef = useRef<HTMLDivElement>(null);
 
-  // Helper to get theme colors
   const getThemeColor = (variable: string) => {
     if (typeof window === "undefined") return "#000000";
     const val = getComputedStyle(document.documentElement).getPropertyValue(variable).trim();
-    return val ? `hsl(${val})` : "#000000";
+    return val ? `hsl(${val})` : "#7c3aed"; // Fallback to a purple if not found
   };
 
   const handlePrint = () => {
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
-
     const svgEl = qrRef.current?.querySelector("svg");
     if (!svgEl) return;
 
-    // Serialize SVG carefully
-    const svgData = new XMLSerializer().serializeToString(svgEl);
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
     const primaryColor = getThemeColor("--primary");
+    const svgData = new XMLSerializer().serializeToString(svgEl);
 
     printWindow.document.write(`
       <html>
         <head>
-          <title>${restaurant.name} - QR Menu</title>
+          <title>Print Menu QR</title>
           <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-            body { 
-              margin: 0; display: flex; align-items: center; justify-content: center; 
-              min-height: 100vh; font-family: 'Inter', sans-serif; background: #fdfdfd; 
-            }
-            .card { 
-              border: 3px solid ${primaryColor}; padding: 40px; border-radius: 24px;
-              text-align: center; background: white; max-width: 380px; width: 90%;
-              box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-            }
-            .logo { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; margin-bottom: 12px; border: 2px solid ${primaryColor}; }
-            h2 { margin: 0; font-size: 26px; color: #111; }
-            .tagline { color: #666; font-size: 14px; margin: 4px 0 20px 0; font-style: italic; }
-            .qr-wrap { display: inline-block; padding: 15px; background: #fff; border: 1px solid #eee; border-radius: 16px; }
-            .scan-text { margin-top: 20px; font-weight: 700; color: ${primaryColor}; font-size: 18px; }
-            .url { font-size: 11px; color: #999; margin-top: 10px; }
-            svg { width: 220px; height: 220px; }
+            body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: sans-serif; background: #fff; }
+            .card { border: 4px solid ${primaryColor}; padding: 40px; border-radius: 30px; text-align: center; width: 350px; }
+            .logo { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin-bottom: 15px; border: 2px solid ${primaryColor}; }
+            h2 { margin: 10px 0 5px; font-size: 28px; }
+            .tagline { color: #666; font-size: 14px; margin-bottom: 20px; }
+            .qr-wrap svg { width: 250px; height: 250px; }
+            .scan-text { margin-top: 20px; font-weight: bold; color: ${primaryColor}; font-size: 20px; }
+            .url { font-size: 12px; color: #888; margin-top: 10px; }
           </style>
         </head>
         <body>
@@ -61,15 +50,16 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
             <h2>${restaurant.name}</h2>
             ${restaurant.tagline ? `<p class="tagline">${restaurant.tagline}</p>` : ""}
             <div class="qr-wrap">${svgData}</div>
-            <p class="scan-text">📱 Scan to View Menu</p>
-            <p class="url">${menuUrl}</p>
+            <div class="scan-text">SCAN FOR MENU</div>
+            <div class="url">${menuUrl}</div>
           </div>
           <script>
+            // This ensures all images are loaded before triggering print
             window.onload = () => {
               setTimeout(() => {
                 window.print();
                 window.close();
-              }, 500);
+              }, 300);
             };
           </script>
         </body>
@@ -84,99 +74,114 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
 
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
-    const size = 1000; 
+    const size = 1000;
     canvas.width = size;
     canvas.height = size;
     if (!ctx) return;
 
     const primaryColor = getThemeColor("--primary");
 
-    // 1. Background & Border
+    // 1. White Background & Theme Border
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, size, size);
     ctx.strokeStyle = primaryColor;
-    ctx.lineWidth = 20;
-    ctx.strokeRect(40, 40, size - 80, size - 80);
+    ctx.lineWidth = 30;
+    ctx.strokeRect(50, 50, size - 100, size - 100);
 
-    // 2. Prepare SVG Image
+    // 2. Load Images (QR and Logo)
     const svgData = new XMLSerializer().serializeToString(svgEl);
-    const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(svgBlob);
+    const svgUrl = URL.createObjectURL(new Blob([svgData], { type: "image/svg+xml" }));
+    
     const qrImg = new Image();
+    const logoImg = new Image();
+    logoImg.crossOrigin = "anonymous"; // Prevents tainted canvas
 
-    qrImg.onload = () => {
-      // 3. Draw Text Elements
+    const drawAll = () => {
+      // Draw Text
       ctx.textAlign = "center";
-      ctx.fillStyle = "#111111";
-      
-      // Restaurant Name
-      ctx.font = "bold 50px Inter, sans-serif";
-      ctx.fillText(restaurant.name, size / 2, 220);
+      ctx.fillStyle = "#000000";
+      ctx.font = "bold 60px sans-serif";
+      ctx.fillText(restaurant.name, size / 2, 200);
 
-      // Tagline
       if (restaurant.tagline) {
-        ctx.font = "italic 30px Inter, sans-serif";
+        ctx.font = "30px sans-serif";
         ctx.fillStyle = "#666666";
-        ctx.fillText(restaurant.tagline, size / 2, 270);
+        ctx.fillText(restaurant.tagline, size / 2, 250);
       }
 
-      // 4. Draw the QR Code (which already has the logo inside)
-      ctx.drawImage(qrImg, 250, 320, 500, 500);
+      // Draw QR Code
+      ctx.drawImage(qrImg, 250, 300, 500, 500);
 
-      // 5. Footer Text
+      // Draw Logo manually in center (Compulsory Fix)
+      if (restaurant.show_qr_logo !== false && restaurant.logo_url) {
+        const logoSize = 120;
+        const x = (size - logoSize) / 2;
+        const y = (size - logoSize) / 2 + 50; // Shifted slightly for QR alignment
+        
+        // Draw white circle behind logo
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        ctx.arc(size/2, y + logoSize/2, logoSize/1.8, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw the logo
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(size/2, y + logoSize/2, logoSize/2, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.drawImage(logoImg, x, y, logoSize, logoSize);
+        ctx.restore();
+      }
+
       ctx.fillStyle = primaryColor;
-      ctx.font = "bold 35px Inter, sans-serif";
-      ctx.fillText("📱 SCAN TO VIEW MENU", size / 2, 880);
-      
-      ctx.fillStyle = "#999999";
-      ctx.font = "20px Inter, sans-serif";
-      ctx.fillText(menuUrl.replace("https://", ""), size / 2, 930);
+      ctx.font = "bold 40px sans-serif";
+      ctx.fillText("SCAN TO VIEW MENU", size / 2, 880);
 
-      // 6. Finalize and Share
       canvas.toBlob(async (blob) => {
         if (!blob) return;
-        const file = new File([blob], `menu-${restaurant.name}.png`, { type: "image/png" });
-        
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          try {
-            await navigator.share({
-              files: [file],
-              title: `${restaurant.name} Menu`,
-            });
-          } catch (e) { console.log("Share cancelled"); }
-        } else {
-          const link = document.createElement("a");
-          link.href = URL.createObjectURL(blob);
-          link.download = `${restaurant.name}-QR.png`;
-          link.click();
+        const file = new File([blob], "menu-qr.png", { type: "image/png" });
+        if (navigator.share) {
+          await navigator.share({
+            files: [file],
+            title: restaurant.name,
+            text: `View our menu here: ${menuUrl}`, // Added URL to message
+          });
         }
-        URL.revokeObjectURL(url);
-      }, "image/png");
+        URL.revokeObjectURL(svgUrl);
+      });
     };
-    qrImg.src = url;
+
+    qrImg.onload = () => {
+      if (restaurant.logo_url) {
+        logoImg.onload = drawAll;
+        logoImg.onerror = drawAll; // Draw anyway if logo fails
+        logoImg.src = restaurant.logo_url;
+      } else {
+        drawAll();
+      }
+    };
+    qrImg.src = svgUrl;
   };
 
   const showLogoInQr = restaurant.show_qr_logo !== false && restaurant.logo_url;
 
   return (
     <div className="mt-3 flex flex-col items-center gap-4">
-      <div className="bg-white p-6 rounded-2xl border shadow-sm relative" ref={qrRef}>
+      <div className="bg-white p-6 rounded-2xl border shadow-sm" ref={qrRef}>
         <QRCodeSVG
           value={menuUrl}
           size={180}
           level="H"
           imageSettings={
             showLogoInQr
-              ? { src: restaurant.logo_url!, height: 38, width: 38, excavate: true }
+              ? { src: restaurant.logo_url!, height: 40, width: 40, excavate: true }
               : undefined
           }
         />
       </div>
 
       <div className="flex flex-col items-center gap-1">
-        <p className="text-sm text-muted-foreground text-center">
-          Your menu QR code
-        </p>
+        <p className="text-sm text-muted-foreground text-center">Your menu QR code</p>
         {showLogoInQr && (
           <span className="text-xs text-primary flex items-center gap-1 font-medium">
             <CheckCircle2 className="w-3 h-3" /> Logo embedded ✓
