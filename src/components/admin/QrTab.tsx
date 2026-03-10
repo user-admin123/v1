@@ -17,156 +17,265 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
   const handlePrint = () => {
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
+
     const svgEl = qrRef.current?.querySelector("svg");
     if (!svgEl) return;
+
     const svgData = new XMLSerializer().serializeToString(svgEl);
+
     printWindow.document.write(`
-      <html><head><title>Menu QR - ${restaurant.name}</title>
-      <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-        *{margin:0;padding:0;box-sizing:border-box}
-        body{display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:'Inter',sans-serif;background:#f9fafb}
-        .card{background:white;border-radius:24px;padding:48px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.1);max-width:400px;width:90%;border:1px solid #eee}
-        .logo{width:64px;height:64px;border-radius:50%;object-fit:cover;margin:0 auto 12px;border:2px solid #eee}
-        h2{font-size:24px;color:#111;margin-bottom:4px;font-weight:700}
-        .tagline{color:#666;font-size:14px;margin-bottom:20px}
-        .qr-wrap{display:inline-block;padding:16px;border-radius:12px;background:#fff;border:1px solid #f0f0f0;margin:16px 0}
-        .scan-text{margin-top:20px;font-size:16px;font-weight:600;color:#111}
-        .url{font-size:11px;color:#999;margin-top:8px}
-      </style></head>
-      <body><div class="card">
-        ${restaurant.logo_url ? `<img src="${restaurant.logo_url}" class="logo" alt="logo"/>` : ""}
-        <h2>${restaurant.name}</h2>
-        ${restaurant.tagline ? `<p class="tagline">${restaurant.tagline}</p>` : ""}
-        <div class="qr-wrap">${svgData}</div>
-        <p class="scan-text">Scan to view menu</p>
-        <p class="url">${menuUrl}</p>
-      </div>
-      <script>setTimeout(()=>{window.print();},500);</script>
-      </body></html>
+      <html>
+      <head>
+        <title>Menu QR - ${restaurant.name}</title>
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap');
+          *{margin:0;padding:0;box-sizing:border-box}
+          body{
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            justify-content:center;
+            min-height:100vh;
+            font-family:'Inter',sans-serif;
+            background:linear-gradient(135deg,#667eea 0%,#764ba2 50%,#f093fb 100%)
+          }
+          .card{
+            background:white;
+            border-radius:24px;
+            padding:48px 40px;
+            text-align:center;
+            box-shadow:0 20px 60px rgba(0,0,0,0.3);
+            max-width:400px;
+            width:90%
+          }
+          .logo{
+            width:64px;
+            height:64px;
+            border-radius:50%;
+            object-fit:cover;
+            margin:0 auto 12px;
+            border:3px solid #764ba2
+          }
+          h2{
+            font-family:'Playfair Display',serif;
+            font-size:28px;
+            color:#1a1a2e;
+            margin-bottom:4px
+          }
+          .tagline{
+            color:#888;
+            font-size:14px;
+            font-style:italic;
+            margin-bottom:20px
+          }
+          .qr-wrap{
+            display:inline-block;
+            padding:16px;
+            border-radius:16px;
+            background:linear-gradient(135deg,#f5f7fa,#c3cfe2);
+            margin:16px 0
+          }
+          .scan-text{
+            margin-top:20px;
+            font-size:16px;
+            font-weight:600;
+            color:#764ba2
+          }
+          .url{
+            font-size:11px;
+            color:#aaa;
+            margin-top:8px
+          }
+          .footer{
+            margin-top:16px;
+            padding-top:12px;
+            border-top:1px solid #eee;
+            font-size:10px;
+            color:#bbb
+          }
+        </style>
+      </head>
+
+      <body>
+        <div class="card">
+          ${restaurant.logo_url ? `<img src="${restaurant.logo_url}" class="logo" alt="logo"/>` : ""}
+          <h2>${restaurant.name}</h2>
+          ${restaurant.tagline ? `<p class="tagline">${restaurant.tagline}</p>` : ""}
+          <div class="qr-wrap">${svgData}</div>
+          <p class="scan-text">📱 Scan me to get the live menu!</p>
+          <p class="url">${menuUrl}</p>
+          <p class="footer">Powered by QR Menu</p>
+        </div>
+
+        <script>
+          setTimeout(()=>{window.print();},500);
+        </script>
+      </body>
+      </html>
     `);
+
     printWindow.document.close();
   };
 
   const handleShare = async () => {
-    const svg = qrRef.current?.querySelector("svg");
-    if (!svg) return;
+    const svgEl = qrRef.current?.querySelector("svg");
+    if (!svgEl) return;
 
-    try {
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
+    if (navigator.share) {
+      try {
+        const canvas = document.createElement("canvas");
+        const scale = 2;
 
-      // Card Dimensions
-      canvas.width = 800;
-      canvas.height = 1000;
+        canvas.width = 400 * scale;
+        canvas.height = 560 * scale;
 
-      // 1. Clean White Background
-      ctx.fillStyle = "#FFFFFF";
-      ctx.fillRect(0, 0, 800, 1000);
-      
-      // Optional: Light gray border for the "card" look
-      ctx.strokeStyle = "#F3F4F6";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(40, 40, 720, 920);
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
 
-      // 2. Prepare QR Image
-      const svgData = new XMLSerializer().serializeToString(svg);
-      const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-      const svgUrl = URL.createObjectURL(svgBlob);
-      const qrImg = new Image();
+        ctx.scale(scale, scale);
 
-      qrImg.onload = async () => {
-        // Draw Restaurant Name (Centered)
-        ctx.fillStyle = "#111827";
-        ctx.font = "bold 52px Inter, sans-serif";
+        // Gradient background
+        const grad = ctx.createLinearGradient(0, 0, 400, 560);
+        grad.addColorStop(0, "#667eea");
+        grad.addColorStop(0.5, "#764ba2");
+        grad.addColorStop(1, "#f093fb");
+
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 400, 560);
+
+        // White card
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.roundRect(30, 30, 340, 500, 20);
+        ctx.fill();
+
+        // Restaurant name
+        ctx.fillStyle = "#1a1a2e";
+        ctx.font = "bold 26px serif";
         ctx.textAlign = "center";
-        ctx.fillText(restaurant.name, 400, 150);
+        ctx.fillText(restaurant.name, 200, 80);
 
-        // Draw Tagline
+        // Tagline
         if (restaurant.tagline) {
-          ctx.fillStyle = "#6B7280";
-          ctx.font = "30px Inter, sans-serif";
-          ctx.fillText(restaurant.tagline, 400, 210);
+          ctx.font = "italic 13px sans-serif";
+          ctx.fillStyle = "#888";
+          ctx.fillText(restaurant.tagline, 200, 100);
         }
 
-        // Draw QR Code (Larger)
-        const qrSize = 500;
-        ctx.drawImage(qrImg, 150, 280, qrSize, qrSize);
+        // Convert SVG QR to image
+        const svgData = new XMLSerializer().serializeToString(svgEl);
+        const img = new window.Image();
 
-        // Footer Text
-        ctx.fillStyle = "#111827";
-        ctx.font = "bold 36px Inter, sans-serif";
-        ctx.fillText("Scan to View Menu", 400, 850);
-        
-        ctx.fillStyle = "#9CA3AF";
-        ctx.font = "24px Inter, sans-serif";
-        ctx.fillText(menuUrl, 400, 900);
+        const svgBlob = new Blob([svgData], {
+          type: "image/svg+xml;charset=utf-8",
+        });
 
-        // Share logic
-        canvas.toBlob(async (blob) => {
-          if (!blob) return;
-          const file = new File([blob], `menu-qr.png`, { type: "image/png" });
+        const url = URL.createObjectURL(svgBlob);
 
-          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              title: restaurant.name,
-              text: `Check out our menu at ${restaurant.name}`,
-              files: [file],
-            });
-          }
-          URL.revokeObjectURL(svgUrl);
-        }, "image/png");
-      };
+        await new Promise<void>((resolve) => {
+          img.onload = () => {
+            ctx.drawImage(img, 100, 120, 200, 200);
+            URL.revokeObjectURL(url);
+            resolve();
+          };
+          img.src = url;
+        });
 
-      // Crucial: This helps with loading if the SVG has images inside
-      qrImg.src = svgUrl;
+        // Scan text
+        ctx.fillStyle = "#764ba2";
+        ctx.font = "600 15px sans-serif";
+        ctx.fillText("📱 Scan me to get the live menu!", 200, 360);
 
-    } catch (error) {
-      console.error("Share failed", error);
-      toast({ title: "Sharing failed", variant: "destructive" });
+        // URL
+        ctx.fillStyle = "#aaa";
+        ctx.font = "11px sans-serif";
+        ctx.fillText(menuUrl, 200, 385);
+
+        // Footer
+        ctx.fillStyle = "#ccc";
+        ctx.font = "9px sans-serif";
+        ctx.fillText("Powered by QR Menu", 200, 510);
+
+        const blob = await new Promise<Blob | null>((resolve) =>
+          canvas.toBlob(resolve, "image/png")
+        );
+
+        if (blob) {
+          const file = new File(
+            [blob],
+            `${restaurant.name}-QR.png`,
+            { type: "image/png" }
+          );
+
+          await navigator.share({
+            title: `${restaurant.name} Menu`,
+            text: "Scan or click to view our menu",
+            url: menuUrl,
+            files: [file],
+          });
+
+          return;
+        }
+      } catch {}
+    }
+
+    try {
+      await navigator.share({
+        title: `${restaurant.name} Menu`,
+        text: "Scan or click to view our menu",
+        url: menuUrl,
+      });
+    } catch {
+      toast({
+        title: "Sharing not supported on this device",
+      });
     }
   };
 
   return (
     <div className="mt-3 flex flex-col items-center gap-4">
-      {/* The visible QR code in the UI */}
-      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm" ref={qrRef}>
+      <div className="bg-white p-6 rounded-2xl" ref={qrRef}>
         <QRCodeSVG
           value={menuUrl}
-          size={180}
+          size={160}
           level="H"
-          includeMargin={false}
           imageSettings={
             restaurant.show_qr_logo !== false && restaurant.logo_url
-              ? { 
-                  src: restaurant.logo_url, 
-                  height: 40, 
-                  width: 40, 
+              ? {
+                  src: restaurant.logo_url,
+                  height: 32,
+                  width: 32,
                   excavate: true,
-                  // Cross-origin for the logo if it's from a different domain
-                  crossOrigin: "anonymous" 
                 }
               : undefined
           }
         />
       </div>
-      
-      <div className="text-center space-y-1">
-        <p className="text-sm font-medium text-gray-900">Your Menu QR Code</p>
-        <p className="text-xs text-gray-500">Minimalist White Design</p>
-      </div>
 
-      <Button className="w-full bg-gray-900 hover:bg-black text-white" onClick={onViewFullscreen}>
-        <Eye className="w-4 h-4 mr-2" />Full QR Display
+      <p className="text-sm text-muted-foreground text-center">
+        Your menu QR code
+        {restaurant.show_qr_logo !== false && restaurant.logo_url && (
+          <>
+            <br />
+            <span className="text-xs text-primary">Logo embedded ✓</span>
+          </>
+        )}
+      </p>
+
+      <Button className="w-full" onClick={onViewFullscreen}>
+        <Eye className="w-4 h-4 mr-2" />
+        View QR Display
       </Button>
-      
+
       <div className="flex gap-2 w-full">
-        <Button variant="outline" className="flex-1 border-gray-200" onClick={handlePrint}>
-          <Printer className="w-4 h-4 mr-2" />Print
+        <Button variant="outline" className="flex-1" onClick={handlePrint}>
+          <Printer className="w-4 h-4 mr-2" />
+          Print
         </Button>
-        <Button variant="outline" className="flex-1 border-gray-200" onClick={handleShare}>
-          <Share2 className="w-4 h-4 mr-2" />Share Image
+
+        <Button variant="outline" className="flex-1" onClick={handleShare}>
+          <Share2 className="w-4 h-4 mr-2" />
+          Share
         </Button>
       </div>
     </div>
