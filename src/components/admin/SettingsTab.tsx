@@ -24,16 +24,16 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
         <Label>Restaurant Name</Label>
         <Input
           value={restaurant.name}
-          readOnly
-          className="bg-muted/50 opacity-60 cursor-not-allowed"
+          onChange={(e) => update({ name: e.target.value })}
+          className="bg-muted/50"
         />
       </div>
       <div className="space-y-2">
         <Label>Tagline</Label>
         <Input
           value={restaurant.tagline}
-          readOnly
-          className="bg-muted/50 opacity-60 cursor-not-allowed"
+          onChange={(e) => update({ tagline: e.target.value })}
+          className="bg-muted/50"
         />
       </div>
       <div className="space-y-2">
@@ -88,10 +88,6 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
           ))}
         </div>
       </div>
-
-      <p className="text-xs text-muted-foreground">
-        Default login: admin@restaurant.com / admin123
-      </p>
     </div>
   );
 };
