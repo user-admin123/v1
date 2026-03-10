@@ -17,6 +17,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
   const handlePrint = () => {
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
+    
     const svgEl = qrRef.current?.querySelector("svg");
     if (!svgEl) return;
     const svgData = new XMLSerializer().serializeToString(svgEl);
@@ -31,6 +32,8 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
         html, body { 
           height: 100%; 
           width: 100%;
+          margin: 0;
+          padding: 0;
         }
 
         body {
@@ -49,8 +52,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           box-shadow: 0 20px 60px rgba(0,0,0,0.2);
           max-width: 420px;
           width: 90%;
-          /* Ensures centering on physical paper */
-          margin: auto;
+          position: relative;
         }
 
         .logo { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin: 0 auto 16px; border: 4px solid #764ba2; }
@@ -63,7 +65,6 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           border-radius: 24px; 
           background: #f8fafc; 
           border: 1px solid #f1f5f9;
-          margin: 10px 0;
         }
         
         .scan-text {
@@ -75,17 +76,15 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           color: #764ba2;
         }
 
-        /* Print Specific Logic */
         @media print {
-          @page { margin: 0; }
+          @page { margin: 0; size: auto; }
           body { 
             background: white !important; 
-            height: 99vh; /* Prevents blank 2nd page while keeping center */
+            -webkit-print-color-adjust: exact;
           }
           .card { 
             box-shadow: none !important; 
-            border: none;
-            /* Force center alignment on the printed page */
+            border: 1px solid #eee;
             position: absolute;
             top: 50%;
             left: 50%;
@@ -102,12 +101,11 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           <p class="scan-text">Scan to explore our digital menu</p>
         </div>
         <script>
-          // Wait for fonts/images to load before printing
-          window.onload = () => {
-            setTimeout(() => {
-              window.print();
-              window.close();
-            }, 500);
+          window.onload = function() {
+            window.print();
+          };
+          window.onafterprint = function() {
+            window.close();
           };
         </script>
       </body></html>
