@@ -14,13 +14,17 @@ interface Props {
 const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
   const qrRef = useRef<HTMLDivElement>(null);
 
-  // --- THE SINGLE SOURCE OF TRUTH ---
+  // Helper to get CSS variables (theme colors) for the canvas
+  const getThemeColor = (varName: string) => {
+    return getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || "#764ba2";
+  };
+
   const generateQrImage = async (): Promise<{ blob: Blob; url: string } | null> => {
     const svgEl = qrRef.current?.querySelector("svg");
     if (!svgEl) return null;
 
     const canvas = document.createElement("canvas");
-    const scale = 3; // Extra high res for printing sharpness
+    const scale = 3; 
     canvas.width = 400 * scale;
     canvas.height = 560 * scale;
     const ctx = canvas.getContext("2d");
@@ -28,10 +32,15 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
 
     ctx.scale(scale, scale);
 
-    // Draw Background
+    // DYNAMIC THEME COLORS
+    // This pulls from your app's CSS variables (--primary, --background, etc.)
+    const primaryColor = getThemeColor('--primary');
+    const accentColor = getThemeColor('--accent').length > 0 ? getThemeColor('--accent') : "#f093fb";
+
+    // Draw Background using your App's Theme
     const grad = ctx.createLinearGradient(0, 0, 400, 560);
-    grad.addColorStop(0, "#667eea");
-    grad.addColorStop(1, "#764ba2");
+    grad.addColorStop(0, primaryColor);
+    grad.addColorStop(1, accentColor);
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 400, 560);
 
@@ -41,13 +50,12 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
     ctx.roundRect(30, 30, 340, 500, 24);
     ctx.fill();
 
-    // Draw Text
+    // Text & QR logic
     ctx.fillStyle = "#1a1a2e";
     ctx.font = "bold 24px sans-serif";
     ctx.textAlign = "center";
     ctx.fillText(restaurant.name, 200, 90);
 
-    // Draw QR
     const svgData = new XMLSerializer().serializeToString(svgEl);
     const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
     const url = URL.createObjectURL(svgBlob);
@@ -70,8 +78,6 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
     });
   };
 
-  // --- REFACTORED ACTIONS ---
-
   const handlePrint = async () => {
     const data = await generateQrImage();
     if (!data) return;
@@ -79,50 +85,52 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
+    // FIX: We wait for the image to truly load in the new window before calling print()
     printWindow.document.write(`
-      <html><head><title>Print Menu</title></head>
-      <body style="margin:0; display:flex; justify-content:center; align-items:center; height:100vh;">
-        <img src="${data.url}" style="width:100%; max-width:500px;" onload="window.print(); window.close();">
-      </body></html>
+      <html>
+        <head><title>Print Menu</title></head>
+        <body style="margin:0; display:flex; justify-content:center; align-items:center; height:100vh; background:#f0f0f0;">
+          <img id="print-img" src="${data.url}" style="width:100%; max-width:500px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border-radius:10px;">
+          <script>
+            const img = document.getElementById('print-img');
+            img.onload = () => {
+              window.focus();
+              window.print();
+              // Optional: window.close();
+            };
+          </script>
+        </body>
+      </html>
     `);
     printWindow.document.close();
   };
 
   const handleShare = async () => {
-    // 1. Try to share as a file first
     const data = await generateQrImage();
     
-    if (data && navigator.canShare && navigator.share) {
+    if (data && navigator.share) {
       const file = new File([data.blob], "restaurant-qr.png", { type: "image/png" });
-      if (navigator.canShare({ files: [file] })) {
-        try {
+      
+      try {
+        // Try sharing the file
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
           await navigator.share({
             files: [file],
             title: restaurant.name,
-            text: "Scan to view our menu!",
+            text: `Check out the menu for ${restaurant.name}!`,
           });
-          return;
-        } catch (e) { /* user cancelled */ }
+        } else {
+          // Fallback to link share ONLY if file sharing isn't supported
+          await navigator.share({
+            title: restaurant.name,
+            url: menuUrl,
+          });
+        }
+      } catch (e) {
+        console.log("Share cancelled or failed");
       }
-    }
-
-    // 2. FALLBACK: Fixed Clipboard Logic
-    // We use a backup method for the clipboard to ensure it actually copies
-    try {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(menuUrl);
-      } else {
-        // Fallback for non-secure or older browsers
-        const textArea = document.createElement("textarea");
-        textArea.value = menuUrl;
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textArea);
-      }
-      toast({ title: "Link copied to clipboard!" });
-    } catch (err) {
-      toast({ title: "Failed to copy link", variant: "destructive" });
+    } else {
+      toast({ title: "Sharing not supported on this browser", variant: "destructive" });
     }
   };
 
