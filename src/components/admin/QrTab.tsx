@@ -51,103 +51,96 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
   };
 
   const handleShare = async () => {
-    const svgEl = qrRef.current?.querySelector("svg");
-    if (!svgEl) return;
-
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    canvas.width = 800;
-    canvas.height = 1000;
-
-    // 1. Background (Pure White)
-    ctx.fillStyle = "#FFFFFF";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // 2. Text Drawing
-    ctx.fillStyle = "#000000";
-    ctx.textAlign = "center";
-    ctx.font = "bold 42px Arial";
-    ctx.fillText(restaurant.name, canvas.width / 2, 120);
-
-    if (restaurant.tagline) {
-      ctx.font = "italic 22px Arial";
-      ctx.fillStyle = "#666666";
-      ctx.fillText(restaurant.tagline, canvas.width / 2, 170);
-    }
-
-    // 3. Image Loading Helper
-    const loadImage = (url: string): Promise<HTMLImageElement> => {
-      return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.crossOrigin = "anonymous"; 
-        img.onload = () => resolve(img);
-        img.onerror = (e) => reject(e);
-        img.src = url;
-      });
-    };
-
     try {
-      // Create SVG Data URL for the QR (without its internal logo to prevent double rendering)
-      const svgData = new XMLSerializer().serializeToString(svgEl);
-      const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-      const qrDataUrl = URL.createObjectURL(svgBlob);
+      const svgEl = qrRef.current?.querySelector("svg");
+      if (!svgEl) return;
 
-      // Load both QR and Logo
-      const qrImg = await loadImage(qrDataUrl);
-      
-      // Draw QR
-      ctx.drawImage(qrImg, 150, 250, 500, 500);
-      URL.revokeObjectURL(qrDataUrl);
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
 
-      // Manually Draw Logo in Center
-      if (restaurant.logo_url && restaurant.show_qr_logo !== false) {
-        const logoImg = await loadImage(restaurant.logo_url);
-        const logoSize = 110; 
-        const centerX = (canvas.width - logoSize) / 2;
-        const centerY = 250 + (500 - logoSize) / 2;
+      canvas.width = 800;
+      canvas.height = 1000;
 
-        // Draw White Square background for Logo (The "Excavate" effect)
-        ctx.fillStyle = "#FFFFFF";
-        ctx.fillRect(centerX - 5, centerY - 5, logoSize + 10, logoSize + 10);
-        
-        // Draw Logo
-        ctx.drawImage(logoImg, centerX, centerY, logoSize, logoSize);
+      // 1. Solid White Background
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // 2. Restaurant Name & Tagline
+      ctx.fillStyle = "#000000";
+      ctx.textAlign = "center";
+      ctx.font = "bold 42px Arial";
+      ctx.fillText(restaurant.name, canvas.width / 2, 120);
+
+      if (restaurant.tagline) {
+        ctx.font = "italic 22px Arial";
+        ctx.fillStyle = "#666666";
+        ctx.fillText(restaurant.tagline, canvas.width / 2, 170);
       }
 
-      // 4. Footer Content
+      // 3. Helper to load images safely
+      const imgLoad = (url: string): Promise<HTMLImageElement> => {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          // Remove crossOrigin for Base64 to avoid "Check your connection" error
+          if (!url.startsWith('data:')) img.crossOrigin = "anonymous";
+          img.onload = () => resolve(img);
+          img.onerror = reject;
+          img.src = url;
+        });
+      };
+
+      // 4. Draw QR Code (Clean version)
+      const svgData = new XMLSerializer().serializeToString(svgEl);
+      const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+      const qrUrl = URL.createObjectURL(svgBlob);
+      const qrImg = await imgLoad(qrUrl);
+      ctx.drawImage(qrImg, 150, 250, 500, 500);
+      URL.revokeObjectURL(qrUrl);
+
+      // 5. Draw Logo Manually in Center
+      if (restaurant.logo_url && restaurant.show_qr_logo !== false) {
+        const logoImg = await imgLoad(restaurant.logo_url);
+        const logoSize = 110;
+        const x = (canvas.width - logoSize) / 2;
+        const y = 250 + (500 - logoSize) / 2;
+
+        // White background behind logo
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillRect(x - 5, y - 5, logoSize + 10, logoSize + 10);
+        ctx.drawImage(logoImg, x, y, logoSize, logoSize);
+      }
+
+      // 6. Footer
       ctx.fillStyle = "#000000";
       ctx.font = "bold 28px Arial";
       ctx.fillText("Scan to view our live menu", canvas.width / 2, 850);
-      
       ctx.font = "18px Arial";
       ctx.fillStyle = "#888888";
       ctx.fillText(menuUrl, canvas.width / 2, 900);
 
-      // 5. Trigger Native Share
+      // 7. Share
       canvas.toBlob(async (blob) => {
         if (!blob) return;
         const file = new File([blob], "menu-qr.png", { type: "image/png" });
-        
-        if (navigator.share && navigator.canShare?.({ files: [file] })) {
-          try {
-            await navigator.share({
-              files: [file],
-              title: restaurant.name,
-              text: `Check out our menu: ${menuUrl}`,
-            });
-          } catch (err) {
-            console.log("User cancelled share");
-          }
-        } else {
-          alert("Sharing images is not supported on this browser.");
+        if (navigator.share) {
+          await navigator.share({
+            files: [file],
+            title: restaurant.name,
+            text: `Menu: ${menuUrl}`,
+          });
         }
       }, "image/png");
 
-    } catch (err) {
-      console.error("Share Image Generation Failed:", err);
-      alert("Could not generate share image. Please check your connection.");
+    } catch (error) {
+      console.error(error);
+      // Fallback: If image fails, share just the link
+      if (navigator.share) {
+        await navigator.share({
+          title: restaurant.name,
+          url: menuUrl
+        });
+      }
     }
   };
 
