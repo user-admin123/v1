@@ -25,23 +25,57 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       <style>
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap');
         *{margin:0;padding:0;box-sizing:border-box}
-        /* Changed min-height to auto to prevent blank 2nd page */
-        body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:auto;padding:40px 0;font-family:'Inter',sans-serif;
-          background:linear-gradient(135deg,#667eea 0%,#764ba2 50%,#f093fb 100%)}
-        .card{background:white;border-radius:24px;padding:48px 40px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-width:400px;width:90%}
+        
+        /* Center content on screen */
+        body{
+          display:flex;
+          flex-direction:column;
+          align-items:center;
+          justify-content:center;
+          min-height: 100vh;
+          font-family:'Inter',sans-serif;
+          background:linear-gradient(135deg,#667eea 0%,#764ba2 50%,#f093fb 100%);
+        }
+
+        .card{
+          background:white;
+          border-radius:24px;
+          padding:48px 40px;
+          text-align:center;
+          box-shadow:0 20px 60px rgba(0,0,0,0.3);
+          max-width:400px;
+          width:90%;
+        }
+
         .logo{width:64px;height:64px;border-radius:50%;object-fit:cover;margin:0 auto 12px;border:3px solid #764ba2}
         h2{font-family:'Playfair Display',serif;font-size:28px;color:#1a1a2e;margin-bottom:4px}
         .tagline{color:#888;font-size:14px;font-style:italic;margin-bottom:20px}
         .qr-wrap{display:inline-block;padding:16px;border-radius:16px;background:linear-gradient(135deg,#f5f7fa,#c3cfe2);margin:16px 0}
-        .scan-text{margin-top:20px;font-size:16px;font-weight:600;color:#764ba2;display:flex;align-items:center;justify-content:center;gap:8px}
+        
+        /* Professional Modern Text */
+        .scan-text{
+          margin-top:20px;
+          font-size:15px;
+          font-weight:600;
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
+          color:#764ba2;
+        }
+
         .url{font-size:11px;color:#aaa;margin-top:8px}
+
+        /* The Fix: Force height to auto only during print to stop 2nd page */
+        @media print {
+          body { min-height: auto; padding: 20px 0; background: white !important; }
+          .card { box-shadow: none !important; border: 1px solid #eee; }
+        }
       </style></head>
       <body><div class="card">
         ${restaurant.logo_url ? `<img src="${restaurant.logo_url}" class="logo" alt="logo"/>` : ""}
         <h2>${restaurant.name}</h2>
         ${restaurant.tagline ? `<p class="tagline">${restaurant.tagline}</p>` : ""}
         <div class="qr-wrap">${svgData}</div>
-        <p class="scan-text">📱 Scan me to get the live menu!</p>
+        <p class="scan-text">Scan to explore our digital menu</p>
         <p class="url">${menuUrl}</p>
       </div>
       <script>setTimeout(()=>{window.print();},500);</script>
@@ -58,15 +92,12 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           text: "Scan or click to view our menu",
           url: menuUrl,
         });
-        // Success! We exit here so it doesn't run the clipboard code.
-        return;
+        return; 
       } catch { 
-        /* User cancelled or share failed, we just move on */
         return; 
       }
     }
     
-    // This part ONLY runs if navigator.share is missing (like on some desktop browsers)
     navigator.clipboard.writeText(menuUrl);
     toast({ title: "Menu URL copied to clipboard!" });
   };
