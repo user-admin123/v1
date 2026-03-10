@@ -3,7 +3,6 @@ import { RestaurantInfo } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { QRCodeSVG } from "qrcode.react";
 import { Eye, Printer, Share2 } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
 
 interface Props {
   restaurant: RestaurantInfo;
@@ -20,43 +19,50 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
     const svgEl = qrRef.current?.querySelector("svg");
     if (!svgEl) return;
     const svgData = new XMLSerializer().serializeToString(svgEl);
+
+    // Using a cleaner, neutral professional style for the printout
     printWindow.document.write(`
-      <html><head><title>Menu QR - ${restaurant.name}</title>
+      <html><head><title>${restaurant.name} - QR Menu</title>
       <style>
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap');
-        *{margin:0;padding:0;box-sizing:border-box}
-        body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:'Inter',sans-serif;
-          background:linear-gradient(135deg,#667eea 0%,#764ba2 50%,#f093fb 100%)}
-        .card{background:white;border-radius:24px;padding:48px 40px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-width:400px;width:90%}
-        .logo{width:64px;height:64px;border-radius:50%;object-fit:cover;margin:0 auto 12px;border:3px solid #764ba2}
-        h2{font-family:'Playfair Display',serif;font-size:28px;color:#1a1a2e;margin-bottom:4px}
-        .tagline{color:#888;font-size:14px;font-style:italic;margin-bottom:20px}
-        .qr-wrap{display:inline-block;padding:16px;border-radius:16px;background:linear-gradient(135deg,#f5f7fa,#c3cfe2);margin:16px 0}
-        .scan-text{margin-top:20px;font-size:16px;font-weight:600;color:#764ba2;display:flex;align-items:center;justify-content:center;gap:8px}
-        .url{font-size:11px;color:#aaa;margin-top:8px}
-        .footer{margin-top:16px;padding-top:12px;border-top:1px solid #eee;font-size:10px;color:#bbb}
+        body { 
+          margin: 0; padding: 40px; display: flex; justify-content: center; 
+          font-family: system-ui, -apple-system, sans-serif; background: #fafafa;
+        }
+        .card { 
+          background: white; border: 1px solid #e5e7eb; border-radius: 16px; 
+          padding: 32px; text-align: center; max-width: 350px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+        .logo { width: 80px; height: 80px; border-radius: 9999px; object-fit: cover; margin-bottom: 16px; }
+        h2 { margin: 0; color: #111827; font-size: 24px; font-weight: 700; }
+        p { color: #6b7280; margin: 4px 0 20px 0; font-size: 14px; }
+        .qr-container { background: #f9fafb; padding: 20px; border-radius: 12px; display: inline-block; }
+        .footer { margin-top: 24px; font-size: 12px; color: #9ca3af; font-weight: 500; }
       </style></head>
-      <body><div class="card">
-        ${restaurant.logo_url ? `<img src="${restaurant.logo_url}" class="logo" alt="logo"/>` : ""}
-        <h2>${restaurant.name}</h2>
-        ${restaurant.tagline ? `<p class="tagline">${restaurant.tagline}</p>` : ""}
-        <div class="qr-wrap">${svgData}</div>
-        <p class="scan-text">📱 Scan me to get the live menu!</p>
-        <p class="url">${menuUrl}</p>
-        <p class="footer">Powered by QR Menu</p>
-      </div>
-      <script>setTimeout(()=>{window.print();},500);</script>
+      <body>
+        <div class="card">
+          ${restaurant.logo_url ? `<img src="${restaurant.logo_url}" class="logo" />` : ""}
+          <h2>${restaurant.name}</h2>
+          ${restaurant.tagline ? `<p>${restaurant.tagline}</p>` : "<p>Scan to view our menu</p>"}
+          <div class="qr-container">${svgData}</div>
+          <div class="footer">Scan with phone camera</div>
+        </div>
+        <script>setTimeout(() => { window.print(); window.close(); }, 500);</script>
       </body></html>
     `);
     printWindow.document.close();
   };
 
   const handleShare = async () => {
-    const svgEl = qrRef.current?.querySelector("svg");
+    // We target the SVG specifically. To remove the center logo for share, 
+    // we use a clone and manually remove the image element if it exists.
+    const svgEl = qrRef.current?.querySelector("svg")?.cloneNode(true) as SVGSVGElement;
     if (!svgEl) return;
 
+    // Remove the embedded logo image from the SVG clone for the Share version
+    const embeddedImg = svgEl.querySelector("image");
+    if (embeddedImg) embeddedImg.remove();
+
     try {
-      // 1. Setup high-res canvas (1024px for clear printing/sharing)
       const canvas = document.createElement("canvas");
       const size = 1024;
       canvas.width = size;
@@ -64,7 +70,6 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
-      // 2. Convert SVG to Image source
       const svgData = new XMLSerializer().serializeToString(svgEl);
       const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
       const url = URL.createObjectURL(svgBlob);
@@ -76,43 +81,35 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
         img.src = url;
       });
 
-      // 3. Draw white background and QR code
       ctx.fillStyle = "white";
       ctx.fillRect(0, 0, size, size);
       ctx.drawImage(img, 0, 0, size, size);
 
-      // 4. Convert to File object
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
-      if (!blob) throw new Error("Failed to generate image");
+      if (!blob) return;
 
-      const file = new File([blob], `menu-qr-${restaurant.name}.png`, { type: "image/png" });
+      const file = new File([blob], `menu-${restaurant.name}.png`, { type: "image/png" });
 
-      // 5. Native Share
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
-          title: `${restaurant.name} Menu QR`,
-          text: `Scan to view the menu for ${restaurant.name}`,
-        });
-      } else {
-        toast({ 
-          title: "Sharing not supported", 
-          description: "Your device doesn't support sharing image files directly.",
-          variant: "destructive"
+          title: restaurant.name,
+          text: `Check out the menu for ${restaurant.name} here: ${menuUrl}`,
         });
       }
-
-      // Cleanup
       URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Share error:", error);
-      toast({ title: "Error sharing image", variant: "destructive" });
+    } catch (error: any) {
+      // Ignore "AbortError" (user closed the share sheet)
+      if (error.name !== "AbortError") {
+        console.error("Share failed", error);
+      }
     }
   };
 
   return (
     <div className="mt-3 flex flex-col items-center gap-4">
-      <div className="bg-white p-6 rounded-2xl" ref={qrRef}>
+      {/* Visual QR container in the UI */}
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-border" ref={qrRef}>
         <QRCodeSVG
           value={menuUrl}
           size={160}
@@ -124,24 +121,29 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           }
         />
       </div>
-      <p className="text-sm text-muted-foreground text-center">
-        Your menu QR code
-        {restaurant.show_qr_logo !== false && restaurant.logo_url && (
-          <>
-            <br />
-            <span className="text-xs text-primary">Logo embedded ✓</span>
-          </>
-        )}
-      </p>
+
+      <div className="text-center space-y-1">
+        <p className="text-sm font-medium text-foreground">
+          Your Menu QR Code
+        </p>
+        <p className="text-xs text-muted-foreground max-w-[200px]">
+          Customers can scan this to view your digital menu instantly.
+        </p>
+      </div>
+
       <Button className="w-full" onClick={onViewFullscreen}>
-        <Eye className="w-4 h-4 mr-2" />View QR Display
+        <Eye className="w-4 h-4 mr-2" />
+        View QR Display
       </Button>
+
       <div className="flex gap-2 w-full">
         <Button variant="outline" className="flex-1" onClick={handlePrint}>
-          <Printer className="w-4 h-4 mr-2" />Print
+          <Printer className="w-4 h-4 mr-2" />
+          Print
         </Button>
         <Button variant="outline" className="flex-1" onClick={handleShare}>
-          <Share2 className="w-4 h-4 mr-2" />Share
+          <Share2 className="w-4 h-4 mr-2" />
+          Share
         </Button>
       </div>
     </div>
