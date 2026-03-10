@@ -56,49 +56,88 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
     if (!svg) return;
 
     try {
-      // 1. Convert SVG to Canvas to get a PNG blob
-      const svgData = new XMLSerializer().serializeToString(svg);
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d");
-      const img = new Image();
-      
-      const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-      const url = URL.createObjectURL(svgBlob);
+      if (!ctx) return;
 
-      img.onload = async () => {
-        canvas.width = img.width * 2; // Higher resolution
-        canvas.height = img.height * 2;
-        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+      // Set Canvas size (standard social sharing size)
+      canvas.width = 800;
+      canvas.height = 1000;
+
+      // 1. Draw Gradient Background
+      const gradient = ctx.createLinearGradient(0, 0, 800, 1000);
+      gradient.addColorStop(0, "#667eea");
+      gradient.addColorStop(0.5, "#764ba2");
+      gradient.addColorStop(1, "#f093fb");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 800, 1000);
+
+      // 2. Draw White Card
+      ctx.fillStyle = "white";
+      const cardPadding = 50;
+      const cardWidth = 700;
+      const cardHeight = 850;
+      const cardX = (800 - cardWidth) / 2;
+      const cardY = (1000 - cardHeight) / 2;
+      
+      // Rounded Rectangle for Card
+      ctx.beginPath();
+      ctx.roundRect(cardX, cardY, cardWidth, cardHeight, 40);
+      ctx.fill();
+
+      // 3. Convert SVG to Image to draw on Canvas
+      const svgData = new XMLSerializer().serializeToString(svg);
+      const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+      const svgUrl = URL.createObjectURL(svgBlob);
+      const qrImg = new Image();
+
+      qrImg.onload = async () => {
+        // Draw Restaurant Name
+        ctx.fillStyle = "#1a1a2e";
+        ctx.font = "bold 48px Inter, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(restaurant.name, 400, cardY + 120);
+
+        // Draw Tagline
+        if (restaurant.tagline) {
+          ctx.fillStyle = "#888";
+          ctx.font = "italic 28px Inter, sans-serif";
+          ctx.fillText(restaurant.tagline, 400, cardY + 170);
+        }
+
+        // Draw QR Code Image
+        const qrSize = 400;
+        ctx.drawImage(qrImg, 400 - qrSize / 2, cardY + 220, qrSize, qrSize);
+
+        // Draw Footer Text
+        ctx.fillStyle = "#764ba2";
+        ctx.font = "600 32px Inter, sans-serif";
+        ctx.fillText("📱 Scan to view menu", 400, cardY + 700);
         
+        ctx.fillStyle = "#aaa";
+        ctx.font = "20px Inter, sans-serif";
+        ctx.fillText(menuUrl, 400, cardY + 750);
+
+        // Finalize and Share
         canvas.toBlob(async (blob) => {
           if (!blob) return;
-          const file = new File([blob], "menu-qr.png", { type: "image/png" });
+          const file = new File([blob], `${restaurant.name}-menu.png`, { type: "image/png" });
 
-          // 2. Check if sharing files is supported
           if (navigator.canShare && navigator.canShare({ files: [file] })) {
             await navigator.share({
               title: `${restaurant.name} Menu`,
-              text: `Check out the menu for ${restaurant.name}!`,
+              text: `Check out our live menu!`,
               files: [file],
-              url: menuUrl,
             });
-          } else if (navigator.share) {
-            // Fallback to text only if file sharing is restricted
-            await navigator.share({
-              title: `${restaurant.name} Menu`,
-              text: `Check out the menu for ${restaurant.name}!`,
-              url: menuUrl,
-            });
-          } else {
-            toast({ title: "Sharing not supported on this browser", variant: "destructive" });
           }
-          URL.revokeObjectURL(url);
+          URL.revokeObjectURL(svgUrl);
         }, "image/png");
       };
-      img.src = url;
+      qrImg.src = svgUrl;
 
     } catch (error) {
-      console.error("Error sharing:", error);
+      console.error("Share failed", error);
+      toast({ title: "Could not share the menu card.", variant: "destructive" });
     }
   };
 
