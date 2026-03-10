@@ -30,7 +30,10 @@ const CategoriesTab = ({
   onDragEnter,
   onDragEnd,
 }: Props) => (
-  <div className="space-y-3 mt-3 w-full overflow-hidden">
+  /* Removed 'overflow-hidden' as it clips the focus ring.
+     Added 'p-0.5' to provide a tiny buffer so the top highlight is visible.
+  */
+  <div className="space-y-3 mt-3 w-full p-0.5">
     <div className="flex gap-2">
       <Input
         value={catName}
@@ -59,7 +62,7 @@ const CategoriesTab = ({
           <GripVertical className="w-4 h-4 text-muted-foreground shrink-0" />
           
           {editingCat?.id === cat.id ? (
-            <div className="flex items-center gap-1 flex-1 min-w-0">
+            <div className="flex items-center gap-1 flex-1 min-w-0 py-0.5">
               <Input
                 value={editingCat.name}
                 onChange={(e) => onSetEditingCat({ ...editingCat, name: e.target.value })}
