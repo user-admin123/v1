@@ -20,26 +20,21 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
     const svgEl = qrRef.current?.querySelector("svg");
     if (!svgEl) return;
     const svgData = new XMLSerializer().serializeToString(svgEl);
-
     printWindow.document.write(`
       <html><head><title>Menu QR - ${restaurant.name}</title>
       <style>
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap');
         *{margin:0;padding:0;box-sizing:border-box}
-        /* Changed min-height to auto for printing to avoid blank 2nd page */
-        body{display:flex;flex-direction:column;align-items:center;justify-content:center;padding: 40px 0;font-family:'Inter',sans-serif;
-          background:white;} 
-        .card{background:white;border-radius:24px;padding:48px 40px;text-align:center;border:1px solid #eee;max-width:400px;width:90%}
+        /* Changed min-height to auto to prevent blank 2nd page */
+        body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:auto;padding:40px 0;font-family:'Inter',sans-serif;
+          background:linear-gradient(135deg,#667eea 0%,#764ba2 50%,#f093fb 100%)}
+        .card{background:white;border-radius:24px;padding:48px 40px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-width:400px;width:90%}
         .logo{width:64px;height:64px;border-radius:50%;object-fit:cover;margin:0 auto 12px;border:3px solid #764ba2}
         h2{font-family:'Playfair Display',serif;font-size:28px;color:#1a1a2e;margin-bottom:4px}
         .tagline{color:#888;font-size:14px;font-style:italic;margin-bottom:20px}
-        .qr-wrap{display:inline-block;padding:16px;border-radius:16px;background:#f5f7fa;margin:16px 0}
+        .qr-wrap{display:inline-block;padding:16px;border-radius:16px;background:linear-gradient(135deg,#f5f7fa,#c3cfe2);margin:16px 0}
         .scan-text{margin-top:20px;font-size:16px;font-weight:600;color:#764ba2;display:flex;align-items:center;justify-content:center;gap:8px}
         .url{font-size:11px;color:#aaa;margin-top:8px}
-        @media print {
-            body { background: none; }
-            .card { box-shadow: none; border: none; }
-        }
       </style></head>
       <body><div class="card">
         ${restaurant.logo_url ? `<img src="${restaurant.logo_url}" class="logo" alt="logo"/>` : ""}
@@ -49,7 +44,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
         <p class="scan-text">📱 Scan me to get the live menu!</p>
         <p class="url">${menuUrl}</p>
       </div>
-      <script>setTimeout(()=>{window.print(); window.close();},500);</script>
+      <script>setTimeout(()=>{window.print();},500);</script>
       </body></html>
     `);
     printWindow.document.close();
@@ -63,21 +58,17 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           text: "Scan or click to view our menu",
           url: menuUrl,
         });
-        // If successful, stop here
+        // Success! We exit here so it doesn't run the clipboard code.
         return;
-      } catch (error: any) {
-        // Only proceed to clipboard if it's NOT a user cancellation
-        if (error.name === "AbortError") return;
+      } catch { 
+        /* User cancelled or share failed, we just move on */
+        return; 
       }
     }
     
-    // Fallback if navigator.share fails or is missing
-    try {
-        await navigator.clipboard.writeText(menuUrl);
-        toast({ title: "Menu URL copied to clipboard!" });
-    } catch (err) {
-        toast({ title: "Failed to copy link", variant: "destructive" });
-    }
+    // This part ONLY runs if navigator.share is missing (like on some desktop browsers)
+    navigator.clipboard.writeText(menuUrl);
+    toast({ title: "Menu URL copied to clipboard!" });
   };
 
   return (
