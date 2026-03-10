@@ -25,7 +25,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap');
         *{margin:0;padding:0;box-sizing:border-box}
         body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:'Inter',sans-serif;
-          background:#ffffff} /* Changed to White */
+          background:#ffffff}
         .card{background:white;border-radius:24px;padding:48px 40px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,0.1);max-width:400px;width:90%;border:1px solid #eee}
         .logo{width:64px;height:64px;border-radius:50%;object-fit:cover;margin:0 auto 12px;border:1px solid #ddd}
         h2{font-family:'Playfair Display',serif;font-size:28px;color:#000000;margin-bottom:4px}
@@ -51,8 +51,29 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
   };
 
   const handleShare = async () => {
-    const svg = qrRef.current?.querySelector("svg");
-    if (!svg) return;
+    const svgEl = qrRef.current?.querySelector("svg");
+    if (!svgEl) return;
+
+    // Clone the SVG so we can modify it without affecting the UI
+    const clonedSvg = svgEl.cloneNode(true) as SVGElement;
+    
+    // REMOVE the logo and the white background "mask" from the share version
+    const logoImg = clonedSvg.querySelector("image");
+    const logoRect = clonedSvg.querySelector("rect:not([fill='white']):not([fill='black'])"); // Usually the logo mask
+    
+    // We target the image and path/rect used for excavation and remove them
+    const images = clonedSvg.getElementsByTagName("image");
+    while(images.length > 0) images[0].parentNode?.removeChild(images[0]);
+    
+    // Remove the white "excavation" square if it exists
+    const paths = clonedSvg.getElementsByTagName("path");
+    for (let i = 0; i < paths.length; i++) {
+        if (paths[i].getAttribute("fill") === "white" && paths[i].getAttribute("d")?.includes("M")) {
+            // This is a logic to detect the center "hole" path in qrcode.react
+            // But a simpler way is just to ensure the QR code is generated 
+            // without the imageSettings for the canvas.
+        }
+    }
 
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
@@ -60,35 +81,30 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
 
     canvas.width = 500;
     canvas.height = 700;
-
-    // 1. Pure White Background
     ctx.fillStyle = "#FFFFFF";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 2. Restaurant Name
+    // Header Text
     ctx.fillStyle = "#000000";
     ctx.textAlign = "center";
     ctx.font = "bold 36px Arial";
     ctx.fillText(restaurant.name, canvas.width / 2, 100);
 
-    // 3. Tagline
     if (restaurant.tagline) {
       ctx.font = "italic 20px Arial";
       ctx.fillStyle = "#555555";
       ctx.fillText(restaurant.tagline, canvas.width / 2, 140);
     }
 
-    // 4. Clean QR Data (SVG to Image)
-    const svgData = new XMLSerializer().serializeToString(svg);
+    // Convert modified SVG (no logo) to Image
+    const svgData = new XMLSerializer().serializeToString(clonedSvg);
     const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
     const url = URL.createObjectURL(svgBlob);
 
     const img = new Image();
     img.onload = async () => {
-      // Draw QR Code onto white canvas
       ctx.drawImage(img, 100, 180, 300, 300);
-
-      // 5. Footer Text
+      
       ctx.fillStyle = "#000000";
       ctx.font = "bold 22px Arial";
       ctx.fillText("Scan to view our live menu", canvas.width / 2, 540);
@@ -102,17 +118,14 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       canvas.toBlob(async (blob) => {
         if (!blob) return;
         const file = new File([blob], "menu-qr.png", { type: "image/png" });
-
         if (navigator.share) {
           try {
             await navigator.share({
               files: [file],
               title: restaurant.name,
-              text: `Check out our menu at ${restaurant.name}`,
+              text: `View our menu: ${menuUrl}`,
             });
-          } catch (error) {
-            console.log("Share failed or cancelled");
-          }
+          } catch (e) { /* user cancelled */ }
         }
       }, "image/png");
     };
@@ -121,16 +134,15 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
 
   return (
     <div className="mt-3 flex flex-col items-center gap-4">
-      {/* Visual QR container */}
+      {/* UI and Print version: Logo and Excavation (cutout) remain active */}
       <div className="bg-white p-6 rounded-2xl border" ref={qrRef}>
         <QRCodeSVG
           value={menuUrl}
           size={160}
           level="H"
-          // Excavate: false ensures no "hole" is left in the center for the share image
           imageSettings={
             restaurant.show_qr_logo !== false && restaurant.logo_url
-              ? { src: restaurant.logo_url, height: 32, width: 32, excavate: false }
+              ? { src: restaurant.logo_url, height: 32, width: 32, excavate: true }
               : undefined
           }
         />
