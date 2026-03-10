@@ -13,7 +13,6 @@ interface Props {
 const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
   const qrRef = useRef<HTMLDivElement>(null);
 
-  // --- Print Function (Strictly White Background) ---
   const handlePrint = () => {
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
@@ -62,84 +61,93 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
     canvas.width = 800;
     canvas.height = 1000;
 
-    // 1. Background
+    // 1. Background (Pure White)
     ctx.fillStyle = "#FFFFFF";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 2. Text Content
+    // 2. Text Drawing
     ctx.fillStyle = "#000000";
     ctx.textAlign = "center";
-    ctx.font = "bold 48px Arial";
+    ctx.font = "bold 42px Arial";
     ctx.fillText(restaurant.name, canvas.width / 2, 120);
 
     if (restaurant.tagline) {
-      ctx.font = "italic 24px Arial";
+      ctx.font = "italic 22px Arial";
       ctx.fillStyle = "#666666";
       ctx.fillText(restaurant.tagline, canvas.width / 2, 170);
     }
 
-    // 3. Load Images (QR and Logo)
-    const svgData = new XMLSerializer().serializeToString(svgEl);
-    const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-    const qrUrl = URL.createObjectURL(svgBlob);
-
-    const loadImg = (src: string): Promise<HTMLImageElement> => 
-      new Promise((res, rej) => {
+    // 3. Image Loading Helper
+    const loadImage = (url: string): Promise<HTMLImageElement> => {
+      return new Promise((resolve, reject) => {
         const img = new Image();
-        img.crossOrigin = "anonymous"; // Try to handle CORS
-        img.onload = () => res(img);
-        img.onerror = rej;
-        img.src = src;
+        img.crossOrigin = "anonymous"; 
+        img.onload = () => resolve(img);
+        img.onerror = (e) => reject(e);
+        img.src = url;
       });
+    };
 
     try {
-      const qrImg = await loadImg(qrUrl);
+      // Create SVG Data URL for the QR (without its internal logo to prevent double rendering)
+      const svgData = new XMLSerializer().serializeToString(svgEl);
+      const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+      const qrDataUrl = URL.createObjectURL(svgBlob);
+
+      // Load both QR and Logo
+      const qrImg = await loadImage(qrDataUrl);
       
-      // Draw QR Code
+      // Draw QR
       ctx.drawImage(qrImg, 150, 250, 500, 500);
+      URL.revokeObjectURL(qrDataUrl);
 
-      // 4. Manually draw the logo in the center if it exists and setting is on
+      // Manually Draw Logo in Center
       if (restaurant.logo_url && restaurant.show_qr_logo !== false) {
-        const logoImg = await loadImg(restaurant.logo_url);
-        
-        const logoSize = 100; // Size of logo in center
-        const x = (canvas.width - logoSize) / 2;
-        const y = 250 + (500 - logoSize) / 2;
+        const logoImg = await loadImage(restaurant.logo_url);
+        const logoSize = 110; 
+        const centerX = (canvas.width - logoSize) / 2;
+        const centerY = 250 + (500 - logoSize) / 2;
 
-        // Draw a white square behind the logo to mimic "excavate"
+        // Draw White Square background for Logo (The "Excavate" effect)
         ctx.fillStyle = "#FFFFFF";
-        ctx.fillRect(x - 5, y - 5, logoSize + 10, logoSize + 10);
+        ctx.fillRect(centerX - 5, centerY - 5, logoSize + 10, logoSize + 10);
         
-        // Draw the logo image
-        ctx.drawImage(logoImg, x, y, logoSize, logoSize);
+        // Draw Logo
+        ctx.drawImage(logoImg, centerX, centerY, logoSize, logoSize);
       }
 
-      // 5. Footer Text
+      // 4. Footer Content
       ctx.fillStyle = "#000000";
-      ctx.font = "bold 32px Arial";
-      ctx.fillText("Scan to view our menu", canvas.width / 2, 850);
+      ctx.font = "bold 28px Arial";
+      ctx.fillText("Scan to view our live menu", canvas.width / 2, 850);
       
-      ctx.font = "20px Arial";
-      ctx.fillStyle = "#999999";
+      ctx.font = "18px Arial";
+      ctx.fillStyle = "#888888";
       ctx.fillText(menuUrl, canvas.width / 2, 900);
 
-      URL.revokeObjectURL(qrUrl);
-
-      // Share
+      // 5. Trigger Native Share
       canvas.toBlob(async (blob) => {
         if (!blob) return;
         const file = new File([blob], "menu-qr.png", { type: "image/png" });
-        if (navigator.share) {
-          await navigator.share({
-            files: [file],
-            title: restaurant.name,
-            text: `Menu for ${restaurant.name}`,
-          });
+        
+        if (navigator.share && navigator.canShare?.({ files: [file] })) {
+          try {
+            await navigator.share({
+              files: [file],
+              title: restaurant.name,
+              text: `Check out our menu: ${menuUrl}`,
+            });
+          } catch (err) {
+            console.log("User cancelled share");
+          }
+        } else {
+          alert("Sharing images is not supported on this browser.");
         }
       }, "image/png");
 
     } catch (err) {
-      console.error("Error generating share image", err);
+      console.error("Share Image Generation Failed:", err);
+      alert("Could not generate share image. Please check your connection.");
     }
   };
 
