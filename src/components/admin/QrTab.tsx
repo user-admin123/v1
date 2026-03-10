@@ -51,96 +51,99 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
   };
 
   const handleShare = async () => {
-    try {
-      const svgEl = qrRef.current?.querySelector("svg");
-      if (!svgEl) return;
+    const svgEl = qrRef.current?.querySelector("svg");
+    if (!svgEl) return;
 
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
-      canvas.width = 800;
-      canvas.height = 1000;
+    canvas.width = 800;
+    canvas.height = 1000;
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // 1. Solid White Background
-      ctx.fillStyle = "#FFFFFF";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Header Text
+    ctx.fillStyle = "#000000";
+    ctx.textAlign = "center";
+    ctx.font = "bold 42px sans-serif";
+    ctx.fillText(restaurant.name, canvas.width / 2, 100);
 
-      // 2. Restaurant Name & Tagline
-      ctx.fillStyle = "#000000";
-      ctx.textAlign = "center";
-      ctx.font = "bold 42px Arial";
-      ctx.fillText(restaurant.name, canvas.width / 2, 120);
+    if (restaurant.tagline) {
+      ctx.font = "italic 20px sans-serif";
+      ctx.fillStyle = "#666666";
+      ctx.fillText(restaurant.tagline, canvas.width / 2, 140);
+    }
 
-      if (restaurant.tagline) {
-        ctx.font = "italic 22px Arial";
-        ctx.fillStyle = "#666666";
-        ctx.fillText(restaurant.tagline, canvas.width / 2, 170);
-      }
+    // Process SVG QR
+    const svgData = new XMLSerializer().serializeToString(svgEl);
+    const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+    const qrUrl = URL.createObjectURL(svgBlob);
+    const qrImg = new Image();
 
-      // 3. Helper to load images safely
-      const imgLoad = (url: string): Promise<HTMLImageElement> => {
-        return new Promise((resolve, reject) => {
-          const img = new Image();
-          // Remove crossOrigin for Base64 to avoid "Check your connection" error
-          if (!url.startsWith('data:')) img.crossOrigin = "anonymous";
-          img.onload = () => resolve(img);
-          img.onerror = reject;
-          img.src = url;
-        });
-      };
-
-      // 4. Draw QR Code (Clean version)
-      const svgData = new XMLSerializer().serializeToString(svgEl);
-      const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-      const qrUrl = URL.createObjectURL(svgBlob);
-      const qrImg = await imgLoad(qrUrl);
-      ctx.drawImage(qrImg, 150, 250, 500, 500);
+    qrImg.onload = () => {
+      ctx.drawImage(qrImg, 150, 200, 500, 500);
       URL.revokeObjectURL(qrUrl);
 
-      // 5. Draw Logo Manually in Center
+      // Manually add logo from Base64 if enabled
       if (restaurant.logo_url && restaurant.show_qr_logo !== false) {
-        const logoImg = await imgLoad(restaurant.logo_url);
-        const logoSize = 110;
-        const x = (canvas.width - logoSize) / 2;
-        const y = 250 + (500 - logoSize) / 2;
-
-        // White background behind logo
-        ctx.fillStyle = "#FFFFFF";
-        ctx.fillRect(x - 5, y - 5, logoSize + 10, logoSize + 10);
-        ctx.drawImage(logoImg, x, y, logoSize, logoSize);
+        const logoImg = new Image();
+        logoImg.onload = () => {
+          const size = 100;
+          const x = (canvas.width - size) / 2;
+          const y = 200 + (500 - size) / 2;
+          
+          ctx.fillStyle = "#FFFFFF";
+          ctx.fillRect(x - 5, y - 5, size + 10, size + 10);
+          ctx.drawImage(logoImg, x, y, size, size);
+          finishAndShare();
+        };
+        logoImg.onerror = () => finishAndShare(); // Share even if logo fails
+        logoImg.src = restaurant.logo_url;
+      } else {
+        finishAndShare();
       }
+    };
 
-      // 6. Footer
+    qrImg.onerror = () => {
+      // If image generation fails, fallback to simple link share
+      navigator.share?.({ title: restaurant.name, url: menuUrl });
+    };
+
+    qrImg.src = qrUrl;
+
+    function finishAndShare() {
+      // Footer
       ctx.fillStyle = "#000000";
-      ctx.font = "bold 28px Arial";
-      ctx.fillText("Scan to view our live menu", canvas.width / 2, 850);
-      ctx.font = "18px Arial";
-      ctx.fillStyle = "#888888";
-      ctx.fillText(menuUrl, canvas.width / 2, 900);
+      ctx.font = "bold 26px sans-serif";
+      ctx.fillText("Scan to view our menu", canvas.width / 2, 800);
+      ctx.font = "16px sans-serif";
+      ctx.fillStyle = "#999999";
+      ctx.fillText(menuUrl, canvas.width / 2, 840);
 
-      // 7. Share
       canvas.toBlob(async (blob) => {
         if (!blob) return;
         const file = new File([blob], "menu-qr.png", { type: "image/png" });
-        if (navigator.share) {
-          await navigator.share({
-            files: [file],
-            title: restaurant.name,
-            text: `Menu: ${menuUrl}`,
-          });
+        
+        try {
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: restaurant.name,
+              text: `View the menu for ${restaurant.name} here:`,
+            });
+          } else {
+            // Mobile browsers often need this fallback
+            await navigator.share({
+              title: restaurant.name,
+              text: `View our menu: ${menuUrl}`,
+              url: menuUrl
+            });
+          }
+        } catch (err) {
+          console.log("Share failed", err);
         }
       }, "image/png");
-
-    } catch (error) {
-      console.error(error);
-      // Fallback: If image fails, share just the link
-      if (navigator.share) {
-        await navigator.share({
-          title: restaurant.name,
-          url: menuUrl
-        });
-      }
     }
   };
 
