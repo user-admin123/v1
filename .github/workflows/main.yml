@@ -1,0 +1,46 @@
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update_packages:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Setup Node.js environment
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Install project dependencies
+      - name: Install dependencies
+        run: npm install
+
+      # Install Supabase client (ensure it's installed)
+      - name: Install supabase
+        run: npm install html-to-image
+
+      # Commit changes if any
+      - name: Commit changes
+        run: |
+          # Configure Git user
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Add changes to git
+          git add package.json package-lock.json
+          
+          # Commit changes (if any)
+          git commit -m "Update html-to-image and package-lock.json" || echo "No changes to commit"
+          
+          # Push the changes to the repository
+          git push
