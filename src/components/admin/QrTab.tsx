@@ -54,67 +54,52 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
     const svgEl = qrRef.current?.querySelector("svg");
     if (!svgEl) return;
 
-    // Clone the SVG so we can modify it without affecting the UI
-    const clonedSvg = svgEl.cloneNode(true) as SVGElement;
-    
-    // REMOVE the logo and the white background "mask" from the share version
-    const logoImg = clonedSvg.querySelector("image");
-    const logoRect = clonedSvg.querySelector("rect:not([fill='white']):not([fill='black'])"); // Usually the logo mask
-    
-    // We target the image and path/rect used for excavation and remove them
-    const images = clonedSvg.getElementsByTagName("image");
-    while(images.length > 0) images[0].parentNode?.removeChild(images[0]);
-    
-    // Remove the white "excavation" square if it exists
-    const paths = clonedSvg.getElementsByTagName("path");
-    for (let i = 0; i < paths.length; i++) {
-        if (paths[i].getAttribute("fill") === "white" && paths[i].getAttribute("d")?.includes("M")) {
-            // This is a logic to detect the center "hole" path in qrcode.react
-            // But a simpler way is just to ensure the QR code is generated 
-            // without the imageSettings for the canvas.
-        }
-    }
-
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     canvas.width = 500;
     canvas.height = 700;
+
+    // 1. Background (White)
     ctx.fillStyle = "#FFFFFF";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Header Text
+    // 2. Restaurant Details
     ctx.fillStyle = "#000000";
     ctx.textAlign = "center";
     ctx.font = "bold 36px Arial";
-    ctx.fillText(restaurant.name, canvas.width / 2, 100);
+    ctx.fillText(restaurant.name, canvas.width / 2, 80);
 
     if (restaurant.tagline) {
       ctx.font = "italic 20px Arial";
-      ctx.fillStyle = "#555555";
-      ctx.fillText(restaurant.tagline, canvas.width / 2, 140);
+      ctx.fillStyle = "#666666";
+      ctx.fillText(restaurant.tagline, canvas.width / 2, 120);
     }
 
-    // Convert modified SVG (no logo) to Image
-    const svgData = new XMLSerializer().serializeToString(clonedSvg);
+    // 3. Prepare QR Code Image
+    const svgData = new XMLSerializer().serializeToString(svgEl);
     const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(svgBlob);
+    const qrUrl = URL.createObjectURL(svgBlob);
+    const qrImg = new Image();
 
-    const img = new Image();
-    img.onload = async () => {
-      ctx.drawImage(img, 100, 180, 300, 300);
-      
+    qrImg.onload = () => {
+      // Draw the QR Code
+      ctx.drawImage(qrImg, 100, 180, 300, 300);
+
+      // 4. Add "Scan" Instruction Text
       ctx.fillStyle = "#000000";
       ctx.font = "bold 22px Arial";
-      ctx.fillText("Scan to view our live menu", canvas.width / 2, 540);
+      ctx.fillText("Scan to view our menu", canvas.width / 2, 540);
       
       ctx.font = "16px Arial";
-      ctx.fillStyle = "#777777";
+      ctx.fillStyle = "#888888";
       ctx.fillText(menuUrl, canvas.width / 2, 580);
 
-      URL.revokeObjectURL(url);
+      // Cleanup
+      URL.revokeObjectURL(qrUrl);
 
+      // Convert Canvas to Blob and Share
       canvas.toBlob(async (blob) => {
         if (!blob) return;
         const file = new File([blob], "menu-qr.png", { type: "image/png" });
@@ -123,18 +108,18 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
             await navigator.share({
               files: [file],
               title: restaurant.name,
-              text: `View our menu: ${menuUrl}`,
+              text: `Check out our live menu: ${menuUrl}`,
             });
           } catch (e) { /* user cancelled */ }
         }
       }, "image/png");
     };
-    img.src = url;
+    qrImg.src = qrUrl;
   };
 
   return (
     <div className="mt-3 flex flex-col items-center gap-4">
-      {/* UI and Print version: Logo and Excavation (cutout) remain active */}
+      {/* UI DISPLAY */}
       <div className="bg-white p-6 rounded-2xl border" ref={qrRef}>
         <QRCodeSVG
           value={menuUrl}
