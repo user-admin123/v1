@@ -35,8 +35,6 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
 
   const handlePrint = async () => {
     setIsPrinting(true);
-    const tid = toast.loading("Preparing your menu...", { position: "top-center" });
-
     try {
       const primary = getPrimaryColor();
       let logoData = null;
@@ -45,21 +43,16 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       if (!useFull && restaurant.logo_url) {
         logoData = await getBase64(restaurant.logo_url);
         if (!logoData) {
-          toast.error("Logo failed to load. Using full QR code.", { id: tid, duration: 2500 });
-          await new Promise(r => setTimeout(r, 2000));
+          toast.error("Logo load failed. Using full QR code.");
           useFull = true;
-        } else {
-          toast.dismiss(tid);
         }
-      } else {
-        toast.dismiss(tid);
       }
 
       const svgToUse = useFull ? hiddenFullQrRef.current : qrRef.current;
       const svgData = new XMLSerializer().serializeToString(svgToUse?.querySelector("svg")!);
 
       const pw = window.open("", "_blank");
-      if (!pw) throw new Error();
+      if (!pw) return;
 
       pw.document.write(`
         <html>
@@ -70,7 +63,6 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
               @page { size: auto; margin: 0mm !important; }
               html, body { margin: 0; padding: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #fff; font-family: 'Inter', sans-serif; overflow: hidden; }
               .card { background: white; border-radius: 32px; padding: 60px 40px; text-align: center; border: 8px solid hsl(${primary}); width: 450px; box-sizing: border-box; }
-              /* Restored original logo styles */
               .logo { width: 80px; height: 80px; border-radius: 16px; object-fit: cover; border: 1px solid #eee; margin-bottom: 15px; }
               h2 { font-family: 'Playfair Display', serif; font-size: 38px; color: #000; margin: 0 0 8px 0; }
               .tagline { color: #666; font-size: 18px; font-style: italic; margin-bottom: 30px; }
@@ -87,19 +79,11 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
               <div class="qr-wrap">${svgData}</div>
               <p class="scan-text">Scan to view our digital menu</p>
             </div>
-            <script>
-              window.onload = () => {
-                setTimeout(() => {
-                  window.print();
-                }, 500);
-              };
-            </script>
+            <script>window.onload = () => { setTimeout(() => { window.print(); }, 500); };</script>
           </body>
         </html>
       `);
       pw.document.close();
-    } catch {
-      toast.error("Enable popups to print your QR code.");
     } finally {
       setIsPrinting(false);
     }
@@ -107,8 +91,6 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
 
   const handleShare = async () => {
     setIsSharing(true);
-    const tid = toast.loading("Generating image...", { position: "top-center" });
-
     try {
       const cvs = document.createElement("canvas"), ctx = cvs.getContext("2d");
       if (!ctx) return;
@@ -125,15 +107,13 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       let logoImg = null;
       let useFull = !restaurant.logo_url || restaurant.show_qr_logo === false;
 
-      if (!useFull) {
-        const data = await getBase64(restaurant.logo_url!);
+      if (!useFull && restaurant.logo_url) {
+        const data = await getBase64(restaurant.logo_url);
         if (data) {
           logoImg = new Image();
           await new Promise((res) => { logoImg!.onload = res; logoImg!.src = data; });
         } else {
           useFull = true;
-          toast.error("Logo failed. Using full QR code.", { id: tid, duration: 2000 });
-          await new Promise(r => setTimeout(r, 1500));
         }
       }
 
@@ -160,18 +140,19 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       URL.revokeObjectURL(qrUrl);
 
       if (blob) {
-        const f = new File([blob], "menu-qr.png", { type: "image/png" });
+        const f = new File([blob], "menu.png", { type: "image/png" });
         if (navigator.share && navigator.canShare?.({ files: [f] })) {
-          await navigator.share({ files: [f] });
-          toast.dismiss(tid);
+          await navigator.share({ 
+            files: [f], 
+            title: restaurant.name,
+            text: `View our menu here: ${menuUrl}` 
+          });
         } else {
-          const a = document.createElement('a'); a.href = cvs.toDataURL(); a.download = `${restaurant.name}-menu.png`; a.click();
-          toast.success("Saved!", { id: tid });
+          const a = document.createElement('a'); a.href = cvs.toDataURL(); a.download = "menu.png"; a.click();
         }
       }
     } catch (e: any) {
-      if (e.name !== 'AbortError') toast.error("Share failed", { id: tid });
-      else toast.dismiss(tid);
+      if (e.name !== 'AbortError') toast.error("Share failed");
     } finally {
       setIsSharing(false);
     }
