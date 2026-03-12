@@ -24,7 +24,6 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
     markChanged();
   };
 
-  // Logic to determine if a toggle should be interactive
   const isLogoAvailable = !!restaurant.logo_url;
 
   return (
@@ -104,17 +103,17 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
         <p className="text-sm font-semibold text-foreground mb-3">Customer View Settings</p>
         <div className="space-y-3">
           {[
-            { key: "show_veg_filter" as const, label: "Show Veg/Non-Veg Filter", desc: "Let customers filter by dietary type", disabled: false },
-            { key: "show_sold_out" as const, label: "Show Sold Out Items", desc: "Display unavailable items to customers", disabled: false },
-            { key: "show_search" as const, label: "Enable Menu Search", desc: "Let customers search items by name", disabled: false },
+            { key: "show_veg_filter" as const, label: "Show Veg/Non-Veg Filter", desc: "Let customers filter by dietary type" },
+            { key: "show_sold_out" as const, label: "Show Sold Out Items", desc: "Display unavailable items to customers" },
+            { key: "show_search" as const, label: "Enable Menu Search", desc: "Let customers search items by name" },
             { 
               key: "show_qr_logo" as const, 
               label: "Show Logo in QR Code", 
-              desc: isLogoAvailable ? "Embed restaurant logo inside QR" : "Upload a logo first to enable this",
+              desc: isLogoAvailable ? "Embed restaurant logo inside QR" : "Add a logo to enable this",
               disabled: !isLogoAvailable 
             },
           ].map(({ key, label, desc, disabled }) => (
-            <div key={key} className={cn("flex items-center justify-between", disabled && "opacity-50")}>
+            <div key={key} className={cn("flex items-center justify-between", disabled && "opacity-50 transition-opacity")}>
               <div>
                 <Label className={cn("text-sm", !disabled && "cursor-pointer")} htmlFor={key}>{label}</Label>
                 <p className="text-xs text-muted-foreground">{desc}</p>
@@ -122,7 +121,7 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
               <Switch
                 id={key}
                 disabled={disabled}
-                checked={disabled ? false : (restaurant[key] ?? true)}
+                checked={disabled ? false : (restaurant[key] ?? false)}
                 onCheckedChange={(v) => update({ [key]: v })}
               />
             </div>
