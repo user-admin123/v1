@@ -16,18 +16,20 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
   const getPrimaryColor = () => 
     getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || "0 0% 0%";
 
-  // Helper to load images safely for Canvas and Print
+  // Robust image loader for Canvas/Share
   const loadSafeImage = (url: string): Promise<HTMLImageElement> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      img.crossOrigin = "anonymous"; // This is the fix for the "empty" image issue
+      img.crossOrigin = "anonymous"; 
       img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error("Failed to load image"));
-      img.src = url;
+      img.onerror = () => reject(new Error("Image load failed"));
+      // Add a cache-busting timestamp if it's an external URL to force a fresh CORS check
+      const separator = url.includes('?') ? '&' : '?';
+      img.src = url.startsWith('http') ? `${url}${separator}t=${Date.now()}` : url;
     });
   };
 
-  const handlePrint = async () => {
+  const handlePrint = () => {
     const svgEl = qrRef.current?.querySelector("svg");
     if (!svgEl) return;
     
@@ -37,6 +39,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
     const svgData = new XMLSerializer().serializeToString(svgEl);
     const primaryColor = getPrimaryColor();
 
+    // We use a base64 or direct URL, but ensure the window stays open long enough
     printWindow.document.write(`
       <html>
         <head>
@@ -45,8 +48,8 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
             @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;700&display=swap');
             @page { size: auto; margin: 0mm !important; }
             html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #fff; }
-            .card { background: white; border-radius: 32px; padding: 60px 40px; text-align: center; border: 8px solid hsl(${primaryColor}); width: 450px; max-height: 96vh; display: flex; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box; page-break-inside: avoid; }
-            .logo { width: 80px; height: 80px; border-radius: 16px; object-fit: cover; border: 1px solid #eee; margin-bottom: 15px; }
+            .card { background: white; border-radius: 32px; padding: 60px 40px; text-align: center; border: 8px solid hsl(${primaryColor}); width: 450px; max-height: 96vh; display: flex; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box; }
+            .logo { width: 80px; height: 80px; border-radius: 16px; object-fit: cover; border: 1px solid #eee; margin-bottom: 15px; display: block; }
             h2 { font-family: 'Playfair Display', serif; font-size: 38px; color: #000; margin: 0 0 8px 0; }
             .tagline { color: #666; font-size: 18px; font-style: italic; margin-bottom: 30px; }
             .qr-wrap { display: inline-block; padding: 20px; border-radius: 24px; border: 2px solid #f0f0f0; margin: 10px 0; background: white; }
@@ -63,10 +66,15 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
             <p class="scan-text">Scan to view our digital menu</p>
           </div>
           <script>
-            window.onload = () => {
-              // Give extra time for the SVG and external logo to paint
-              setTimeout(() => { window.print(); }, 800);
-            };
+            // Improved loader for print window
+            const img = document.querySelector('.logo');
+            const doPrint = () => setTimeout(() => { window.print(); }, 1000);
+            if (img && !img.complete) {
+              img.onload = doPrint;
+              img.onerror = doPrint;
+            } else {
+              doPrint();
+            }
           </script>
         </body>
       </html>
@@ -93,37 +101,34 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
 
     const drawAutoText = (text: string, y: number, baseSize: number, minSize: number, font: string, color: string) => {
       let size = baseSize;
-      ctx.font = `${font.includes('italic') ? 'italic' : 'bold'} ${size}px ${font.replace('italic ', '')}`;
+      ctx.font = `bold ${size}px ${font}`;
+      if (font.includes('italic')) ctx.font = `italic ${size}px sans-serif`;
+      
       while (ctx.measureText(text).width > 800 && size > minSize) {
         size -= 2;
-        ctx.font = `${font.includes('italic') ? 'italic' : 'bold'} ${size}px ${font.replace('italic ', '')}`;
+        ctx.font = font.includes('italic') ? `italic ${size}px sans-serif` : `bold ${size}px ${font}`;
       }
       ctx.fillStyle = color;
       ctx.fillText(text, canvas.width / 2, y);
     };
 
-    // 1. Draw Background
     ctx.fillStyle = "#FFFFFF";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.strokeStyle = `hsl(${getPrimaryColor()})`;
     ctx.lineWidth = 16;
     drawRoundedRect(40, 40, canvas.width - 80, canvas.height - 80, 60, true);
 
-    // 2. Draw Text
     ctx.textAlign = "center";
-    drawAutoText(restaurant.name, 220, 72, 32, "serif", "#000000");
-    if (restaurant.tagline) drawAutoText(restaurant.tagline, 290, 36, 22, "italic sans-serif", "#666666");
+    drawAutoText(restaurant.name, 240, 72, 32, "serif", "#000000");
+    if (restaurant.tagline) drawAutoText(restaurant.tagline, 310, 36, 22, "italic", "#666666");
 
-    // 3. Process QR and Logo
     try {
-      // Serialize the SVG
+      // 1. Draw QR Code
       const svgString = new XMLSerializer().serializeToString(svgEl);
-      const qrBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
-      const qrUrl = URL.createObjectURL(qrBlob);
-      
+      const qrUrl = URL.createObjectURL(new Blob([svgString], { type: "image/svg+xml;charset=utf-8" }));
       const qrImg = await loadSafeImage(qrUrl);
       
-      const x = (canvas.width - 500) / 2, y = 380;
+      const x = (canvas.width - 500) / 2, y = 400;
       ctx.fillStyle = "#FFFFFF";
       drawRoundedRect(x - 30, y - 30, 560, 560, 40);
       ctx.strokeStyle = "#f0f0f0";
@@ -132,23 +137,38 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       ctx.drawImage(qrImg, x, y, 500, 500);
       URL.revokeObjectURL(qrUrl);
 
-      // Draw Center Logo on Canvas
-      if (restaurant.logo_url && restaurant.show_qr_logo !== false) {
+      // 2. Draw Top Logo and Center Logo
+      if (restaurant.logo_url) {
         try {
           const logoImg = await loadSafeImage(restaurant.logo_url);
-          const s = 110, lx = (canvas.width - s) / 2, ly = y + (500 - s) / 2;
-          ctx.fillStyle = "#FFFFFF";
-          ctx.fillRect(lx - 8, ly - 8, s + 16, s + 16); // White background for center logo
-          ctx.drawImage(logoImg, lx, ly, s, s);
+          
+          // Draw Top Logo (above name)
+          ctx.save();
+          const topSize = 100;
+          const tx = (canvas.width - topSize) / 2;
+          const ty = 80;
+          // Create rounded clip for top logo
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(tx, ty, topSize, topSize, 20);
+          ctx.clip();
+          ctx.drawImage(logoImg, tx, ty, topSize, topSize);
+          ctx.restore();
+
+          // Draw Center Logo (inside QR)
+          if (restaurant.show_qr_logo !== false) {
+            const s = 110, lx = (canvas.width - s) / 2, ly = y + (500 - s) / 2;
+            ctx.fillStyle = "#FFFFFF";
+            ctx.fillRect(lx - 8, ly - 8, s + 16, s + 16);
+            ctx.drawImage(logoImg, lx, ly, s, s);
+          }
         } catch (e) {
-          console.warn("Logo failed to load for share, proceeding without it.");
+          console.warn("Logo failed for share canvas.");
         }
       }
 
-      // 4. Finalize
       ctx.fillStyle = "#000000";
       ctx.font = "bold 44px sans-serif";
-      ctx.fillText("Scan to view our digital menu", canvas.width / 2, 1060);
+      ctx.fillText("Scan to view our digital menu", canvas.width / 2, 1080);
       
       canvas.toBlob(async (blob) => {
         if (!blob) return;
@@ -157,13 +177,13 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           await navigator.share({ 
             files: [file], 
             title: restaurant.name, 
-            text: `Check out our menu at ${restaurant.name}: ${menuUrl}` 
+            text: `Check out our menu: ${menuUrl}` 
           });
         }
       }, "image/png");
 
     } catch (err) {
-      console.error("Share failed", err);
+      console.error("Share process failed", err);
     }
   };
 
