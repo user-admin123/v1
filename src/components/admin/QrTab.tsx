@@ -62,7 +62,6 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       const pw = window.open("", "_blank", "width=800,height=900");
       if (!pw) throw new Error("POPUP_BLOCKED");
 
-      // We write the content and use a robust script to trigger print
       pw.document.write(`
         <!DOCTYPE html>
         <html>
@@ -70,15 +69,26 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
             <title>Print QR - ${restaurant.name}</title>
             <style>
               @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;700&display=swap');
-              @page { size: auto; margin: 0mm !important; }
-              body { margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: 'Inter', sans-serif; background: #fff; -webkit-print-color-adjust: exact; }
-              .card { background: white; border-radius: 32px; padding: 60px 40px; text-align: center; border: 8px solid hsl(${primary}); width: 450px; box-sizing: border-box; }
-              .logo { width: 80px; height: 80px; border-radius: 16px; object-fit: cover; border: 3px solid hsl(${primary}); margin-bottom: 15px; padding: 2px; background: white; }
-              h2 { font-family: 'Playfair Display', serif; font-size: 38px; margin: 0 0 8px 0; color: #000; }
-              .tagline { color: #666; font-size: 18px; font-style: italic; margin-bottom: 30px; }
-              .qr-wrap { display: inline-block; padding: 20px; border-radius: 24px; border: 2px solid #f0f0f0; margin: 10px 0; background: white; }
-              .qr-wrap svg { width: 250px !important; height: 250px !important; }
-              .scan-text { margin-top: 30px; font-size: 20px; font-weight: 700; color: #000; }
+              @page { size: auto; margin: 0; }
+              html, body { margin: 0; padding: 0; height: 100vh; width: 100%; overflow: hidden; background: #fff; }
+              body { display: flex; align-items: center; justify-content: center; -webkit-print-color-adjust: exact; }
+              .card { 
+                background: white; 
+                border-radius: 32px; 
+                padding: 50px 40px; 
+                text-align: center; 
+                border: 8px solid hsl(${primary}); 
+                width: 450px; 
+                box-sizing: border-box; 
+                position: relative;
+                page-break-inside: avoid;
+              }
+              .logo { width: 80px; height: 80px; border-radius: 16px; object-fit: cover; border: 3px solid hsl(${primary}); margin-bottom: 12px; padding: 2px; background: white; }
+              h2 { font-family: 'Playfair Display', serif; font-size: 34px; margin: 0 0 6px 0; color: #000; }
+              .tagline { color: #666; font-size: 16px; font-style: italic; margin-bottom: 25px; }
+              .qr-wrap { display: inline-block; padding: 18px; border-radius: 24px; border: 2px solid #f0f0f0; background: white; }
+              .qr-wrap svg { width: 240px !important; height: 240px !important; display: block; }
+              .scan-text { margin-top: 25px; font-size: 18px; font-weight: 700; color: #000; }
             </style>
           </head>
           <body>
@@ -94,9 +104,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
                 setTimeout(function() {
                   window.focus();
                   window.print();
-                  // Note: window.close() is removed here as it often causes the "Print Error" 
-                  // on Chrome/iOS if the print dialog is still open.
-                }, 500);
+                }, 400);
               };
             </script>
           </body>
@@ -105,11 +113,8 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       pw.document.close();
 
     } catch (e: any) {
-      if (e.message === "POPUP_BLOCKED") {
-        toast.error("Please allow popups to print your QR code.", { id: tid });
-      } else {
-        toast.error("Something went wrong with the print preview.", { id: tid });
-      }
+      if (e.message === "POPUP_BLOCKED") toast.error("Allow popups to print.");
+      else toast.error("Print failed.");
     } finally {
       setIsPrinting(false);
     }
@@ -117,7 +122,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
 
   const handleShare = async () => {
     setIsSharing(true);
-    const tid = toast.loading("Generating high-res image...", { position: "top-center" });
+    const tid = toast.loading("Generating image...", { position: "top-center" });
 
     try {
       const cvs = document.createElement("canvas"), ctx = cvs.getContext("2d");
@@ -142,7 +147,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           await new Promise((res) => { logoImg!.onload = res; logoImg!.src = data; });
         } else {
           useFull = true;
-          toast.error("Logo load failed. Using full QR code.", { id: tid, duration: 2000 });
+          toast.error("Logo failed. Using full QR.", { id: tid, duration: 2000 });
           await new Promise(r => setTimeout(r, 1500));
         }
       }
@@ -176,7 +181,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           toast.dismiss(tid);
         } else {
           const a = document.createElement('a'); a.href = cvs.toDataURL(); a.download = `${restaurant.name}-menu.png`; a.click();
-          toast.success("Saved to downloads!", { id: tid });
+          toast.success("Saved!", { id: tid });
         }
       }
     } catch (e: any) {
