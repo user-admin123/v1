@@ -18,7 +18,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       .getPropertyValue("--primary")
       .trim() || "0 0% 0%";
 
-  // Convert external images → base64 (prevents canvas taint)
+  // Convert external images to base64 (fix canvas security issue)
   const convertToBase64 = async (url: string) => {
     try {
       const res = await fetch(url, { mode: "cors" });
@@ -55,7 +55,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;700&display=swap');
 
-            @page { size: auto; margin: 0mm !important; }
+            @page { size:auto; margin:0mm !important; }
 
             html,body{
               margin:0;
@@ -125,11 +125,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
         <body>
           <div class="card">
 
-            ${
-              logo
-                ? `<img src="${logo}" class="logo" />`
-                : ""
-            }
+            ${logo ? `<img src="${logo}" class="logo" />` : ""}
 
             <h2>${restaurant.name}</h2>
 
@@ -252,7 +248,8 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
     };
 
     qrImg.onload = async () => {
-      const x = (canvas.width - 500) / 2;
+      const qrSize = 500;
+      const x = (canvas.width - qrSize) / 2;
       const y = 380;
 
       ctx.fillStyle = "#FFF";
@@ -262,7 +259,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       ctx.lineWidth = 4;
       drawRoundedRect(x - 30, y - 30, 560, 560, 40, true);
 
-      ctx.drawImage(qrImg, x, y, 500, 500);
+      ctx.drawImage(qrImg, x, y, qrSize, qrSize);
 
       if (restaurant.logo_url && restaurant.show_qr_logo !== false) {
         const logoSrc = await convertToBase64(restaurant.logo_url);
@@ -272,14 +269,17 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
         logoImg.src = logoSrc;
 
         logoImg.onload = () => {
-          const s = 110;
-          const lx = (canvas.width - s) / 2;
-          const ly = y + (500 - s) / 2;
+          const logoSize = qrSize * 0.22;
+
+          const lx = x + qrSize / 2 - logoSize / 2;
+          const ly = y + qrSize / 2 - logoSize / 2;
 
           ctx.fillStyle = "#FFF";
-          ctx.fillRect(lx - 8, ly - 8, s + 16, s + 16);
+          ctx.beginPath();
+          ctx.roundRect(lx - 10, ly - 10, logoSize + 20, logoSize + 20, 12);
+          ctx.fill();
 
-          ctx.drawImage(logoImg, lx, ly, s, s);
+          ctx.drawImage(logoImg, lx, ly, logoSize, logoSize);
 
           finishAndShare();
         };
