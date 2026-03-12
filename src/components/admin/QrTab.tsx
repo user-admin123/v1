@@ -20,14 +20,15 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
   const getPrimaryColor = () => 
     getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || "0 0% 0%";
 
-  // Helper to convert image URL to Base64 to prevent "unloaded" issues in Print
   const getBase64 = async (url: string): Promise<string | null> => {
     try {
       const res = await fetch(url);
+      if (!res.ok) return null;
       const blob = await res.blob();
       return new Promise((resolve) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = () => resolve(null);
         reader.readAsDataURL(blob);
       });
     } catch { return null; }
@@ -35,7 +36,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
 
   const handlePrint = async () => {
     setIsPrinting(true);
-    const tid = toast.loading("Checking assets...", { position: "top-center" });
+    const tid = toast.loading("Preparing your menu...", { position: "top-center" });
 
     try {
       const primary = getPrimaryColor();
@@ -45,7 +46,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       if (!useFull && restaurant.logo_url) {
         logoData = await getBase64(restaurant.logo_url);
         if (!logoData) {
-          toast.error("Logo failed to load. Using full QR code...", { id: tid, duration: 2000 });
+          toast.error("Logo unreachable. Using standard QR...", { id: tid, duration: 2500 });
           await new Promise(r => setTimeout(r, 2000));
           useFull = true;
         } else {
@@ -58,24 +59,26 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       const svgToUse = useFull ? hiddenFullQrRef.current : qrRef.current;
       const svgData = new XMLSerializer().serializeToString(svgToUse?.querySelector("svg")!);
 
-      const pw = window.open("", "_blank");
-      if (!pw) throw new Error();
+      const pw = window.open("", "_blank", "width=800,height=900");
+      if (!pw) throw new Error("POPUP_BLOCKED");
 
+      // We write the content and use a robust script to trigger print
       pw.document.write(`
+        <!DOCTYPE html>
         <html>
           <head>
-            <title>Print Menu - ${restaurant.name}</title>
+            <title>Print QR - ${restaurant.name}</title>
             <style>
               @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;700&display=swap');
               @page { size: auto; margin: 0mm !important; }
-              body { margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: 'Inter', sans-serif; background: #fff; }
+              body { margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: 'Inter', sans-serif; background: #fff; -webkit-print-color-adjust: exact; }
               .card { background: white; border-radius: 32px; padding: 60px 40px; text-align: center; border: 8px solid hsl(${primary}); width: 450px; box-sizing: border-box; }
-              .logo { width: 80px; height: 80px; border-radius: 16px; object-fit: cover; border: 3px solid hsl(${primary}); margin-bottom: 15px; padding: 2px; }
-              h2 { font-family: 'Playfair Display', serif; font-size: 38px; margin: 0 0 8px 0; }
+              .logo { width: 80px; height: 80px; border-radius: 16px; object-fit: cover; border: 3px solid hsl(${primary}); margin-bottom: 15px; padding: 2px; background: white; }
+              h2 { font-family: 'Playfair Display', serif; font-size: 38px; margin: 0 0 8px 0; color: #000; }
               .tagline { color: #666; font-size: 18px; font-style: italic; margin-bottom: 30px; }
-              .qr-wrap { display: inline-block; padding: 20px; border-radius: 24px; border: 2px solid #f0f0f0; margin: 10px 0; }
+              .qr-wrap { display: inline-block; padding: 20px; border-radius: 24px; border: 2px solid #f0f0f0; margin: 10px 0; background: white; }
               .qr-wrap svg { width: 250px !important; height: 250px !important; }
-              .scan-text { margin-top: 30px; font-size: 20px; font-weight: 700; }
+              .scan-text { margin-top: 30px; font-size: 20px; font-weight: 700; color: #000; }
             </style>
           </head>
           <body>
@@ -86,13 +89,27 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
               <div class="qr-wrap">${svgData}</div>
               <p class="scan-text">Scan to view our digital menu</p>
             </div>
-            <script>window.onload = () => { setTimeout(() => { window.print(); window.close(); }, 500); };</script>
+            <script>
+              window.onload = function() {
+                setTimeout(function() {
+                  window.focus();
+                  window.print();
+                  // Note: window.close() is removed here as it often causes the "Print Error" 
+                  // on Chrome/iOS if the print dialog is still open.
+                }, 500);
+              };
+            </script>
           </body>
         </html>
       `);
       pw.document.close();
-    } catch {
-      toast.error("Enable popups to print your QR code.");
+
+    } catch (e: any) {
+      if (e.message === "POPUP_BLOCKED") {
+        toast.error("Please allow popups to print your QR code.", { id: tid });
+      } else {
+        toast.error("Something went wrong with the print preview.", { id: tid });
+      }
     } finally {
       setIsPrinting(false);
     }
@@ -100,14 +117,13 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
 
   const handleShare = async () => {
     setIsSharing(true);
-    const tid = toast.loading("Generating image...", { position: "top-center" });
+    const tid = toast.loading("Generating high-res image...", { position: "top-center" });
 
     try {
       const cvs = document.createElement("canvas"), ctx = cvs.getContext("2d");
       if (!ctx) return;
       cvs.width = 900; cvs.height = 1200;
 
-      // Draw Theme Border
       ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, 900, 1200);
       ctx.strokeStyle = `hsl(${getPrimaryColor()})`; ctx.lineWidth = 16;
       if (ctx.roundRect) ctx.roundRect(40, 40, 820, 1120, 60); else ctx.rect(40, 40, 820, 1120);
@@ -116,7 +132,6 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       ctx.textAlign = "center"; ctx.fillStyle = "#000"; ctx.font = "bold 72px serif";
       ctx.fillText(restaurant.name, 450, 220);
       
-      // Handle Image Logic
       let logoImg = null;
       let useFull = !restaurant.logo_url || restaurant.show_qr_logo === false;
 
@@ -138,7 +153,6 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       const qrImg = new Image();
       await new Promise(r => { qrImg.onload = r; qrImg.src = qrUrl; });
 
-      // Draw QR
       ctx.fillStyle = "#fff";
       if (ctx.roundRect) ctx.roundRect(170, 350, 560, 560, 40); else ctx.rect(170, 350, 560, 560);
       ctx.fill();
@@ -161,12 +175,12 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           await navigator.share({ files: [f] });
           toast.dismiss(tid);
         } else {
-          const a = document.createElement('a'); a.href = cvs.toDataURL(); a.download = "menu.png"; a.click();
-          toast.success("Downloaded!", { id: tid });
+          const a = document.createElement('a'); a.href = cvs.toDataURL(); a.download = `${restaurant.name}-menu.png`; a.click();
+          toast.success("Saved to downloads!", { id: tid });
         }
       }
     } catch (e: any) {
-      if (e.name !== 'AbortError') toast.error("Share failed", { id: tid });
+      if (e.name !== 'AbortError') toast.error("Sharing failed", { id: tid });
       else toast.dismiss(tid);
     } finally {
       setIsSharing(false);
