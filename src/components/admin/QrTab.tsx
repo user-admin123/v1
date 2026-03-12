@@ -32,57 +32,57 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap');
             
-            /* Force zero margins on the printer itself */
+            /* REMOVE ALL MARGINS AND HEADERS */
             @page { 
               size: auto; 
-              margin: 0mm !important; 
+              margin: 0 !important; 
             }
 
-            @media print {
-              html, body {
-                width: 100%;
-                height: 100%;
-                overflow: hidden;
-              }
+            html, body {
+              margin: 0 !important;
+              padding: 0 !important;
+              height: 100vh !important;
+              width: 100vw !important;
+              overflow: hidden !important;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              background: #fff;
+              -webkit-print-color-adjust: exact;
             }
             
-            * { margin:0; padding:0; box-sizing:border-box; }
-            
-            body { 
-              display:flex; 
-              align-items:center; 
-              justify-content:center; 
-              width: 100vw; 
-              height: 100vh; 
-              font-family:'Inter', sans-serif; 
-              background:#fff;
-            }
+            * { box-sizing: border-box; }
             
             .card { 
-              background:white; 
-              border-radius:24px; 
-              padding:32px; 
-              text-align:center; 
-              border: 6px solid hsl(${primaryColor}); 
-              width: 320px; /* Specific width to prevent overflow */
-              margin: auto;
+              background: white; 
+              border-radius: 24px; 
+              padding: 30px; 
+              text-align: center; 
+              border: 5px solid hsl(${primaryColor}); 
+              width: 320px;
+              max-height: 95vh; /* Prevents vertical overflow */
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
               page-break-inside: avoid;
+              break-inside: avoid;
             }
             
             .logo { 
-              width:64px; height:64px; border-radius:14px; object-fit:cover; 
-              border: 1px solid #eee; margin-bottom: 12px;
+              width: 60px; height: 60px; border-radius: 12px; object-fit: cover; 
+              border: 1px solid #eee; margin-bottom: 10px;
             }
             
-            h2 { font-family:'Playfair Display', serif; font-size:26px; color:#000; margin-bottom:4px; }
-            .tagline { color:#666; font-size:14px; font-style:italic; margin-bottom:20px; }
+            h2 { font-family: 'Playfair Display', serif; font-size: 26px; color: #000; margin-bottom: 4px; }
+            .tagline { color: #666; font-size: 14px; font-style: italic; margin-bottom: 15px; }
             
             .qr-wrap {
-              display:inline-block; padding:12px; border-radius:16px; 
-              background:white; border: 1px solid #eee;
+              display: inline-block; padding: 10px; border-radius: 16px; 
+              background: white; border: 1px solid #eee;
             }
             
-            .scan-text { margin-top:20px; font-size:15px; font-weight:600; color:#000; }
+            .scan-text { margin-top: 15px; font-size: 15px; font-weight: 600; color: #000; }
           </style>
         </head>
         <body>
@@ -97,7 +97,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
             window.onload = () => {
               setTimeout(() => { 
                 window.print();
-              }, 600);
+              }, 500);
             };
           </script>
         </body>
