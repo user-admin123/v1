@@ -22,12 +22,13 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
 
   const getBase64 = async (url: string): Promise<string | null> => {
     try {
-      const res = await fetch(url);
+      const res = await fetch(url, { mode: 'cors' });
       if (!res.ok) return null;
       const blob = await res.blob();
       return new Promise((resolve) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = () => resolve(null);
         reader.readAsDataURL(blob);
       });
     } catch { return null; }
@@ -44,7 +45,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
         logoData = await getBase64(restaurant.logo_url);
         if (!logoData) {
           toast.error("Logo load failed. Generating full QR code...", { position: "top-center", duration: 3000 });
-          await new Promise(r => setTimeout(r, 2500)); // Wait for user to read alert
+          await new Promise(r => setTimeout(r, 2500));
           useFull = true;
         }
       }
@@ -122,7 +123,9 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
 
       const svgToUse = useFull ? hiddenFullQrRef.current : qrRef.current;
       const svgStr = new XMLSerializer().serializeToString(svgToUse?.querySelector("svg")!);
-      const qrUrl = URL.createObjectURL(new Blob([svgStr], { type: "image/svg+xml" }));
+      const qrBlob = new Blob([svgStr], { type: "image/svg+xml" });
+      const qrUrl = URL.createObjectURL(qrBlob);
+      
       const qrImg = new Image();
       await new Promise(r => { qrImg.onload = r; qrImg.src = qrUrl; });
 
@@ -140,10 +143,10 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       ctx.fillText("Scan to view our digital menu", 450, 1040);
 
       const blob = await new Promise<Blob | null>(r => cvs.toBlob(r, "image/png"));
-      URL.revokeObjectURL(qrUrl);
+      URL.revokeObjectURL(qrUrl); // Memory cleanup
 
       if (blob) {
-        const f = new File([blob], "menu.png", { type: "image/png" });
+        const f = new File([blob], "menu-qr.png", { type: "image/png" });
         if (navigator.share && navigator.canShare?.({ files: [f] })) {
           await navigator.share({ 
             files: [f], 
@@ -151,7 +154,10 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
             text: `View our menu here: ${menuUrl}` 
           });
         } else {
-          const a = document.createElement('a'); a.href = cvs.toDataURL(); a.download = "menu.png"; a.click();
+          const a = document.createElement('a'); 
+          a.href = cvs.toDataURL("image/png"); 
+          a.download = `${restaurant.name}-menu.png`; 
+          a.click();
         }
       }
     } catch (e: any) {
