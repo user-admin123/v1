@@ -17,49 +17,77 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
     getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || "0 0% 0%";
 
   const handlePrint = () => {
-    const svgEl = qrRef.current?.querySelector("svg");
-    if (!svgEl) return;
-
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
+
+    const svgEl = qrRef.current?.querySelector("svg");
+    if (!svgEl) return;
 
     const svgData = new XMLSerializer().serializeToString(svgEl);
     const primaryColor = getPrimaryColor();
 
-    const content = `
-      <!DOCTYPE html>
+    printWindow.document.write(`
       <html>
         <head>
-          <title>Print Menu QR</title>
+          <title>${restaurant.name}</title>
           <style>
-            @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;700&display=swap');
-            @page { size: portrait; margin: 0; }
-            body { 
-              margin: 0; 
-              display: flex; 
-              align-items: center; 
-              justify-content: center; 
-              height: 100vh; 
-              background: #fff;
-              font-family: 'Inter', sans-serif;
+            @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap');
+            
+            @page { 
+              size: auto; 
+              margin: 0mm !important; 
             }
+            html, body {
+              margin: 0 !important;
+              padding: 0 !important;
+              width: 100%;
+              height: 100%;
+              overflow: hidden !important;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              background: #fff;
+              -webkit-print-color-adjust: exact;
+            }
+            
             .card { 
               background: white; 
               border-radius: 32px; 
-              padding: 60px 40px; 
+              padding: 60px 40px;
               text-align: center; 
-              border: 8px solid hsl(${primaryColor}); 
-              width: 450px; 
+              border: 8px solid hsl(${primaryColor});
+              width: 450px;
+              max-height: 96vh; 
               display: flex;
               flex-direction: column;
               align-items: center;
-              box-sizing: border-box; 
+              justify-content: center;
+              box-sizing: border-box;
+              page-break-inside: avoid;
             }
-            .logo { width: 80px; height: 80px; border-radius: 16px; object-fit: cover; margin-bottom: 15px; border: 1px solid #eee; }
-            h2 { font-family: 'Playfair Display', serif; font-size: 38px; margin: 0 0 8px 0; color: #000; }
+            
+            .logo { 
+              width: 80px; height: 80px; border-radius: 16px; object-fit: cover; 
+              border: 1px solid #eee; margin-bottom: 15px;
+            }
+            
+            h2 { font-family: 'Playfair Display', serif; font-size: 38px; color: #000; margin: 0 0 8px 0; }
             .tagline { color: #666; font-size: 18px; font-style: italic; margin-bottom: 30px; }
-            .qr-wrap { display: inline-block; padding: 20px; border-radius: 24px; border: 2px solid #f0f0f0; background: #fff; }
-            .qr-wrap svg { width: 250px !important; height: 250px !important; display: block; }
+            
+            .qr-wrap {
+              display: inline-block; 
+              padding: 20px; 
+              border-radius: 24px; 
+              background: white; 
+              border: 2px solid #f0f0f0;
+              margin: 10px 0;
+            }
+            
+            .qr-wrap svg {
+                width: 250px !important;
+                height: 250px !important;
+            }
+            
             .scan-text { margin-top: 30px; font-size: 20px; font-weight: 700; color: #000; }
           </style>
         </head>
@@ -72,20 +100,15 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
             <p class="scan-text">Scan to view our digital menu</p>
           </div>
           <script>
-            // This ensures all images and styles are loaded before printing
-            window.addEventListener('load', () => {
-              setTimeout(() => {
+            window.onload = () => {
+              setTimeout(() => { 
                 window.print();
-                // We remove window.close() as it often interrupts the print process in Chrome/Safari
-              }, 800);
-            });
+              }, 500);
+            };
           </script>
         </body>
       </html>
-    `;
-
-    printWindow.document.open();
-    printWindow.document.write(content);
+    `);
     printWindow.document.close();
   };
 
@@ -111,8 +134,8 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       ctx.fillStyle = "#000000";
       ctx.textAlign = "center";
       ctx.font = "bold 44px sans-serif";
-      // Positioned at 1060 for slightly more clearance from the bottom line
-      ctx.fillText("Scan to view our digital menu", canvas.width / 2, 1060);
+      // Moved up to 1040 for better spacing from bottom line
+      ctx.fillText("Scan to view our digital menu", canvas.width / 2, 1040);
 
       canvas.toBlob(async (blob) => {
         if (!blob) return;
@@ -124,7 +147,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
               title: restaurant.name,
               text: `Check out our digital menu at ${restaurant.name}: ${menuUrl}`,
             });
-          } catch { /* Fail Silently */ }
+          } catch { /* Fail silently */ }
         }
       }, "image/png");
     };
@@ -148,8 +171,8 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
     }
 
     const svgData = new XMLSerializer().serializeToString(svgEl);
-    const qrImg = new Image();
     const qrUrl = URL.createObjectURL(new Blob([svgData], { type: "image/svg+xml" }));
+    const qrImg = new Image();
 
     qrImg.onload = () => {
       const qrSize = 500;
