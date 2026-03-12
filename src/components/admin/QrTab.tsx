@@ -65,7 +65,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           <h2>${restaurant.name}</h2>
           ${restaurant.tagline ? `<p class="tagline">${restaurant.tagline}</p>` : ""}
           <div class="qr-wrap">${svgData}</div>
-          <p class="scan-text">Scan to view our menu</p>
+          <p class="scan-text">Scan to view our digital menu</p>
         </div>
         <script>
           window.onload = () => {
