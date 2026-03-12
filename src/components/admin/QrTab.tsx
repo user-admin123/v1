@@ -32,27 +32,34 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap');
             
-            /* REMOVE ALL MARGINS AND HEADERS */
+            /* FORCES SINGLE PAGE */
             @page { 
               size: auto; 
-              margin: 0 !important; 
+              margin: 0mm !important; 
             }
 
             html, body {
               margin: 0 !important;
               padding: 0 !important;
-              height: 100vh !important;
-              width: 100vw !important;
+              width: 100%;
+              height: 100%;
               overflow: hidden !important;
               display: flex;
               align-items: center;
               justify-content: center;
               background: #fff;
-              -webkit-print-color-adjust: exact;
             }
             
-            * { box-sizing: border-box; }
-            
+            /* Container to ensure no overflow */
+            .print-container {
+              width: 100%;
+              height: 100%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              page-break-after: avoid;
+            }
+
             .card { 
               background: white; 
               border-radius: 24px; 
@@ -60,13 +67,10 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
               text-align: center; 
               border: 5px solid hsl(${primaryColor}); 
               width: 320px;
-              max-height: 95vh; /* Prevents vertical overflow */
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              justify-content: center;
-              page-break-inside: avoid;
-              break-inside: avoid;
+              /* Scale it down slightly so it never hits the page edge */
+              transform: scale(0.9);
+              transform-origin: center;
+              box-sizing: border-box;
             }
             
             .logo { 
@@ -86,12 +90,14 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           </style>
         </head>
         <body>
-          <div class="card">
-            ${restaurant.logo_url ? `<img src="${restaurant.logo_url}" class="logo" crossorigin="anonymous" />` : ""}
-            <h2>${restaurant.name}</h2>
-            ${restaurant.tagline ? `<p class="tagline">${restaurant.tagline}</p>` : ""}
-            <div class="qr-wrap">${svgData}</div>
-            <p class="scan-text">Scan to view our digital menu</p>
+          <div class="print-container">
+            <div class="card">
+              ${restaurant.logo_url ? `<img src="${restaurant.logo_url}" class="logo" crossorigin="anonymous" />` : ""}
+              <h2>${restaurant.name}</h2>
+              ${restaurant.tagline ? `<p class="tagline">${restaurant.tagline}</p>` : ""}
+              <div class="qr-wrap">${svgData}</div>
+              <p class="scan-text">Scan to view our digital menu</p>
+            </div>
           </div>
           <script>
             window.onload = () => {
