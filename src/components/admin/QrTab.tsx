@@ -26,24 +26,32 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
     const svgEl = qrRef.current?.querySelector("svg");
     if (!svgEl) return;
 
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
+    // 1. Create a hidden iframe
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    document.body.appendChild(iframe);
 
     const svgData = new XMLSerializer().serializeToString(svgEl);
     const primaryColor = getPrimaryColor();
     const safeLogoUrl = getSafeImageUrl(restaurant.logo_url || "");
 
-    printWindow.document.write(`
+    const doc = iframe.contentWindow?.document;
+    if (!doc) return;
+
+    doc.write(`
       <html>
         <head>
-          <title>${restaurant.name}</title>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;700&display=swap');
             @page { size: auto; margin: 0mm !important; }
-            html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #fff; }
-            .card { background: white; border-radius: 32px; padding: 60px 40px; text-align: center; border: 8px solid hsl(${primaryColor}); width: 450px; max-height: 96vh; display: flex; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box; page-break-inside: avoid; }
-            .logo { width: 80px; height: 80px; border-radius: 16px; object-fit: cover; border: 1px solid #eee; margin-bottom: 15px; display: none; }
-            .logo.loaded { display: block; }
+            body { margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #fff; font-family: 'Inter', sans-serif; }
+            .card { background: white; border-radius: 32px; padding: 60px 40px; text-align: center; border: 8px solid hsl(${primaryColor}); width: 450px; display: flex; flex-direction: column; align-items: center; box-sizing: border-box; }
+            .logo { width: 80px; height: 80px; border-radius: 16px; object-fit: cover; margin-bottom: 15px; display: none; }
             h2 { font-family: 'Playfair Display', serif; font-size: 38px; color: #000; margin: 0 0 8px 0; }
             .tagline { color: #666; font-size: 18px; font-style: italic; margin-bottom: 30px; }
             .qr-wrap { display: inline-block; padding: 20px; border-radius: 24px; border: 2px solid #f0f0f0; margin: 10px 0; }
@@ -53,38 +61,48 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
         </head>
         <body>
           <div class="card">
-            ${restaurant.logo_url ? `<img src="${safeLogoUrl}" id="logoImg" class="logo" crossorigin="anonymous" />` : ""}
+            ${restaurant.logo_url ? `<img src="${safeLogoUrl}" id="p-logo" class="logo" crossorigin="anonymous" />` : ""}
             <h2>${restaurant.name}</h2>
             ${restaurant.tagline ? `<p class="tagline">${restaurant.tagline}</p>` : ""}
             <div class="qr-wrap">${svgData}</div>
             <p class="scan-text">Scan to view our digital menu</p>
           </div>
           <script>
-            const img = document.getElementById('logoImg');
-            const doPrint = () => {
-              setTimeout(() => {
+            const img = document.getElementById('p-logo');
+            const startPrint = () => {
+                window.focus();
                 window.print();
-                // We don't close immediately to prevent the "printing error" in some browsers
-                window.onafterprint = () => window.close();
-              }, 500);
             };
-
             if (img) {
-              img.onload = () => { img.classList.add('loaded'); doPrint(); };
+              img.onload = () => { img.style.display = 'block'; startPrint(); };
               img.onerror = () => { 
-                alert("The logo image could not be loaded due to security restrictions or an invalid URL. Printing without logo.");
-                doPrint(); 
+                parent.postMessage("logo-error", "*");
+                startPrint(); 
               };
-              // Backup timeout in case image hangs
-              setTimeout(doPrint, 3000);
+              setTimeout(startPrint, 4000); // Fail-safe
             } else {
-              doPrint();
+              startPrint();
             }
           </script>
         </body>
       </html>
     `);
-    printWindow.document.close();
+    doc.close();
+
+    // Listen for error message from iframe to show alert in main window
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data === "logo-error") {
+        alert("The logo image could not be loaded due to security restrictions. Printing without logo.");
+        window.removeEventListener("message", handleMessage);
+      }
+    };
+    window.addEventListener("message", handleMessage);
+
+    // Cleanup iframe after printing
+    setTimeout(() => {
+        document.body.removeChild(iframe);
+        window.removeEventListener("message", handleMessage);
+    }, 60000); // Keep it alive for a minute to ensure print finishes
   };
 
   const handleShare = async () => {
@@ -116,7 +134,6 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       ctx.fillText(text, canvas.width / 2, y);
     };
 
-    // Initial Drawing
     ctx.fillStyle = "#FFFFFF";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.strokeStyle = `hsl(${getPrimaryColor()})`;
@@ -166,7 +183,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
         };
 
         logoImg.onerror = () => {
-          alert("Could not include the logo in the shared image due to image restrictions. Generating with QR only.");
+          alert("Logo failed to load for sharing. Generating without logo.");
           finishAndShare();
         };
         logoImg.src = getSafeImageUrl(restaurant.logo_url);
