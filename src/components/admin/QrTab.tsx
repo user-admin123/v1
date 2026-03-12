@@ -32,15 +32,22 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap');
             
-            /* 1. REMOVE BROWSER HEADERS/FOOTERS */
+            /* Force zero margins on the printer itself */
             @page { 
               size: auto; 
               margin: 0mm !important; 
             }
+
+            @media print {
+              html, body {
+                width: 100%;
+                height: 100%;
+                overflow: hidden;
+              }
+            }
             
             * { margin:0; padding:0; box-sizing:border-box; }
             
-            /* 2. FORCE BODY TO BE EXACTLY ONE PAGE HEIGHT */
             body { 
               display:flex; 
               align-items:center; 
@@ -49,35 +56,33 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
               height: 100vh; 
               font-family:'Inter', sans-serif; 
               background:#fff;
-              overflow: hidden !important;
             }
             
             .card { 
               background:white; 
               border-radius:24px; 
-              padding:32px; /* Slightly reduced padding */
+              padding:32px; 
               text-align:center; 
-              border: 4px solid hsl(${primaryColor}); 
-              max-width: 350px; /* Reduced width to ensure it fits any printer */
-              width: 90%;
+              border: 6px solid hsl(${primaryColor}); 
+              width: 320px; /* Specific width to prevent overflow */
               margin: auto;
               page-break-inside: avoid;
             }
             
             .logo { 
-              width:60px; height:60px; border-radius:12px; object-fit:cover; 
+              width:64px; height:64px; border-radius:14px; object-fit:cover; 
               border: 1px solid #eee; margin-bottom: 12px;
             }
             
             h2 { font-family:'Playfair Display', serif; font-size:26px; color:#000; margin-bottom:4px; }
-            .tagline { color:#666; font-size:14px; font-style:italic; margin-bottom:16px; }
+            .tagline { color:#666; font-size:14px; font-style:italic; margin-bottom:20px; }
             
             .qr-wrap {
               display:inline-block; padding:12px; border-radius:16px; 
               background:white; border: 1px solid #eee;
             }
             
-            .scan-text { margin-top:16px; font-size:15px; font-weight:600; color:#000; }
+            .scan-text { margin-top:20px; font-size:15px; font-weight:600; color:#000; }
           </style>
         </head>
         <body>
@@ -90,16 +95,9 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           </div>
           <script>
             window.onload = () => {
-              // Give the browser a moment to render the SVG
               setTimeout(() => { 
                 window.print();
-              }, 500);
-            };
-
-            // 3. ONLY CLOSE AFTER PRINT DIALOG DISAPPEARS
-            // This prevents the "Error in printing" message
-            window.onafterprint = () => {
-              window.close();
+              }, 600);
             };
           </script>
         </body>
@@ -173,14 +171,11 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           const size = 115;
           const x = (canvas.width - size) / 2;
           const y = 250 + (500 - size) / 2;
-          
           ctx.fillStyle = "#FFFFFF";
           ctx.fillRect(x - 4, y - 4, size + 8, size + 8);
-          
           ctx.strokeStyle = `hsl(${primaryColor})`;
           ctx.lineWidth = 2;
           ctx.strokeRect(x - 4, y - 4, size + 8, size + 8);
-          
           ctx.drawImage(logoImg, x, y, size, size);
           finishAndShare();
         };
