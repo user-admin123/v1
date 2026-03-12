@@ -13,236 +13,114 @@ interface Props {
 const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
   const qrRef = useRef<HTMLDivElement>(null);
 
-  // Helper to extract the primary theme color
-  const getPrimaryColor = () => {
-    return (
-      getComputedStyle(document.documentElement)
-        .getPropertyValue("--primary")
-        .trim() || "0 0% 0%"
-    );
-  };
+  const getPrimary = () => getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || "0 0% 0%";
 
   const handlePrint = () => {
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
-
     const svgEl = qrRef.current?.querySelector("svg");
     if (!svgEl) return;
-
     const svgData = new XMLSerializer().serializeToString(svgEl);
-    const primaryColor = getPrimaryColor();
+    const win = window.open("", "_blank");
+    if (!win) return;
 
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>${restaurant.name}</title>
-          <style>
-            @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap');
-            @page { size: auto; margin: 0mm !important; }
-            html, body {
-              margin: 0 !important;
-              padding: 0 !important;
-              width: 100%;
-              height: 100%;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              background: #fff;
-              -webkit-print-color-adjust: exact;
-            }
-            .card { 
-              background: white; 
-              border-radius: 32px; 
-              padding: 60px 40px; 
-              text-align: center; 
-              border: 8px solid hsl(${primaryColor}); 
-              width: 450px; 
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              justify-content: center;
-              box-sizing: border-box;
-            }
-            .logo { width: 80px; height: 80px; border-radius: 16px; object-fit: cover; border: 1px solid #eee; margin-bottom: 15px; }
-            h2 { font-family: 'Playfair Display', serif; font-size: 38px; color: #000; margin-bottom: 8px; }
-            .tagline { color: #666; font-size: 18px; font-style: italic; margin-bottom: 30px; }
-            .qr-wrap { display: inline-block; padding: 20px; border-radius: 24px; background: white; border: 2px solid #f0f0f0; margin: 10px 0; }
-            .qr-wrap svg { width: 250px !important; height: 250px !important; }
-            .scan-text { margin-top: 30px; font-size: 20px; font-weight: 700; color: #000; }
-          </style>
-        </head>
-        <body>
-          <div class="card">
-            ${restaurant.logo_url ? `<img src="${restaurant.logo_url}" class="logo" crossorigin="anonymous" />` : ""}
-            <h2>${restaurant.name}</h2>
-            ${restaurant.tagline ? `<p class="tagline">${restaurant.tagline}</p>` : ""}
-            <div class="qr-wrap">${svgData}</div>
-            <p class="scan-text">Scan to view our digital menu</p>
-          </div>
-          <script>
-            window.onload = () => { setTimeout(() => { window.print(); }, 500); };
-          </script>
-        </body>
-      </html>
+    win.document.write(`
+      <html><head><title>${restaurant.name}</title><style>
+        body { margin:0; display:flex; align-items:center; justify-content:center; height:100vh; font-family: sans-serif; }
+        .card { border: 8px solid hsl(${getPrimary()}); border-radius: 32px; padding: 40px; text-align: center; width: 400px; }
+        .logo { width: 80px; height: 80px; border-radius: 12px; margin-bottom: 10px; object-fit: cover; }
+        .qr-wrap { padding: 20px; border: 2px solid #f0f0f0; border-radius: 20px; display: inline-block; margin: 20px 0; }
+        .qr-wrap svg { width: 250px!important; height: 250px!important; }
+      </style></head>
+      <body><div class="card">
+        ${restaurant.logo_url ? `<img src="${restaurant.logo_url}" class="logo" />` : ""}
+        <h1 style="margin:0">${restaurant.name}</h1>
+        ${restaurant.tagline ? `<p style="color:#666; font-style:italic">${restaurant.tagline}</p>` : ""}
+        <div class="qr-wrap">${svgData}</div>
+        <p style="font-weight:bold; font-size: 1.2rem;">Scan to view our digital menu</p>
+      </div><script>window.onload=()=>setTimeout(()=>{window.print();window.close()},500)</script></body></html>
     `);
-    printWindow.document.close();
+    win.document.close();
   };
 
   const handleShare = async () => {
     const svgEl = qrRef.current?.querySelector("svg");
-    if (!svgEl || !qrRef.current) return;
+    if (!svgEl) return;
 
     const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    const ctx = canvas.getContext("2d")!;
+    canvas.width = 900; canvas.height = 1200;
 
-    const primaryColor = getPrimaryColor();
-    canvas.width = 900;
-    canvas.height = 1200;
-
-    const roundRect = (x: number, y: number, w: number, h: number, r: number) => {
-      ctx.beginPath();
-      ctx.moveTo(x + r, y);
-      ctx.arcTo(x + w, y, x + w, y + h, r);
-      ctx.arcTo(x + w, y + h, x, y + h, r);
-      ctx.arcTo(x, y + h, x, y, r);
-      ctx.arcTo(x, y, x + w, y, r);
-      ctx.closePath();
+    const drawRounded = (x: number, y: number, w: number, h: number, r: number, fill = false) => {
+      ctx.beginPath(); ctx.roundRect(x, y, w, h, r);
+      fill ? ctx.fill() : ctx.stroke();
     };
 
-    const finishAndShare = () => {
-      ctx.fillStyle = "#000000";
-      ctx.textAlign = "center";
-      ctx.font = "bold 44px sans-serif";
-      ctx.fillText("Scan to view our digital menu", canvas.width / 2, 1120);
+    // Draw Background & Border
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, 900, 1200);
+    ctx.strokeStyle = `hsl(${getPrimary()})`; ctx.lineWidth = 16;
+    drawRounded(40, 40, 820, 1120, 60);
 
-      canvas.toBlob(async (blob) => {
-        if (!blob) return;
-        const file = new File([blob], "menu-qr.png", { type: "image/png" });
-        try {
-          if (navigator.share && navigator.canShare?.({ files: [file] })) {
+    // Text Headers
+    ctx.fillStyle = "#000"; ctx.textAlign = "center";
+    ctx.font = "bold 72px serif"; ctx.fillText(restaurant.name, 450, 220);
+    if (restaurant.tagline) {
+      ctx.font = "italic 36px sans-serif"; ctx.fillStyle = "#666";
+      ctx.fillText(restaurant.tagline, 450, 290);
+    }
+
+    const svgBlob = new Blob([new XMLSerializer().serializeToString(svgEl)], { type: "image/svg+xml" });
+    const qrImg = new Image();
+    qrImg.src = URL.createObjectURL(svgBlob);
+
+    qrImg.onload = () => {
+      ctx.fillStyle = "#fff"; ctx.strokeStyle = "#f0f0f0"; ctx.lineWidth = 4;
+      drawRounded(220, 350, 460, 460, 40, true); drawRounded(220, 350, 460, 460, 40);
+      ctx.drawImage(qrImg, 250, 380, 400, 400);
+
+      const finish = () => {
+        ctx.fillStyle = "#000"; ctx.font = "bold 40px sans-serif";
+        ctx.fillText("Scan to view our digital menu", 450, 1100);
+        canvas.toBlob(async (blob) => {
+          if (!blob) return;
+          const file = new File([blob], "menu.png", { type: "image/png" });
+          try {
             await navigator.share({
               files: [file],
               title: restaurant.name,
-              text: `View our menu at ${restaurant.name}`,
+              text: `Check out the menu for ${restaurant.name} here: ${menuUrl}`,
             });
-          }
-        } catch (err) {
-          console.error("Share failed", err);
-        }
-      }, "image/png");
-    };
-
-    // Background
-    ctx.fillStyle = "#FFFFFF";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Curved Outer Border
-    ctx.strokeStyle = `hsl(${primaryColor})`;
-    ctx.lineWidth = 16;
-    roundRect(40, 40, canvas.width - 80, canvas.height - 80, 60);
-    ctx.stroke();
-
-    // Restaurant Name
-    ctx.fillStyle = "#000000";
-    ctx.textAlign = "center";
-    ctx.font = "bold 72px serif";
-    ctx.fillText(restaurant.name, canvas.width / 2, 220);
-
-    // Tagline
-    if (restaurant.tagline) {
-      ctx.font = "italic 36px sans-serif";
-      ctx.fillStyle = "#666666";
-      ctx.fillText(restaurant.tagline, canvas.width / 2, 290);
-    }
-
-    // QR Code Generation
-    const svgData = new XMLSerializer().serializeToString(svgEl);
-    const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-    const qrUrl = URL.createObjectURL(svgBlob);
-    const qrImg = new Image();
-
-    qrImg.onload = () => {
-      const qrSize = 500;
-      const x = (canvas.width - qrSize) / 2;
-      const y = 380;
-
-      ctx.fillStyle = "#FFFFFF";
-      roundRect(x - 30, y - 30, qrSize + 60, qrSize + 60, 40);
-      ctx.fill();
-      ctx.strokeStyle = "#f0f0f0";
-      ctx.lineWidth = 4;
-      ctx.stroke();
-
-      ctx.drawImage(qrImg, x, y, qrSize, qrSize);
-      URL.revokeObjectURL(qrUrl);
+          } catch (e) { console.error(e); }
+        });
+      };
 
       if (restaurant.logo_url && restaurant.show_qr_logo !== false) {
-        const logoImg = new Image();
-        logoImg.crossOrigin = "anonymous";
-        logoImg.src = restaurant.logo_url;
-        logoImg.onload = () => {
-          const lSize = 110;
-          const lx = (canvas.width - lSize) / 2;
-          const ly = y + (qrSize - lSize) / 2;
-          ctx.fillStyle = "#FFFFFF";
-          ctx.fillRect(lx - 8, ly - 8, lSize + 16, lSize + 16);
-          ctx.drawImage(logoImg, lx, ly, lSize, lSize);
-          finishAndShare();
+        const logo = new Image(); logo.crossOrigin = "anonymous";
+        logo.src = restaurant.logo_url;
+        logo.onload = () => {
+          ctx.fillStyle = "#fff"; ctx.fillRect(395, 530, 110, 110);
+          ctx.drawImage(logo, 400, 535, 100, 100); finish();
         };
-        logoImg.onerror = () => finishAndShare();
-      } else {
-        finishAndShare();
-      }
+        logo.onerror = finish;
+      } else finish();
     };
-    qrImg.src = qrUrl;
   };
 
-  const hasEmbeddedLogo = restaurant.show_qr_logo !== false && !!restaurant.logo_url;
+  const hasLogo = restaurant.show_qr_logo !== false && !!restaurant.logo_url;
 
   return (
     <div className="mt-3 flex flex-col items-center gap-4">
-      <div className="bg-white p-6 rounded-2xl border relative shadow-sm" ref={qrRef}>
-        <QRCodeSVG
-          value={menuUrl}
-          size={160}
-          level="H"
-          imageSettings={
-            hasEmbeddedLogo
-              ? {
-                  src: restaurant.logo_url!,
-                  height: 38,
-                  width: 38,
-                  excavate: true,
-                }
-              : undefined
-          }
+      <div className="bg-white p-6 rounded-2xl border shadow-sm" ref={qrRef}>
+        <QRCodeSVG value={menuUrl} size={160} level="H"
+          imageSettings={hasLogo ? { src: restaurant.logo_url!, height: 38, width: 38, excavate: true } : undefined}
         />
       </div>
-
       <div className="text-center">
         <p className="text-sm text-muted-foreground">Your menu QR code</p>
-        {hasEmbeddedLogo && (
-          <p className="text-xs text-primary font-medium mt-1">
-            Logo embedded ✓
-          </p>
-        )}
+        {hasLogo && <p className="text-xs text-primary font-medium mt-1">Logo embedded ✓</p>}
       </div>
-
-      <Button className="w-full" onClick={onViewFullscreen}>
-        <Eye className="w-4 h-4 mr-2" />
-        View QR Display
-      </Button>
-
+      <Button className="w-full" onClick={onViewFullscreen}><Eye className="w-4 h-4 mr-2" />View QR Display</Button>
       <div className="flex gap-2 w-full">
-        <Button variant="outline" className="flex-1" onClick={handlePrint}>
-          <Printer className="w-4 h-4 mr-2" />
-          Print
-        </Button>
-        <Button variant="outline" className="flex-1" onClick={handleShare}>
-          <Share2 className="w-4 h-4 mr-2" />
-          Share Image
-        </Button>
+        <Button variant="outline" className="flex-1" onClick={handlePrint}><Printer className="w-4 h-4 mr-2" />Print</Button>
+        <Button variant="outline" className="flex-1" onClick={handleShare}><Share2 className="w-4 h-4 mr-2" />Share</Button>
       </div>
     </div>
   );
