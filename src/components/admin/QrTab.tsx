@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { RestaurantInfo } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { QRCodeSVG } from "qrcode.react";
@@ -19,30 +19,18 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
     getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || "0 0% 0%";
 
   const handlePrint = async () => {
-    // 1. Check if logo exists and try to "pre-fetch" it to check CORS/Existence
-    let logoValid = false;
-    if (restaurant.logo_url) {
-      try {
-        const resp = await fetch(restaurant.logo_url, { mode: 'no-cors' });
-        logoValid = resp.type !== 'error';
-      } catch (e) {
-        logoValid = false;
-      }
-    }
-
-    if (restaurant.logo_url && !logoValid) {
-      toast.error("Logo failed to load. Printing menu with text and full QR only.", { position: "top-center" });
-    }
-
     const primaryColor = getPrimaryColor();
-    // Use the "Full QR" (no hole) if the logo is invalid or missing
-    const svgEl = (!logoValid || !restaurant.show_qr_logo) 
-      ? hiddenFullQrRef.current?.querySelector("svg") 
-      : qrRef.current?.querySelector("svg");
-
-    if (!svgEl) return;
+    const hasLogoRequest = !!restaurant.logo_url && restaurant.show_qr_logo !== false;
     
-    const svgData = new XMLSerializer().serializeToString(svgEl);
+    // We use the "Full QR" (hidden) by default for print to be safe, 
+    // unless the logo is verified.
+    const fullSvgData = new XMLSerializer().serializeToString(
+        hiddenFullQrRef.current?.querySelector("svg")!
+    );
+    const logoSvgData = new XMLSerializer().serializeToString(
+        qrRef.current?.querySelector("svg")!
+    );
+
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
@@ -54,25 +42,56 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
             @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;700&display=swap');
             @page { size: auto; margin: 0mm !important; }
             html, body { margin: 0; padding: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #fff; font-family: 'Inter', sans-serif; }
-            .card { background: white; border-radius: 32px; padding: 60px 40px; text-align: center; border: 8px solid hsl(${primaryColor}); width: 450px; display: flex; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box; }
+            .card { background: white; border-radius: 32px; padding: 60px 40px; text-align: center; border: 8px solid hsl(${primaryColor}); width: 450px; box-sizing: border-box; }
             .logo { width: 80px; height: 80px; border-radius: 16px; object-fit: cover; border: 1px solid #eee; margin-bottom: 15px; }
             h2 { font-family: 'Playfair Display', serif; font-size: 38px; color: #000; margin: 0 0 8px 0; }
             .tagline { color: #666; font-size: 18px; font-style: italic; margin-bottom: 30px; }
-            .qr-wrap { display: inline-block; padding: 20px; border-radius: 24px; border: 2px solid #f0f0f0; margin: 10px 0; }
+            .qr-wrap { display: inline-block; padding: 20px; border-radius: 24px; border: 2px solid #f0f0f0; margin: 10px 0; background: white; }
             .qr-wrap svg { width: 250px !important; height: 250px !important; }
             .scan-text { margin-top: 30px; font-size: 20px; font-weight: 700; }
           </style>
         </head>
         <body>
           <div class="card">
-            ${logoValid ? `<img src="${restaurant.logo_url}" class="logo" crossorigin="anonymous" />` : ""}
+            ${restaurant.logo_url ? `
+              <img 
+                src="${restaurant.logo_url}" 
+                class="logo" 
+                crossorigin="anonymous" 
+                id="pLogo" 
+                style="display: none;"
+              />` : ""
+            }
             <h2>${restaurant.name}</h2>
             ${restaurant.tagline ? `<p class="tagline">${restaurant.tagline}</p>` : ""}
-            <div class="qr-wrap">${svgData}</div>
+            <div id="qrContainer" class="qr-wrap">${hasLogoRequest ? logoSvgData : fullSvgData}</div>
             <p class="scan-text">Scan to view our digital menu</p>
           </div>
           <script>
-            window.onload = () => { setTimeout(() => { window.print(); }, 500); };
+            const img = document.getElementById('pLogo');
+            const qrCont = document.getElementById('qrContainer');
+            const fullQrSvg = \`${fullSvgData}\`;
+            
+            const triggerPrint = () => { setTimeout(() => { window.print(); }, 500); };
+
+            if (img) {
+              img.onload = () => {
+                img.style.display = 'inline-block';
+                triggerPrint();
+              };
+              img.onerror = () => {
+                // LOGO FAILED: Remove broken img and swap to Full QR (no hole)
+                img.remove();
+                qrCont.innerHTML = fullQrSvg;
+                triggerPrint();
+                // Send message back to main window for themed toast
+                if (window.opener) {
+                  window.opener.postMessage('print-logo-fail', '*');
+                }
+              };
+            } else {
+              window.onload = triggerPrint;
+            }
           </script>
         </body>
       </html>
@@ -80,9 +99,17 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
     printWindow.document.close();
   };
 
-  const handleShare = async () => {
-    toast.info("Generating shareable image...", { position: "top-center" });
+  // Listen for messages from the print window to show themed toast
+  if (typeof window !== "undefined") {
+    window.onmessage = (e) => {
+      if (e.data === 'print-logo-fail') {
+        toast.error("Logo could not be loaded for print. Using full QR code.", { position: "top-center" });
+      }
+    };
+  }
 
+  const handleShare = async () => {
+    toast.info("Preparing shareable image...", { position: "top-center" });
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
@@ -96,7 +123,6 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       stroke ? ctx.stroke() : ctx.fill();
     };
 
-    // UI Drawing
     ctx.fillStyle = "#FFFFFF";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.strokeStyle = `hsl(${getPrimaryColor()})`;
@@ -112,7 +138,6 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       ctx.fillText(restaurant.tagline, 450, 290);
     }
 
-    // Logic to choose between Full QR (hidden) or Logo QR (visible)
     const logoImg = new Image();
     logoImg.crossOrigin = "anonymous";
     let useFullQr = true;
@@ -127,7 +152,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
     }
 
     if (useFullQr && restaurant.logo_url) {
-      toast.error("Logo could not be loaded. Generating full QR code.", { position: "top-center" });
+      toast.error("Logo load failed. Using full QR code.", { position: "top-center" });
     }
 
     const svgEl = useFullQr 
@@ -178,7 +203,6 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
 
   return (
     <div className="mt-3 flex flex-col items-center gap-4">
-      {/* 1. Visible QR (with excavation for the logo) */}
       <div className="bg-white p-6 rounded-2xl border shadow-sm" ref={qrRef}>
         <QRCodeSVG
           value={menuUrl}
@@ -186,13 +210,11 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           level="H"
           imageSettings={restaurant.logo_url && restaurant.show_qr_logo !== false ? { 
             src: restaurant.logo_url, 
-            height: 38, width: 38, 
-            excavate: true 
+            height: 38, width: 38, excavate: true 
           } : undefined}
         />
       </div>
 
-      {/* 2. Hidden QR (Full version with NO excavation) - Used for fallback */}
       <div className="hidden" ref={hiddenFullQrRef}>
         <QRCodeSVG value={menuUrl} size={160} level="H" />
       </div>
