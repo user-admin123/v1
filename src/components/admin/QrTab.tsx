@@ -24,6 +24,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
 
     const svgData = new XMLSerializer().serializeToString(svgEl);
     const primaryColor = getPrimaryColor();
+    const hasLogo = !!restaurant.logo_url;
 
     printWindow.document.write(`
       <html>
@@ -44,13 +45,26 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
         </head>
         <body>
           <div class="card">
-            ${restaurant.logo_url ? `<img src="${restaurant.logo_url}" class="logo" crossorigin="anonymous" />` : ""}
+            ${hasLogo ? `<img id="print-logo" src="${restaurant.logo_url}" class="logo" crossorigin="anonymous" />` : ""}
             <h2>${restaurant.name}</h2>
             ${restaurant.tagline ? `<p class="tagline">${restaurant.tagline}</p>` : ""}
             <div class="qr-wrap">${svgData}</div>
             <p class="scan-text">Scan to view our digital menu</p>
           </div>
-          <script>window.onload = () => setTimeout(() => window.print(), 500);</script>
+          <script>
+            const img = document.getElementById('print-logo');
+            const doPrint = () => { setTimeout(() => { window.print(); window.close(); }, 500); };
+            if (img) {
+              img.onload = doPrint;
+              img.onerror = () => {
+                img.style.display = 'none';
+                alert("Note: Restaurant logo could not be loaded for print due to security restrictions.");
+                doPrint();
+              };
+            } else {
+              window.onload = doPrint;
+            }
+          </script>
         </body>
       </html>
     `);
@@ -84,14 +98,13 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       ctx.fillText(text, canvas.width / 2, y);
     };
 
-    // Draw frame
+    // Background & Frame
     ctx.fillStyle = "#FFFFFF";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.strokeStyle = `hsl(${getPrimaryColor()})`;
     ctx.lineWidth = 16;
     drawRoundedRect(40, 40, canvas.width - 80, canvas.height - 80, 60, true);
 
-    // Header Content
     ctx.textAlign = "center";
     drawAutoText(restaurant.name, 220, 72, 32, "serif", "#000000");
     if (restaurant.tagline) drawAutoText(restaurant.tagline, 290, 36, 22, "italic sans-serif", "#666666");
@@ -103,11 +116,18 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       ctx.fillStyle = "#000000";
       ctx.font = "bold 44px sans-serif";
       ctx.fillText("Scan to view our digital menu", canvas.width / 2, 1040);
+      
       canvas.toBlob(async (blob) => {
         if (!blob) return;
         const file = new File([blob], "menu-qr.png", { type: "image/png" });
         if (navigator.share && navigator.canShare?.({ files: [file] })) {
-          try { await navigator.share({ files: [file], title: restaurant.name, text: `Check out our digital menu: ${menuUrl}` }); } catch {}
+          try { await navigator.share({ files: [file], title: restaurant.name, text: `Check out our digital menu: ${menuUrl}` }); } catch (e) { console.error(e); }
+        } else {
+            // Fallback for desktop if share is not supported
+            const link = document.createElement('a');
+            link.download = 'menu-qr.png';
+            link.href = canvas.toDataURL();
+            link.click();
         }
       });
     };
@@ -125,7 +145,6 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       if (restaurant.logo_url && restaurant.show_qr_logo !== false) {
         const logoImg = new Image();
         logoImg.crossOrigin = "anonymous";
-        logoImg.src = restaurant.logo_url;
         logoImg.onload = () => {
           const s = 110, lx = (canvas.width - s) / 2, ly = y + (500 - s) / 2;
           ctx.fillStyle = "#FFFFFF";
@@ -133,8 +152,14 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           ctx.drawImage(logoImg, lx, ly, s, s);
           finishAndShare();
         };
-        logoImg.onerror = finishAndShare;
-      } else finishAndShare();
+        logoImg.onerror = () => {
+          alert("Logo could not be included in the image due to CORS/Loading issues. Sharing QR only.");
+          finishAndShare();
+        };
+        logoImg.src = restaurant.logo_url;
+      } else {
+        finishAndShare();
+      }
     };
     qrImg.src = qrUrl;
   };
@@ -153,7 +178,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       </div>
       <div className="text-center">
         <p className="text-sm text-muted-foreground">Your menu QR code</p>
-        {hasEmbeddedLogo && <p className="text-xs text-primary font-medium mt-1">Logo embedded ✓</p>}
+        {hasEmbeddedLogo && <p className="text-xs text-primary font-medium mt-1">Logo enabled ✓</p>}
       </div>
       <Button className="w-full" onClick={onViewFullscreen}><Eye className="w-4 h-4 mr-2" />View QR Display</Button>
       <div className="flex gap-2 w-full">
