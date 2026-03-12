@@ -32,62 +32,27 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           <title>${restaurant.name}</title>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap');
-            
-            @page { 
-              size: auto; 
-              margin: 0mm !important; 
-            }
+            @page { size: auto; margin: 0mm !important; }
             html, body {
-              margin: 0 !important;
-              padding: 0 !important;
-              width: 100%;
-              height: 100%;
+              margin: 0 !important; padding: 0 !important;
+              width: 100%; height: 100%;
               overflow: hidden !important;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              background: #fff;
-              -webkit-print-color-adjust: exact;
+              display: flex; align-items: center; justify-content: center;
+              background: #fff; -webkit-print-color-adjust: exact;
             }
-            
             .card { 
-              background: white; 
-              border-radius: 32px; 
-              padding: 60px 40px;
-              text-align: center; 
-              border: 8px solid hsl(${primaryColor});
-              width: 450px;
-              max-height: 96vh; 
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              justify-content: center;
-              box-sizing: border-box;
-              page-break-inside: avoid;
+              background: white; border-radius: 32px; padding: 60px 40px;
+              text-align: center; border: 8px solid hsl(${primaryColor});
+              width: 450px; max-height: 96vh; 
+              display: flex; flex-direction: column;
+              align-items: center; justify-content: center;
+              box-sizing: border-box; page-break-inside: avoid;
             }
-            
-            .logo { 
-              width: 80px; height: 80px; border-radius: 16px; object-fit: cover; 
-              border: 1px solid #eee; margin-bottom: 15px;
-            }
-            
+            .logo { width: 80px; height: 80px; border-radius: 16px; object-fit: cover; border: 1px solid #eee; margin-bottom: 15px; }
             h2 { font-family: 'Playfair Display', serif; font-size: 38px; color: #000; margin: 0 0 8px 0; }
             .tagline { color: #666; font-size: 18px; font-style: italic; margin-bottom: 30px; }
-            
-            .qr-wrap {
-              display: inline-block; 
-              padding: 20px; 
-              border-radius: 24px; 
-              background: white; 
-              border: 2px solid #f0f0f0;
-              margin: 10px 0;
-            }
-            
-            .qr-wrap svg {
-                width: 250px !important;
-                height: 250px !important;
-            }
-            
+            .qr-wrap { display: inline-block; padding: 20px; border-radius: 24px; background: white; border: 2px solid #f0f0f0; margin: 10px 0; }
+            .qr-wrap svg { width: 250px !important; height: 250px !important; }
             .scan-text { margin-top: 30px; font-size: 20px; font-weight: 700; color: #000; }
           </style>
         </head>
@@ -100,11 +65,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
             <p class="scan-text">Scan to view our digital menu</p>
           </div>
           <script>
-            window.onload = () => {
-              setTimeout(() => { 
-                window.print();
-              }, 500);
-            };
+            window.onload = () => { setTimeout(() => { window.print(); }, 500); };
           </script>
         </body>
       </html>
@@ -122,6 +83,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
 
     canvas.width = 900;
     canvas.height = 1200;
+    const maxWidth = 800; // Text safety margin
 
     const roundRect = (x: number, y: number, w: number, h: number, r: number) => {
       ctx.beginPath();
@@ -134,7 +96,6 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       ctx.fillStyle = "#000000";
       ctx.textAlign = "center";
       ctx.font = "bold 44px sans-serif";
-      // Moved up to 1040 for better spacing from bottom line
       ctx.fillText("Scan to view our digital menu", canvas.width / 2, 1040);
 
       canvas.toBlob(async (blob) => {
@@ -152,6 +113,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       }, "image/png");
     };
 
+    // Background & Border
     ctx.fillStyle = "#FFFFFF";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.strokeStyle = `hsl(${getPrimaryColor()})`;
@@ -159,14 +121,26 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
     roundRect(40, 40, canvas.width - 80, canvas.height - 80, 60);
     ctx.stroke();
 
+    // Auto-scaling Restaurant Name
+    let nameFontSize = 72;
     ctx.fillStyle = "#000000";
     ctx.textAlign = "center";
-    ctx.font = "bold 72px serif";
+    ctx.font = `bold ${nameFontSize}px serif`;
+    while (ctx.measureText(restaurant.name).width > maxWidth && nameFontSize > 32) {
+      nameFontSize -= 4;
+      ctx.font = `bold ${nameFontSize}px serif`;
+    }
     ctx.fillText(restaurant.name, canvas.width / 2, 220);
     
+    // Auto-scaling Tagline
     if (restaurant.tagline) {
-      ctx.font = "italic 36px sans-serif";
+      let tagFontSize = 36;
+      ctx.font = `italic ${tagFontSize}px sans-serif`;
       ctx.fillStyle = "#666666";
+      while (ctx.measureText(restaurant.tagline).width > maxWidth && tagFontSize > 24) {
+        tagFontSize -= 2;
+        ctx.font = `italic ${tagFontSize}px sans-serif`;
+      }
       ctx.fillText(restaurant.tagline, canvas.width / 2, 290);
     }
 
