@@ -32,7 +32,6 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap');
             
-            /* FORCES SINGLE PAGE */
             @page { 
               size: auto; 
               margin: 0mm !important; 
@@ -48,56 +47,58 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
               align-items: center;
               justify-content: center;
               background: #fff;
+              -webkit-print-color-adjust: exact;
             }
             
-            /* Container to ensure no overflow */
-            .print-container {
-              width: 100%;
-              height: 100%;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              page-break-after: avoid;
-            }
-
             .card { 
               background: white; 
-              border-radius: 24px; 
-              padding: 30px; 
+              border-radius: 32px; 
+              padding: 60px 40px; /* Increased padding for a larger look */
               text-align: center; 
-              border: 5px solid hsl(${primaryColor}); 
-              width: 320px;
-              /* Scale it down slightly so it never hits the page edge */
-              transform: scale(0.9);
-              transform-origin: center;
+              border: 8px solid hsl(${primaryColor}); /* Thicker border */
+              width: 450px; /* Increased width from 320px */
+              max-height: 96vh; 
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
               box-sizing: border-box;
+              page-break-inside: avoid;
             }
             
             .logo { 
-              width: 60px; height: 60px; border-radius: 12px; object-fit: cover; 
-              border: 1px solid #eee; margin-bottom: 10px;
+              width: 80px; height: 80px; border-radius: 16px; object-fit: cover; 
+              border: 1px solid #eee; margin-bottom: 15px;
             }
             
-            h2 { font-family: 'Playfair Display', serif; font-size: 26px; color: #000; margin-bottom: 4px; }
-            .tagline { color: #666; font-size: 14px; font-style: italic; margin-bottom: 15px; }
+            h2 { font-family: 'Playfair Display', serif; font-size: 38px; color: #000; margin-bottom: 8px; }
+            .tagline { color: #666; font-size: 18px; font-style: italic; margin-bottom: 30px; }
             
             .qr-wrap {
-              display: inline-block; padding: 10px; border-radius: 16px; 
-              background: white; border: 1px solid #eee;
+              display: inline-block; 
+              padding: 20px; 
+              border-radius: 24px; 
+              background: white; 
+              border: 2px solid #f0f0f0;
+              margin: 10px 0;
             }
             
-            .scan-text { margin-top: 15px; font-size: 15px; font-weight: 600; color: #000; }
+            /* Make the SVG inside the wrap fill space better */
+            .qr-wrap svg {
+                width: 250px !important;
+                height: 250px !important;
+            }
+            
+            .scan-text { margin-top: 30px; font-size: 20px; font-weight: 700; color: #000; letter-spacing: -0.01em; }
           </style>
         </head>
         <body>
-          <div class="print-container">
-            <div class="card">
-              ${restaurant.logo_url ? `<img src="${restaurant.logo_url}" class="logo" crossorigin="anonymous" />` : ""}
-              <h2>${restaurant.name}</h2>
-              ${restaurant.tagline ? `<p class="tagline">${restaurant.tagline}</p>` : ""}
-              <div class="qr-wrap">${svgData}</div>
-              <p class="scan-text">Scan to view our digital menu</p>
-            </div>
+          <div class="card">
+            ${restaurant.logo_url ? `<img src="${restaurant.logo_url}" class="logo" crossorigin="anonymous" />` : ""}
+            <h2>${restaurant.name}</h2>
+            ${restaurant.tagline ? `<p class="tagline">${restaurant.tagline}</p>` : ""}
+            <div class="qr-wrap">${svgData}</div>
+            <p class="scan-text">Scan to view our digital menu</p>
           </div>
           <script>
             window.onload = () => {
