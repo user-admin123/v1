@@ -19,8 +19,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
   const getSafeImageUrl = (url: string) => {
     if (!url) return "";
     if (url.startsWith("data:")) return url;
-    // Cache busting prevents the browser from using a cached version without CORS headers
-    return `${url}${url.includes('?') ? '&' : '?'}v=${restaurant.id || '1'}`;
+    return `${url}${url.includes('?') ? '&' : '?'}v=${Date.now()}`;
   };
 
   const handlePrint = () => {
@@ -43,7 +42,8 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
             @page { size: auto; margin: 0mm !important; }
             html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #fff; }
             .card { background: white; border-radius: 32px; padding: 60px 40px; text-align: center; border: 8px solid hsl(${primaryColor}); width: 450px; max-height: 96vh; display: flex; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box; page-break-inside: avoid; }
-            .logo { width: 80px; height: 80px; border-radius: 16px; object-fit: cover; border: 1px solid #eee; margin-bottom: 15px; }
+            .logo { width: 80px; height: 80px; border-radius: 16px; object-fit: cover; border: 1px solid #eee; margin-bottom: 15px; display: none; }
+            .logo.loaded { display: block; }
             h2 { font-family: 'Playfair Display', serif; font-size: 38px; color: #000; margin: 0 0 8px 0; }
             .tagline { color: #666; font-size: 18px; font-style: italic; margin-bottom: 30px; }
             .qr-wrap { display: inline-block; padding: 20px; border-radius: 24px; border: 2px solid #f0f0f0; margin: 10px 0; }
@@ -53,22 +53,33 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
         </head>
         <body>
           <div class="card">
-            ${restaurant.logo_url ? `<img src="${safeLogoUrl}" class="logo" crossorigin="anonymous" />` : ""}
+            ${restaurant.logo_url ? `<img src="${safeLogoUrl}" id="logoImg" class="logo" crossorigin="anonymous" />` : ""}
             <h2>${restaurant.name}</h2>
             ${restaurant.tagline ? `<p class="tagline">${restaurant.tagline}</p>` : ""}
             <div class="qr-wrap">${svgData}</div>
             <p class="scan-text">Scan to view our digital menu</p>
           </div>
           <script>
-            window.onload = () => {
-              const img = document.querySelector('img');
-              if (img && !img.complete) {
-                img.onload = () => { window.print(); window.close(); };
-                img.onerror = () => { window.print(); window.close(); };
-              } else {
-                setTimeout(() => { window.print(); window.close(); }, 500);
-              }
+            const img = document.getElementById('logoImg');
+            const doPrint = () => {
+              setTimeout(() => {
+                window.print();
+                // We don't close immediately to prevent the "printing error" in some browsers
+                window.onafterprint = () => window.close();
+              }, 500);
             };
+
+            if (img) {
+              img.onload = () => { img.classList.add('loaded'); doPrint(); };
+              img.onerror = () => { 
+                alert("The logo image could not be loaded due to security restrictions or an invalid URL. Printing without logo.");
+                doPrint(); 
+              };
+              // Backup timeout in case image hangs
+              setTimeout(doPrint, 3000);
+            } else {
+              doPrint();
+            }
           </script>
         </body>
       </html>
@@ -101,16 +112,16 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
         ctx.font = `${font.includes('italic') ? 'italic' : 'bold'} ${size}px ${font.replace('italic ', '')}`;
       }
       ctx.fillStyle = color;
+      ctx.textAlign = "center";
       ctx.fillText(text, canvas.width / 2, y);
     };
 
+    // Initial Drawing
     ctx.fillStyle = "#FFFFFF";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.strokeStyle = `hsl(${getPrimaryColor()})`;
     ctx.lineWidth = 16;
     drawRoundedRect(40, 40, canvas.width - 80, canvas.height - 80, 60, true);
-
-    ctx.textAlign = "center";
     drawAutoText(restaurant.name, 220, 72, 32, "serif", "#000000");
     if (restaurant.tagline) drawAutoText(restaurant.tagline, 290, 36, 22, "italic sans-serif", "#666666");
 
@@ -120,7 +131,9 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
     const finishAndShare = () => {
       ctx.fillStyle = "#000000";
       ctx.font = "bold 44px sans-serif";
+      ctx.textAlign = "center";
       ctx.fillText("Scan to view our digital menu", canvas.width / 2, 1040);
+      
       canvas.toBlob(async (blob) => {
         if (!blob) return;
         const file = new File([blob], "menu-qr.png", { type: "image/png" });
@@ -142,9 +155,8 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
 
       if (restaurant.logo_url && restaurant.show_qr_logo !== false) {
         const logoImg = new Image();
-        if (!restaurant.logo_url.startsWith('data:')) {
-            logoImg.crossOrigin = "anonymous";
-        }
+        if (!restaurant.logo_url.startsWith('data:')) logoImg.crossOrigin = "anonymous";
+        
         logoImg.onload = () => {
           const s = 110, lx = (canvas.width - s) / 2, ly = y + (500 - s) / 2;
           ctx.fillStyle = "#FFFFFF";
@@ -152,9 +164,15 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           ctx.drawImage(logoImg, lx, ly, s, s);
           finishAndShare();
         };
-        logoImg.onerror = finishAndShare;
+
+        logoImg.onerror = () => {
+          alert("Could not include the logo in the shared image due to image restrictions. Generating with QR only.");
+          finishAndShare();
+        };
         logoImg.src = getSafeImageUrl(restaurant.logo_url);
-      } else finishAndShare();
+      } else {
+        finishAndShare();
+      }
     };
     qrImg.src = qrUrl;
   };
