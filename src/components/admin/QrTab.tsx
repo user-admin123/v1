@@ -16,66 +16,71 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
   const handlePrint = () => {
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
+
     const svgEl = qrRef.current?.querySelector("svg");
     if (!svgEl) return;
     const svgData = new XMLSerializer().serializeToString(svgEl);
 
-    const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || "0 0% 0%";
+    // Get primary color from CSS variables or fallback to black
+    const primaryColor = getComputedStyle(document.documentElement)
+      .getPropertyValue('--primary')
+      .trim() || "0 0% 0%";
 
     printWindow.document.write(`
-      <html><head><title>${restaurant.name}</title>
-      <style>
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap');
-        
-        /* Force single page and remove browser margins */
-        @page { size: auto; margin: 0; }
-        * { margin:0; padding:0; box-sizing:border-box; }
-        
-        body { 
-          display:flex; align-items:center; justify-content:center; 
-          width: 100vw; height: 100vh; 
-          font-family:'Inter',sans-serif; background:#fff;
-          overflow: hidden; /* Prevents 2nd blank page */
-        }
-        
-        .card { 
-          background:white; border-radius:24px; padding:48px; text-align:center; 
-          border: 4px solid hsl(${primaryColor}); max-width: 400px; width: 90%;
-          position: relative;
-        }
-        
-        .logo { 
-          width:70px; height:70px; border-radius:12px; object-fit:cover; 
-          border: 1px solid #ddd; background: white; padding: 2px; margin-bottom: 12px;
-        }
-        
-        h2 { font-family:'Playfair Display',serif; font-size:32px; color:#000; margin-bottom:4px; }
-        .tagline { color:#666; font-size:16px; font-style:italic; margin-bottom:24px; }
-        
-        .qr-wrap {
-          display:inline-block; padding:16px; border-radius:16px; 
-          background:white; border: 1px solid #eee;
-        }
-        
-        .scan-text { margin-top:24px; font-size:18px; font-weight:600; color:#000; }
-      </style></head>
-      <body>
-        <div class="card">
-          ${restaurant.logo_url ? `<img src="${restaurant.logo_url}" class="logo" alt="logo"/>` : ""}
-          <h2>${restaurant.name}</h2>
-          ${restaurant.tagline ? `<p class="tagline">${restaurant.tagline}</p>` : ""}
-          <div class="qr-wrap">${svgData}</div>
-          <p class="scan-text">Scan to view our digital live menu</p>
-        </div>
-        <script>
-          window.onload = () => {
-            setTimeout(() => { 
-              window.print(); 
-              window.close(); 
-            }, 500);
-          };
-        </script>
-      </body></html>
+      <html>
+        <head>
+          <title>${restaurant.name} - QR Menu</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap');
+            @page { size: auto; margin: 0; }
+            * { margin:0; padding:0; box-sizing:border-box; }
+            
+            body { 
+              display:flex; align-items:center; justify-content:center; 
+              width: 100vw; height: 100vh; 
+              font-family:'Inter', sans-serif; background:#fff;
+              overflow: hidden;
+            }
+            
+            .card { 
+              background:white; border-radius:24px; padding:48px; text-align:center; 
+              border: 4px solid hsl(${primaryColor}); max-width: 400px; width: 90%;
+            }
+            
+            .logo { 
+              width:70px; height:70px; border-radius:12px; object-fit:cover; 
+              border: 1px solid #eee; margin-bottom: 12px;
+            }
+            
+            h2 { font-family:'Playfair Display', serif; font-size:32px; color:#000; margin-bottom:4px; }
+            .tagline { color:#666; font-size:16px; font-style:italic; margin-bottom:24px; }
+            
+            .qr-wrap {
+              display:inline-block; padding:16px; border-radius:16px; 
+              background:white; border: 1px solid #eee;
+            }
+            
+            .scan-text { margin-top:24px; font-size:18px; font-weight:600; color:#000; }
+          </style>
+        </head>
+        <body>
+          <div class="card">
+            ${restaurant.logo_url ? `<img src="${restaurant.logo_url}" class="logo" crossorigin="anonymous" />` : ""}
+            <h2>${restaurant.name}</h2>
+            ${restaurant.tagline ? `<p class="tagline">${restaurant.tagline}</p>` : ""}
+            <div class="qr-wrap">${svgData}</div>
+            <p class="scan-text">Scan to view our digital menu</p>
+          </div>
+          <script>
+            window.onload = () => {
+              setTimeout(() => { 
+                window.print();
+                // We don't window.close() immediately to avoid "Print Error" in some browsers
+              }, 800);
+            };
+          </script>
+        </body>
+      </html>
     `);
     printWindow.document.close();
   };
@@ -148,7 +153,6 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           const x = (canvas.width - size) / 2;
           const y = 250 + (500 - size) / 2;
           
-          // Clear QR pixels with white square
           ctx.fillStyle = "#FFFFFF";
           ctx.fillRect(x - 4, y - 4, size + 8, size + 8);
           
@@ -167,6 +171,8 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
     qrImg.src = qrUrl;
   };
 
+  const hasEmbeddedLogo = restaurant.show_qr_logo !== false && restaurant.logo_url;
+
   return (
     <div className="mt-3 flex flex-col items-center gap-4">
       <div className="bg-white p-6 rounded-2xl border relative shadow-sm" ref={qrRef}>
@@ -175,9 +181,9 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           size={160}
           level="H"
           imageSettings={
-            restaurant.show_qr_logo !== false && restaurant.logo_url
+            hasEmbeddedLogo
               ? { 
-                  src: restaurant.logo_url, 
+                  src: restaurant.logo_url!, 
                   height: 38, 
                   width: 38, 
                   excavate: true 
@@ -189,7 +195,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       
       <div className="text-center">
         <p className="text-sm text-muted-foreground">Your menu QR code</p>
-        {restaurant.show_qr_logo !== false && restaurant.logo_url && (
+        {hasEmbeddedLogo && (
           <p className="text-xs text-primary font-medium mt-1">
             Logo embedded ✓
           </p>
