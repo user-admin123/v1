@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Upload, X } from "lucide-react";
+import { cn } from "@/lib/utils"; // shadcn utility for conditional classes
 
 interface Props {
   restaurant: RestaurantInfo;
@@ -11,6 +12,12 @@ interface Props {
   onLogoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   markChanged: () => void;
 }
+
+// Define limits based on your QR/Share image canvas size
+const MAX_LIMITS = {
+  NAME: 40,
+  TAGLINE: 60
+};
 
 const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props) => {
   const update = (partial: Partial<RestaurantInfo>) => {
@@ -20,22 +27,46 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
 
   return (
     <div className="space-y-4 mt-3">
+      {/* Restaurant Name */}
       <div className="space-y-2">
-        <Label>Restaurant Name</Label>
+        <div className="flex justify-between items-center">
+          <Label>Restaurant Name</Label>
+          <span className={cn(
+            "text-[10px] tabular-nums",
+            restaurant.name.length >= MAX_LIMITS.NAME ? "text-destructive font-medium" : "text-muted-foreground"
+          )}>
+            {restaurant.name.length}/{MAX_LIMITS.NAME}
+          </span>
+        </div>
         <Input
           value={restaurant.name}
+          maxLength={MAX_LIMITS.NAME}
           onChange={(e) => update({ name: e.target.value })}
           className="bg-muted/50"
+          placeholder="Enter restaurant name"
         />
       </div>
+
+      {/* Tagline */}
       <div className="space-y-2">
-        <Label>Tagline</Label>
+        <div className="flex justify-between items-center">
+          <Label>Tagline</Label>
+          <span className={cn(
+            "text-[10px] tabular-nums",
+            (restaurant.tagline?.length || 0) >= MAX_LIMITS.TAGLINE ? "text-destructive font-medium" : "text-muted-foreground"
+          )}>
+            {restaurant.tagline?.length || 0}/{MAX_LIMITS.TAGLINE}
+          </span>
+        </div>
         <Input
-          value={restaurant.tagline}
+          value={restaurant.tagline || ""}
+          maxLength={MAX_LIMITS.TAGLINE}
           onChange={(e) => update({ tagline: e.target.value })}
           className="bg-muted/50"
+          placeholder="e.g. Traditional Italian Cuisine"
         />
       </div>
+
       <div className="space-y-2">
         <Label>Logo</Label>
         {restaurant.logo_url && (
@@ -77,10 +108,11 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
           ].map(({ key, label, desc, defaultVal }) => (
             <div key={key} className="flex items-center justify-between">
               <div>
-                <Label className="text-sm">{label}</Label>
+                <Label className="text-sm cursor-pointer" htmlFor={key}>{label}</Label>
                 <p className="text-xs text-muted-foreground">{desc}</p>
               </div>
               <Switch
+                id={key}
                 checked={restaurant[key] ?? defaultVal}
                 onCheckedChange={(v) => update({ [key]: v })}
               />
