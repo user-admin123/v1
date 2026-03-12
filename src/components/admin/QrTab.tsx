@@ -22,6 +22,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
+    // We serialize the SVG to a string to inject it into the new window
     const svgData = new XMLSerializer().serializeToString(svgEl);
     const primaryColor = getPrimaryColor();
 
@@ -39,7 +40,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
             .tagline { color: #666; font-size: 18px; font-style: italic; margin-bottom: 30px; }
             .qr-wrap { display: inline-block; padding: 20px; border-radius: 24px; border: 2px solid #f0f0f0; margin: 10px 0; }
             .qr-wrap svg { width: 250px !important; height: 250px !important; }
-            .scan-text { margin-top: 30px; font-size: 20px; font-weight: 700; }
+            .scan-text { margin-top: 30px; font-size: 20px; font-weight: 700; color: #000; }
           </style>
         </head>
         <body>
@@ -50,7 +51,14 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
             <div class="qr-wrap">${svgData}</div>
             <p class="scan-text">Scan to view our digital menu</p>
           </div>
-          <script>window.onload = () => setTimeout(() => window.print(), 500);</script>
+          <script>
+            window.onload = () => {
+              // Extra timeout ensures images/SVG patterns are fully rendered
+              setTimeout(() => { 
+                window.print();
+              }, 600);
+            };
+          </script>
         </body>
       </html>
     `);
@@ -84,32 +92,43 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       ctx.fillText(text, canvas.width / 2, y);
     };
 
-    // Draw frame
+    // Draw frame and background
     ctx.fillStyle = "#FFFFFF";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.strokeStyle = `hsl(${getPrimaryColor()})`;
     ctx.lineWidth = 16;
     drawRoundedRect(40, 40, canvas.width - 80, canvas.height - 80, 60, true);
 
-    // Header Content
     ctx.textAlign = "center";
     drawAutoText(restaurant.name, 220, 72, 32, "serif", "#000000");
     if (restaurant.tagline) drawAutoText(restaurant.tagline, 290, 36, 22, "italic sans-serif", "#666666");
 
-    const qrUrl = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(svgEl)], { type: "image/svg+xml" }));
+    // Process QR Image
+    const svgString = new XMLSerializer().serializeToString(svgEl);
+    const qrBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+    const qrUrl = URL.createObjectURL(qrBlob);
     const qrImg = new Image();
 
     const finishAndShare = () => {
       ctx.fillStyle = "#000000";
       ctx.font = "bold 44px sans-serif";
-      ctx.fillText("Scan to view our digital menu", canvas.width / 2, 1040);
+      // Final spacing adjustment for "Scan to view"
+      ctx.fillText("Scan to view our digital menu", canvas.width / 2, 1060);
+      
       canvas.toBlob(async (blob) => {
         if (!blob) return;
         const file = new File([blob], "menu-qr.png", { type: "image/png" });
         if (navigator.share && navigator.canShare?.({ files: [file] })) {
-          try { await navigator.share({ files: [file], title: restaurant.name, text: `Check out our digital menu: ${menuUrl}` }); } catch {}
+          try { 
+            await navigator.share({ 
+              files: [file], 
+              title: restaurant.name, 
+              text: `Check out our menu at ${restaurant.name}: ${menuUrl}` 
+            }); 
+          } catch (err) { /* User cancelled share */ }
         }
-      });
+        URL.revokeObjectURL(qrUrl);
+      }, "image/png");
     };
 
     qrImg.onload = () => {
@@ -120,11 +139,11 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       ctx.lineWidth = 4;
       drawRoundedRect(x - 30, y - 30, 560, 560, 40, true);
       ctx.drawImage(qrImg, x, y, 500, 500);
-      URL.revokeObjectURL(qrUrl);
 
+      // Handle Embedded Logo on Canvas
       if (restaurant.logo_url && restaurant.show_qr_logo !== false) {
         const logoImg = new Image();
-        logoImg.crossOrigin = "anonymous";
+        logoImg.crossOrigin = "anonymous"; // CRITICAL for external URLs
         logoImg.src = restaurant.logo_url;
         logoImg.onload = () => {
           const s = 110, lx = (canvas.width - s) / 2, ly = y + (500 - s) / 2;
@@ -134,7 +153,9 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           finishAndShare();
         };
         logoImg.onerror = finishAndShare;
-      } else finishAndShare();
+      } else {
+        finishAndShare();
+      }
     };
     qrImg.src = qrUrl;
   };
@@ -148,17 +169,36 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           value={menuUrl}
           size={160}
           level="H"
-          imageSettings={hasEmbeddedLogo ? { src: restaurant.logo_url!, height: 38, width: 38, excavate: true } : undefined}
+          includeMargin={false}
+          imageSettings={hasEmbeddedLogo ? { 
+            src: restaurant.logo_url!, 
+            height: 34, 
+            width: 34, 
+            excavate: true,
+            //@ts-ignore - crossOrigin is supported by qrcode.react but sometimes missing in types
+            crossOrigin: "anonymous" 
+          } : undefined}
         />
       </div>
+      
       <div className="text-center">
         <p className="text-sm text-muted-foreground">Your menu QR code</p>
-        {hasEmbeddedLogo && <p className="text-xs text-primary font-medium mt-1">Logo embedded ✓</p>}
+        {hasEmbeddedLogo && (
+          <p className="text-xs text-primary font-medium mt-1">Logo embedded ✓</p>
+        )}
       </div>
-      <Button className="w-full" onClick={onViewFullscreen}><Eye className="w-4 h-4 mr-2" />View QR Display</Button>
+
+      <Button className="w-full" onClick={onViewFullscreen}>
+        <Eye className="w-4 h-4 mr-2" />View QR Display
+      </Button>
+
       <div className="flex gap-2 w-full">
-        <Button variant="outline" className="flex-1" onClick={handlePrint}><Printer className="w-4 h-4 mr-2" />Print</Button>
-        <Button variant="outline" className="flex-1" onClick={handleShare}><Share2 className="w-4 h-4 mr-2" />Share Image</Button>
+        <Button variant="outline" className="flex-1" onClick={handlePrint}>
+          <Printer className="w-4 h-4 mr-2" />Print
+        </Button>
+        <Button variant="outline" className="flex-1" onClick={handleShare}>
+          <Share2 className="w-4 h-4 mr-2" />Share Image
+        </Button>
       </div>
     </div>
   );
