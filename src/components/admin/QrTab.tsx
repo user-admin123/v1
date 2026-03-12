@@ -20,45 +20,61 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
     if (!svgEl) return;
     const svgData = new XMLSerializer().serializeToString(svgEl);
 
-    // Get primary color for the print border
     const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || "0 0% 0%";
 
     printWindow.document.write(`
       <html><head><title>${restaurant.name}</title>
       <style>
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap');
-        *{margin:0;padding:0;box-sizing:border-box}
-        @page { size: auto; margin: 0; }
-        body{display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:'Inter',sans-serif;background:#fff}
-        .card{background:white;border-radius:24px;padding:48px;text-align:center;border:4px solid hsl(${primaryColor});max-width:400px;width:90%}
         
-        /* The container and logo styling to ensure QR doesn't show through */
-        .logo-container { position: relative; margin-bottom: 12px; }
+        /* Force single page and remove browser margins */
+        @page { size: auto; margin: 0; }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        
+        body { 
+          display:flex; align-items:center; justify-content:center; 
+          width: 100vw; height: 100vh; 
+          font-family:'Inter',sans-serif; background:#fff;
+          overflow: hidden; /* Prevents 2nd blank page */
+        }
+        
+        .card { 
+          background:white; border-radius:24px; padding:48px; text-align:center; 
+          border: 4px solid hsl(${primaryColor}); max-width: 400px; width: 90%;
+          position: relative;
+        }
+        
         .logo { 
           width:70px; height:70px; border-radius:12px; object-fit:cover; 
-          border: 1px solid #ddd; background: white; padding: 2px; 
+          border: 1px solid #ddd; background: white; padding: 2px; margin-bottom: 12px;
         }
         
-        h2{font-family:'Playfair Display',serif;font-size:32px;color:#000;margin-bottom:4px}
-        .tagline{color:#666;font-size:16px;font-style:italic;margin-bottom:24px}
+        h2 { font-family:'Playfair Display',serif; font-size:32px; color:#000; margin-bottom:4px; }
+        .tagline { color:#666; font-size:16px; font-style:italic; margin-bottom:24px; }
         
-        /* QR Wrap with white background to ensure clarity */
-        .qr-wrap{
+        .qr-wrap {
           display:inline-block; padding:16px; border-radius:16px; 
-          background:white; border: 1px solid #eee; position: relative;
+          background:white; border: 1px solid #eee;
         }
-        .scan-text{margin-top:24px;font-size:18px;font-weight:600;color:#000}
+        
+        .scan-text { margin-top:24px; font-size:18px; font-weight:600; color:#000; }
       </style></head>
-      <body><div class="card">
-        <div class="logo-container">
+      <body>
+        <div class="card">
           ${restaurant.logo_url ? `<img src="${restaurant.logo_url}" class="logo" alt="logo"/>` : ""}
+          <h2>${restaurant.name}</h2>
+          ${restaurant.tagline ? `<p class="tagline">${restaurant.tagline}</p>` : ""}
+          <div class="qr-wrap">${svgData}</div>
+          <p class="scan-text">Scan to view our menu</p>
         </div>
-        <h2>${restaurant.name}</h2>
-        ${restaurant.tagline ? `<p class="tagline">${restaurant.tagline}</p>` : ""}
-        <div class="qr-wrap">${svgData}</div>
-        <p class="scan-text">📱 Scan to view our menu</p>
-      </div>
-      <script>setTimeout(()=>{window.print();},500);</script>
+        <script>
+          window.onload = () => {
+            setTimeout(() => { 
+              window.print(); 
+              window.close(); 
+            }, 500);
+          };
+        </script>
       </body></html>
     `);
     printWindow.document.close();
@@ -79,7 +95,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
     ctx.fillStyle = "#FFFFFF";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw Theme Border on Share Image
+    // Border
     ctx.strokeStyle = `hsl(${primaryColor})`;
     ctx.lineWidth = 20;
     ctx.strokeRect(40, 40, canvas.width - 80, canvas.height - 80);
@@ -95,7 +111,11 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
         const file = new File([blob], "menu-qr.png", { type: "image/png" });
         try {
           if (navigator.share && navigator.canShare?.({ files: [file] })) {
-            await navigator.share({ files: [file], title: restaurant.name });
+            await navigator.share({
+              files: [file],
+              title: restaurant.name,
+              text: `Check out our digital menu at ${restaurant.name}!\nView it here: ${menuUrl}`,
+            });
           }
         } catch (err) { console.log("Share failed", err); }
       }, "image/png");
@@ -124,15 +144,14 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
         logoImg.src = restaurant.logo_url;
         
         logoImg.onload = () => {
-          const size = 115; // Slightly larger than excavation to cover edges
+          const size = 115;
           const x = (canvas.width - size) / 2;
           const y = 250 + (500 - size) / 2;
           
-          // FIX: White square buffer to clear any QR pixels beneath
+          // Clear QR pixels with white square
           ctx.fillStyle = "#FFFFFF";
           ctx.fillRect(x - 4, y - 4, size + 8, size + 8);
           
-          // Logo Border (Theme Color)
           ctx.strokeStyle = `hsl(${primaryColor})`;
           ctx.lineWidth = 2;
           ctx.strokeRect(x - 4, y - 4, size + 8, size + 8);
@@ -150,18 +169,16 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
 
   return (
     <div className="mt-3 flex flex-col items-center gap-4">
-      {/* UI Preview Area */}
-      <div className="bg-white p-6 rounded-2xl border relative" ref={qrRef}>
+      <div className="bg-white p-6 rounded-2xl border relative shadow-sm" ref={qrRef}>
         <QRCodeSVG
           value={menuUrl}
           size={160}
-          level="H" // High error correction makes excavation safer
-          includeMargin={false}
+          level="H"
           imageSettings={
             restaurant.show_qr_logo !== false && restaurant.logo_url
               ? { 
                   src: restaurant.logo_url, 
-                  height: 38, // Slightly larger for cleaner look
+                  height: 38, 
                   width: 38, 
                   excavate: true 
                 }
