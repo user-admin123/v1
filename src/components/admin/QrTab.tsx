@@ -21,7 +21,6 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
     if (!svgEl) return;
     const svgData = new XMLSerializer().serializeToString(svgEl);
 
-    // Get primary color from CSS variables or fallback to black
     const primaryColor = getComputedStyle(document.documentElement)
       .getPropertyValue('--primary')
       .trim() || "0 0% 0%";
@@ -29,38 +28,53 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
     printWindow.document.write(`
       <html>
         <head>
-          <title>${restaurant.name} - QR Menu</title>
+          <title>${restaurant.name}</title>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap');
-            @page { size: auto; margin: 0; }
+            
+            @page { 
+              size: auto; 
+              margin: 0mm; 
+            }
+            
             * { margin:0; padding:0; box-sizing:border-box; }
             
             body { 
-              display:flex; align-items:center; justify-content:center; 
-              width: 100vw; height: 100vh; 
-              font-family:'Inter', sans-serif; background:#fff;
+              display:flex; 
+              align-items:center; 
+              justify-content:center; 
+              width: 100vw; 
+              height: 100vh; 
+              font-family:'Inter', sans-serif; 
+              background:#fff;
               overflow: hidden;
             }
             
             .card { 
-              background:white; border-radius:24px; padding:48px; text-align:center; 
-              border: 4px solid hsl(${primaryColor}); max-width: 400px; width: 90%;
+              background:white; 
+              border-radius:24px; 
+              padding:40px; 
+              text-align:center; 
+              border: 4px solid hsl(${primaryColor}); 
+              max-width: 380px; 
+              width: 90%;
+              margin: auto;
             }
             
             .logo { 
-              width:70px; height:70px; border-radius:12px; object-fit:cover; 
+              width:60px; height:60px; border-radius:12px; object-fit:cover; 
               border: 1px solid #eee; margin-bottom: 12px;
             }
             
-            h2 { font-family:'Playfair Display', serif; font-size:32px; color:#000; margin-bottom:4px; }
-            .tagline { color:#666; font-size:16px; font-style:italic; margin-bottom:24px; }
+            h2 { font-family:'Playfair Display', serif; font-size:28px; color:#000; margin-bottom:4px; }
+            .tagline { color:#666; font-size:14px; font-style:italic; margin-bottom:20px; }
             
             .qr-wrap {
-              display:inline-block; padding:16px; border-radius:16px; 
+              display:inline-block; padding:12px; border-radius:16px; 
               background:white; border: 1px solid #eee;
             }
             
-            .scan-text { margin-top:24px; font-size:18px; font-weight:600; color:#000; }
+            .scan-text { margin-top:20px; font-size:16px; font-weight:600; color:#000; }
           </style>
         </head>
         <body>
@@ -75,9 +89,9 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
             window.onload = () => {
               setTimeout(() => { 
                 window.print();
-                // We don't window.close() immediately to avoid "Print Error" in some browsers
-              }, 800);
+              }, 500);
             };
+            window.onafterprint = () => window.close();
           </script>
         </body>
       </html>
@@ -100,7 +114,6 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
     ctx.fillStyle = "#FFFFFF";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Border
     ctx.strokeStyle = `hsl(${primaryColor})`;
     ctx.lineWidth = 20;
     ctx.strokeRect(40, 40, canvas.width - 80, canvas.height - 80);
@@ -126,7 +139,6 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       }, "image/png");
     };
 
-    // Header Text
     ctx.fillStyle = "#000000";
     ctx.textAlign = "center";
     ctx.font = "bold 48px sans-serif";
