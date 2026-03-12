@@ -28,7 +28,6 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       return new Promise((resolve) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = () => resolve(null);
         reader.readAsDataURL(blob);
       });
     } catch { return null; }
@@ -46,7 +45,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       if (!useFull && restaurant.logo_url) {
         logoData = await getBase64(restaurant.logo_url);
         if (!logoData) {
-          toast.error("Logo unreachable. Using standard QR...", { id: tid, duration: 2500 });
+          toast.error("Logo failed to load. Using full QR code.", { id: tid, duration: 2500 });
           await new Promise(r => setTimeout(r, 2000));
           useFull = true;
         } else {
@@ -59,36 +58,25 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       const svgToUse = useFull ? hiddenFullQrRef.current : qrRef.current;
       const svgData = new XMLSerializer().serializeToString(svgToUse?.querySelector("svg")!);
 
-      const pw = window.open("", "_blank", "width=800,height=900");
-      if (!pw) throw new Error("POPUP_BLOCKED");
+      const pw = window.open("", "_blank");
+      if (!pw) throw new Error();
 
       pw.document.write(`
-        <!DOCTYPE html>
         <html>
           <head>
-            <title>Print QR - ${restaurant.name}</title>
+            <title>${restaurant.name}</title>
             <style>
               @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;700&display=swap');
-              @page { size: auto; margin: 0; }
-              html, body { margin: 0; padding: 0; height: 100vh; width: 100%; overflow: hidden; background: #fff; }
-              body { display: flex; align-items: center; justify-content: center; -webkit-print-color-adjust: exact; }
-              .card { 
-                background: white; 
-                border-radius: 32px; 
-                padding: 50px 40px; 
-                text-align: center; 
-                border: 8px solid hsl(${primary}); 
-                width: 450px; 
-                box-sizing: border-box; 
-                position: relative;
-                page-break-inside: avoid;
-              }
-              .logo { width: 80px; height: 80px; border-radius: 16px; object-fit: cover; border: 3px solid hsl(${primary}); margin-bottom: 12px; padding: 2px; background: white; }
-              h2 { font-family: 'Playfair Display', serif; font-size: 34px; margin: 0 0 6px 0; color: #000; }
-              .tagline { color: #666; font-size: 16px; font-style: italic; margin-bottom: 25px; }
-              .qr-wrap { display: inline-block; padding: 18px; border-radius: 24px; border: 2px solid #f0f0f0; background: white; }
-              .qr-wrap svg { width: 240px !important; height: 240px !important; display: block; }
-              .scan-text { margin-top: 25px; font-size: 18px; font-weight: 700; color: #000; }
+              @page { size: auto; margin: 0mm !important; }
+              html, body { margin: 0; padding: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #fff; font-family: 'Inter', sans-serif; overflow: hidden; }
+              .card { background: white; border-radius: 32px; padding: 60px 40px; text-align: center; border: 8px solid hsl(${primary}); width: 450px; box-sizing: border-box; }
+              /* Restored original logo styles */
+              .logo { width: 80px; height: 80px; border-radius: 16px; object-fit: cover; border: 1px solid #eee; margin-bottom: 15px; }
+              h2 { font-family: 'Playfair Display', serif; font-size: 38px; color: #000; margin: 0 0 8px 0; }
+              .tagline { color: #666; font-size: 18px; font-style: italic; margin-bottom: 30px; }
+              .qr-wrap { display: inline-block; padding: 20px; border-radius: 24px; border: 2px solid #f0f0f0; margin: 10px 0; background: white; }
+              .qr-wrap svg { width: 250px !important; height: 250px !important; }
+              .scan-text { margin-top: 30px; font-size: 20px; font-weight: 700; }
             </style>
           </head>
           <body>
@@ -100,21 +88,18 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
               <p class="scan-text">Scan to view our digital menu</p>
             </div>
             <script>
-              window.onload = function() {
-                setTimeout(function() {
-                  window.focus();
+              window.onload = () => {
+                setTimeout(() => {
                   window.print();
-                }, 400);
+                }, 500);
               };
             </script>
           </body>
         </html>
       `);
       pw.document.close();
-
-    } catch (e: any) {
-      if (e.message === "POPUP_BLOCKED") toast.error("Allow popups to print.");
-      else toast.error("Print failed.");
+    } catch {
+      toast.error("Enable popups to print your QR code.");
     } finally {
       setIsPrinting(false);
     }
@@ -147,7 +132,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           await new Promise((res) => { logoImg!.onload = res; logoImg!.src = data; });
         } else {
           useFull = true;
-          toast.error("Logo failed. Using full QR.", { id: tid, duration: 2000 });
+          toast.error("Logo failed. Using full QR code.", { id: tid, duration: 2000 });
           await new Promise(r => setTimeout(r, 1500));
         }
       }
@@ -185,7 +170,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
         }
       }
     } catch (e: any) {
-      if (e.name !== 'AbortError') toast.error("Sharing failed", { id: tid });
+      if (e.name !== 'AbortError') toast.error("Share failed", { id: tid });
       else toast.dismiss(tid);
     } finally {
       setIsSharing(false);
