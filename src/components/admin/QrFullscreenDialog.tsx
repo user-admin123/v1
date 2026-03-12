@@ -61,7 +61,7 @@ const QrFullscreenDialog = ({ open, onClose, restaurant, menuUrl }: Props) => {
           </div>
           <div className="space-y-1">
             <p className="text-lg font-semibold text-primary">
-              📱 Scan me to get the live menu!
+              Scan me to get the live menu!
             </p>
             <p className="text-xs text-muted-foreground">{menuUrl}</p>
           </div>
