@@ -32,13 +32,15 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap');
             
+            /* 1. REMOVE BROWSER HEADERS/FOOTERS */
             @page { 
               size: auto; 
-              margin: 0mm; 
+              margin: 0mm !important; 
             }
             
             * { margin:0; padding:0; box-sizing:border-box; }
             
+            /* 2. FORCE BODY TO BE EXACTLY ONE PAGE HEIGHT */
             body { 
               display:flex; 
               align-items:center; 
@@ -47,18 +49,19 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
               height: 100vh; 
               font-family:'Inter', sans-serif; 
               background:#fff;
-              overflow: hidden;
+              overflow: hidden !important;
             }
             
             .card { 
               background:white; 
               border-radius:24px; 
-              padding:40px; 
+              padding:32px; /* Slightly reduced padding */
               text-align:center; 
               border: 4px solid hsl(${primaryColor}); 
-              max-width: 380px; 
+              max-width: 350px; /* Reduced width to ensure it fits any printer */
               width: 90%;
               margin: auto;
+              page-break-inside: avoid;
             }
             
             .logo { 
@@ -66,15 +69,15 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
               border: 1px solid #eee; margin-bottom: 12px;
             }
             
-            h2 { font-family:'Playfair Display', serif; font-size:28px; color:#000; margin-bottom:4px; }
-            .tagline { color:#666; font-size:14px; font-style:italic; margin-bottom:20px; }
+            h2 { font-family:'Playfair Display', serif; font-size:26px; color:#000; margin-bottom:4px; }
+            .tagline { color:#666; font-size:14px; font-style:italic; margin-bottom:16px; }
             
             .qr-wrap {
               display:inline-block; padding:12px; border-radius:16px; 
               background:white; border: 1px solid #eee;
             }
             
-            .scan-text { margin-top:20px; font-size:16px; font-weight:600; color:#000; }
+            .scan-text { margin-top:16px; font-size:15px; font-weight:600; color:#000; }
           </style>
         </head>
         <body>
@@ -87,11 +90,17 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           </div>
           <script>
             window.onload = () => {
+              // Give the browser a moment to render the SVG
               setTimeout(() => { 
                 window.print();
               }, 500);
             };
-            window.onafterprint = () => window.close();
+
+            // 3. ONLY CLOSE AFTER PRINT DIALOG DISAPPEARS
+            // This prevents the "Error in printing" message
+            window.onafterprint = () => {
+              window.close();
+            };
           </script>
         </body>
       </html>
