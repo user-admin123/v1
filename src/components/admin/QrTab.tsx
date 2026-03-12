@@ -18,27 +18,49 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
 
   const handlePrint = () => {
     const svgEl = qrRef.current?.querySelector("svg");
+    if (!svgEl) return;
+
     const printWindow = window.open("", "_blank");
-    if (!printWindow || !svgEl) return;
+    if (!printWindow) return;
 
     const svgData = new XMLSerializer().serializeToString(svgEl);
     const primaryColor = getPrimaryColor();
 
-    printWindow.document.write(`
+    const content = `
+      <!DOCTYPE html>
       <html>
         <head>
-          <title>${restaurant.name} - Menu QR</title>
+          <title>Print Menu QR</title>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;700&display=swap');
-            @page { size: auto; margin: 0mm; }
-            body { margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: 'Inter', sans-serif; }
-            .card { background: white; border-radius: 32px; padding: 60px 40px; text-align: center; border: 8px solid hsl(${primaryColor}); width: 450px; box-sizing: border-box; }
-            .logo { width: 80px; height: 80px; border-radius: 16px; object-fit: cover; margin-bottom: 15px; }
-            h2 { font-family: 'Playfair Display', serif; font-size: 38px; margin: 0 0 8px 0; }
+            @page { size: portrait; margin: 0; }
+            body { 
+              margin: 0; 
+              display: flex; 
+              align-items: center; 
+              justify-content: center; 
+              height: 100vh; 
+              background: #fff;
+              font-family: 'Inter', sans-serif;
+            }
+            .card { 
+              background: white; 
+              border-radius: 32px; 
+              padding: 60px 40px; 
+              text-align: center; 
+              border: 8px solid hsl(${primaryColor}); 
+              width: 450px; 
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              box-sizing: border-box; 
+            }
+            .logo { width: 80px; height: 80px; border-radius: 16px; object-fit: cover; margin-bottom: 15px; border: 1px solid #eee; }
+            h2 { font-family: 'Playfair Display', serif; font-size: 38px; margin: 0 0 8px 0; color: #000; }
             .tagline { color: #666; font-size: 18px; font-style: italic; margin-bottom: 30px; }
-            .qr-wrap { display: inline-block; padding: 20px; border-radius: 24px; border: 2px solid #f0f0f0; }
-            .qr-wrap svg { width: 250px !important; height: 250px !important; }
-            .scan-text { margin-top: 30px; font-size: 20px; font-weight: 700; }
+            .qr-wrap { display: inline-block; padding: 20px; border-radius: 24px; border: 2px solid #f0f0f0; background: #fff; }
+            .qr-wrap svg { width: 250px !important; height: 250px !important; display: block; }
+            .scan-text { margin-top: 30px; font-size: 20px; font-weight: 700; color: #000; }
           </style>
         </head>
         <body>
@@ -50,17 +72,20 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
             <p class="scan-text">Scan to view our digital menu</p>
           </div>
           <script>
-            window.onload = () => {
+            // This ensures all images and styles are loaded before printing
+            window.addEventListener('load', () => {
               setTimeout(() => {
-                window.focus();
                 window.print();
-              }, 500);
-            };
-            window.onafterprint = () => window.close();
+                // We remove window.close() as it often interrupts the print process in Chrome/Safari
+              }, 800);
+            });
           </script>
         </body>
       </html>
-    `);
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(content);
     printWindow.document.close();
   };
 
@@ -86,8 +111,8 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       ctx.fillStyle = "#000000";
       ctx.textAlign = "center";
       ctx.font = "bold 44px sans-serif";
-      // Moved Y from 1120 to 1080 to create better spacing from the bottom border
-      ctx.fillText("Scan to view our digital menu", canvas.width / 2, 1080);
+      // Positioned at 1060 for slightly more clearance from the bottom line
+      ctx.fillText("Scan to view our digital menu", canvas.width / 2, 1060);
 
       canvas.toBlob(async (blob) => {
         if (!blob) return;
