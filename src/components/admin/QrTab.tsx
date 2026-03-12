@@ -16,11 +16,11 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
   const getPrimaryColor = () =>
     getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || "0 0% 0%";
 
-  // Helper to handle URL formatting for CORS/Base64
   const getSafeImageUrl = (url: string) => {
     if (!url) return "";
-    // If it's already base64, return as is. If it's a URL, add a cache buster to bypass cached non-cors versions
-    return url.startsWith("data:") ? url : `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`;
+    if (url.startsWith("data:")) return url;
+    // Cache busting prevents the browser from using a cached version without CORS headers
+    return `${url}${url.includes('?') ? '&' : '?'}v=${restaurant.id || '1'}`;
   };
 
   const handlePrint = () => {
@@ -60,12 +60,11 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
             <p class="scan-text">Scan to view our digital menu</p>
           </div>
           <script>
-            // Wait for images to load before printing
             window.onload = () => {
-              const images = document.getElementsByTagName('img');
-              if (images.length > 0) {
-                images[0].onload = () => setTimeout(() => { window.print(); window.close(); }, 500);
-                images[0].onerror = () => setTimeout(() => { window.print(); window.close(); }, 500);
+              const img = document.querySelector('img');
+              if (img && !img.complete) {
+                img.onload = () => { window.print(); window.close(); };
+                img.onerror = () => { window.print(); window.close(); };
               } else {
                 setTimeout(() => { window.print(); window.close(); }, 500);
               }
@@ -105,7 +104,6 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       ctx.fillText(text, canvas.width / 2, y);
     };
 
-    // Draw Background
     ctx.fillStyle = "#FFFFFF";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.strokeStyle = `hsl(${getPrimaryColor()})`;
@@ -144,12 +142,9 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
 
       if (restaurant.logo_url && restaurant.show_qr_logo !== false) {
         const logoImg = new Image();
-        // IMPORTANT: Set crossOrigin BEFORE src
         if (!restaurant.logo_url.startsWith('data:')) {
             logoImg.crossOrigin = "anonymous";
         }
-        logoImg.src = getSafeImageUrl(restaurant.logo_url);
-        
         logoImg.onload = () => {
           const s = 110, lx = (canvas.width - s) / 2, ly = y + (500 - s) / 2;
           ctx.fillStyle = "#FFFFFF";
@@ -157,10 +152,8 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           ctx.drawImage(logoImg, lx, ly, s, s);
           finishAndShare();
         };
-        logoImg.onerror = () => {
-            console.error("Logo failed to load (CORS issue)");
-            finishAndShare();
-        };
+        logoImg.onerror = finishAndShare;
+        logoImg.src = getSafeImageUrl(restaurant.logo_url);
       } else finishAndShare();
     };
     qrImg.src = qrUrl;
