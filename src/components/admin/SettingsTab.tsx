@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Upload, X } from "lucide-react";
-import { cn } from "@/lib/utils"; // shadcn utility for conditional classes
+import { cn } from "@/lib/utils";
 
 interface Props {
   restaurant: RestaurantInfo;
@@ -13,7 +13,6 @@ interface Props {
   markChanged: () => void;
 }
 
-// Define limits based on your QR/Share image canvas size
 const MAX_LIMITS = {
   NAME: 40,
   TAGLINE: 60
@@ -24,6 +23,9 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
     onUpdate({ ...restaurant, ...partial });
     markChanged();
   };
+
+  // Logic to determine if a toggle should be interactive
+  const isLogoAvailable = !!restaurant.logo_url;
 
   return (
     <div className="space-y-4 mt-3">
@@ -67,6 +69,7 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
         />
       </div>
 
+      {/* Logo Section */}
       <div className="space-y-2">
         <Label>Logo</Label>
         {restaurant.logo_url && (
@@ -76,7 +79,7 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
               alt="Logo preview"
               className="w-16 h-16 rounded-full object-cover border-2 border-border/30"
             />
-            <Button size="sm" variant="ghost" onClick={() => update({ logo_url: "" })}>
+            <Button size="sm" variant="ghost" onClick={() => update({ logo_url: "", show_qr_logo: false })}>
               <X className="w-3 h-3 mr-1" /> Remove
             </Button>
           </div>
@@ -101,19 +104,25 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
         <p className="text-sm font-semibold text-foreground mb-3">Customer View Settings</p>
         <div className="space-y-3">
           {[
-            { key: "show_veg_filter" as const, label: "Show Veg/Non-Veg Filter", desc: "Let customers filter by dietary type", defaultVal: false },
-            { key: "show_sold_out" as const, label: "Show Sold Out Items", desc: "Display unavailable items to customers", defaultVal: true },
-            { key: "show_search" as const, label: "Enable Menu Search", desc: "Let customers search items by name", defaultVal: false },
-            { key: "show_qr_logo" as const, label: "Show Logo in QR Code", desc: "Embed restaurant logo inside QR", defaultVal: true },
-          ].map(({ key, label, desc, defaultVal }) => (
-            <div key={key} className="flex items-center justify-between">
+            { key: "show_veg_filter" as const, label: "Show Veg/Non-Veg Filter", desc: "Let customers filter by dietary type", disabled: false },
+            { key: "show_sold_out" as const, label: "Show Sold Out Items", desc: "Display unavailable items to customers", disabled: false },
+            { key: "show_search" as const, label: "Enable Menu Search", desc: "Let customers search items by name", disabled: false },
+            { 
+              key: "show_qr_logo" as const, 
+              label: "Show Logo in QR Code", 
+              desc: isLogoAvailable ? "Embed restaurant logo inside QR" : "Upload a logo first to enable this",
+              disabled: !isLogoAvailable 
+            },
+          ].map(({ key, label, desc, disabled }) => (
+            <div key={key} className={cn("flex items-center justify-between", disabled && "opacity-50")}>
               <div>
-                <Label className="text-sm cursor-pointer" htmlFor={key}>{label}</Label>
+                <Label className={cn("text-sm", !disabled && "cursor-pointer")} htmlFor={key}>{label}</Label>
                 <p className="text-xs text-muted-foreground">{desc}</p>
               </div>
               <Switch
                 id={key}
-                checked={restaurant[key] ?? defaultVal}
+                disabled={disabled}
+                checked={disabled ? false : (restaurant[key] ?? true)}
                 onCheckedChange={(v) => update({ [key]: v })}
               />
             </div>
