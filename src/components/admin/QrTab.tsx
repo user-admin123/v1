@@ -66,8 +66,18 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
               html, body { margin: 0; padding: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #fff; font-family: 'Inter', sans-serif; overflow: hidden; }
               .card { background: white; border-radius: 32px; padding: 60px 40px; text-align: center; border: 8px solid hsl(${primary}); width: 450px; box-sizing: border-box; }
               .logo { width: 80px; height: 80px; border-radius: 16px; object-fit: cover; border: 1px solid #eee; margin-bottom: 15px; }
-              h2 { font-family: 'Playfair Display', serif; font-size: 38px; color: #000; margin: 0 0 8px 0; }
-              .tagline { color: #666; font-size: 18px; font-style: italic; margin-bottom: 30px; }
+              h2 { 
+                font-family: 'Playfair Display', serif; 
+                /* Dynamically scales text based on length so it never wraps awkwardly */
+                font-size: clamp(24px, ${40 / restaurant.name.length * 38}px, 38px); 
+                color: #000; margin: 0 0 8px 0; 
+                line-height: 1.2;
+              }
+              .tagline { 
+                color: #666; 
+                font-size: clamp(14px, ${60 / (restaurant.tagline?.length || 1) * 18}px, 18px); 
+                font-style: italic; margin-bottom: 30px; 
+              }
               .qr-wrap { display: inline-block; padding: 20px; border-radius: 24px; border: 2px solid #f0f0f0; margin: 10px 0; background: white; }
               .qr-wrap svg { width: 250px !important; height: 250px !important; }
               .scan-text { margin-top: 30px; font-size: 20px; font-weight: 700; }
@@ -141,18 +151,32 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
         }, "image/png");
       };
 
-      // Draw Text
+      // --- TEXT SHRINKING LOGIC ---
+      const maxWidth = 780; // Margin safety
+
+      // 1. Draw Restaurant Name with Shrinking
+      let nameFontSize = 72;
+      ctx.font = `bold ${nameFontSize}px sans-serif`;
+      while (ctx.measureText(restaurant.name).width > maxWidth && nameFontSize > 32) {
+        nameFontSize -= 2;
+        ctx.font = `bold ${nameFontSize}px sans-serif`;
+      }
       ctx.fillStyle = "#000000";
-      ctx.font = "bold 72px sans-serif";
       ctx.fillText(restaurant.name, 450, 180);
 
+      // 2. Draw Tagline with Shrinking
       if (restaurant.tagline) {
+        let taglineFontSize = 36;
+        ctx.font = `italic ${taglineFontSize}px sans-serif`;
+        while (ctx.measureText(restaurant.tagline).width > maxWidth && taglineFontSize > 20) {
+          taglineFontSize -= 2;
+          ctx.font = `italic ${taglineFontSize}px sans-serif`;
+        }
         ctx.fillStyle = "#666666";
-        ctx.font = "italic 36px sans-serif";
-        ctx.fillText(restaurant.tagline, 450, 250);
+        ctx.fillText(restaurant.tagline, 450, 255);
       }
 
-      // --- LOGO FAILURE CHECK (MATCHING PRINT LOGIC) ---
+      // --- LOGO & QR LOGIC (PROD STANDARDS) ---
       let logoData = null;
       let useFull = !restaurant.logo_url || restaurant.show_qr_logo === false;
 
