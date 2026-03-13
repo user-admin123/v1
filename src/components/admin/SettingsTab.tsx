@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Upload, X, Loader2, Info } from "lucide-react";
+import { Upload, X, Loader2, Info, Lightbulb } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { fetchAdminUsage } from "@/lib/database";
@@ -25,11 +25,13 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
     async function loadStats() {
       try {
         setLoading(true);
-        // This calls the Supabase View we created
         const data = await fetchAdminUsage(restaurant.id);
         setUsage(data);
       } catch (err) {
-        console.error("Dashboard Fetch Error:", err);
+        // Only log errors in development mode
+        if (import.meta.env.DEV) {
+          console.error("Admin Usage Dashboard Fetch Error:", err);
+        }
       } finally {
         setLoading(false);
       }
@@ -46,7 +48,7 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
 
   return (
     <div className="space-y-4 mt-3">
-      {/* --- RESTAURANT IDENTITY --- */}
+      {/* --- IDENTITY SECTION --- */}
       <div className="space-y-2">
         <div className="flex justify-between items-center">
           <Label>Restaurant Name</Label>
@@ -58,7 +60,7 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
           value={restaurant.name} 
           maxLength={MAX_LIMITS.NAME} 
           onChange={(e) => update({ name: e.target.value })} 
-          className="bg-muted/50" 
+          className="bg-muted/50 focus-visible:ring-primary/20" 
         />
       </div>
 
@@ -73,21 +75,21 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
           value={restaurant.tagline || ""} 
           maxLength={MAX_LIMITS.TAGLINE} 
           onChange={(e) => update({ tagline: e.target.value })} 
-          className="bg-muted/50" 
+          className="bg-muted/50 focus-visible:ring-primary/20" 
         />
       </div>
 
-      {/* --- LOGO UPLOAD --- */}
+      {/* --- LOGO SECTION --- */}
       <div className="space-y-2">
         <Label>Logo</Label>
         {restaurant.logo_url && (
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center gap-3 mb-2 animate-in fade-in zoom-in duration-300">
             <img 
               src={restaurant.logo_url} 
-              className="w-16 h-16 rounded-full object-cover border-2 border-border/30" 
+              className="w-16 h-16 rounded-full object-cover border-2 border-border/30 shadow-sm" 
               alt="Preview"
             />
-            <Button size="sm" variant="ghost" onClick={() => update({ logo_url: "", show_qr_logo: false })}>
+            <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => update({ logo_url: "", show_qr_logo: false })}>
               <X className="w-3 h-3 mr-1" /> Remove
             </Button>
           </div>
@@ -98,9 +100,9 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
         </label>
       </div>
 
-      {/* --- CUSTOMER VIEW TOGGLES --- */}
+      {/* --- SETTINGS TOGGLES --- */}
       <div className="border-t border-border/30 pt-4 mt-4">
-        <p className="text-sm font-semibold mb-3">Customer View Settings</p>
+        <p className="text-sm font-semibold mb-3">Menu Display</p>
         <div className="space-y-3">
           {[
             { key: "show_veg_filter" as const, label: "Show Veg/Non-Veg Filter" },
@@ -109,7 +111,7 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
             { key: "show_qr_logo" as const, label: "Show Logo in QR", disabled: !isLogoAvailable },
           ].map(({ key, label, disabled }) => (
             <div key={key} className={cn("flex items-center justify-between", disabled && "opacity-50")}>
-              <Label htmlFor={key} className="cursor-pointer">{label}</Label>
+              <Label htmlFor={key} className="cursor-pointer text-sm">{label}</Label>
               <Switch 
                 id={key} 
                 disabled={disabled} 
@@ -121,56 +123,42 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
         </div>
       </div>
 
-      {/* --- PERFORMANCE DASHBOARD (ROLLING 7 DAYS) --- */}
+      {/* --- INSIGHTS DASHBOARD --- */}
       <div className="border-t border-border/30 pt-6 mt-6 space-y-4">
         <div className="flex justify-between items-end px-0.5">
           <div>
-            <Label className="text-sm font-bold">Performance</Label>
-            <p className="text-[10px] text-muted-foreground font-medium">Last 7 days scan activity</p>
-          </div>
-          
-          <div className="flex bg-muted/50 p-0.5 rounded-lg border border-border/50">
-             <button className="px-2.5 py-1 text-[10px] font-bold text-muted-foreground/40 cursor-not-allowed">
-               ← Prev Week
-             </button>
+            <Label className="text-sm font-bold">Insights</Label>
+            <p className="text-[10px] text-muted-foreground font-medium">Daily menu scans (Last 7 days)</p>
           </div>
         </div>
 
         {loading ? (
           <div className="flex flex-col items-center justify-center py-10 bg-muted/5 rounded-xl border border-dashed border-border/40">
-            <Loader2 className="w-5 h-5 animate-spin text-primary/50" />
-            <p className="text-[9px] mt-2 text-muted-foreground">Calculating metrics...</p>
+            <Loader2 className="w-5 h-5 animate-spin text-primary/40" />
           </div>
         ) : (
           <>
-            {/* ROLLING CHART: Today is always last */}
-            <div className="bg-muted/20 p-3 rounded-xl border border-border/40">
+            {/* Rolling Chart */}
+            <div className="bg-muted/20 p-3 rounded-xl border border-border/40 shadow-inner">
               <div className="flex justify-between items-center px-1">
                 {Array.from({ length: 7 }).map((_, i) => {
                   const date = new Date();
                   date.setDate(date.getDate() - (6 - i)); 
                   const dayLabel = date.toLocaleDateString('en-US', { weekday: 'short' });
-                  
                   const count = usage?.weekly_data_obj?.[dayLabel] ?? 0;
                   const isToday = i === 6;
 
                   return (
                     <div key={dayLabel} className="group relative flex flex-col items-center gap-1">
-                      {/* Tooltip */}
                       <div className="absolute -top-8 scale-0 group-hover:scale-100 transition-all z-10 bg-slate-900 text-white text-[9px] px-2 py-1 rounded-md shadow-xl border border-white/10">
-                        {count} views
+                        {count} scans
                       </div>
-                      
-                      <span className={cn(
-                        "text-[8px] font-bold uppercase", 
-                        isToday ? "text-primary" : "text-muted-foreground/60"
-                      )}>
+                      <span className={cn("text-[8px] font-bold uppercase", isToday ? "text-primary" : "text-muted-foreground/60")}>
                         {dayLabel}
                       </span>
-
                       <div className={cn(
                         "w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-all",
-                        count > 0 ? "bg-green-500/10 text-green-600 border-green-500/20 shadow-sm" : "border-dashed border-muted-foreground/10 text-muted-foreground/20",
+                        count > 0 ? "bg-green-500/10 text-green-600 border-green-500/20" : "border-dashed border-muted-foreground/10 text-muted-foreground/20",
                         isToday && "ring-2 ring-primary/30 ring-offset-1 ring-offset-background"
                       )}>
                         {count}
@@ -181,17 +169,21 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
               </div>
             </div>
 
-            {/* STORAGE & TRAFFIC CARDS */}
+            {/* Storage & Traffic with Owner Tips */}
             <div className="grid grid-cols-2 gap-3">
-              {/* Storage (512MB) */}
+              {/* Storage */}
               <div className="group relative bg-muted/20 p-3 rounded-xl border border-border/40 hover:bg-muted/30 transition-colors">
-                <div className="absolute bottom-full left-0 mb-2 w-52 scale-0 group-hover:scale-100 transition-all z-20 bg-slate-900 text-white p-2.5 rounded-lg text-[9px] border border-white/10 shadow-2xl">
-                  <p className="font-bold text-primary mb-1 uppercase tracking-tight">Storage Status</p>
-                  Used: {(usage?.storage_mb || 0).toFixed(2)} MB of 512 MB. This includes your database entries and assets.
+                <div className="absolute bottom-full left-0 mb-2 w-56 scale-0 group-hover:scale-100 transition-all z-20 bg-slate-900 text-white p-3 rounded-lg text-[9px] border border-white/10 shadow-2xl">
+                  <p className="font-bold text-primary mb-1 uppercase flex items-center gap-1">
+                    <Lightbulb className="w-3 h-3 text-amber-400" /> Storage Tip
+                  </p>
+                  <p className="leading-relaxed opacity-90">
+                    To save space, remove unused menu items. Current: {(usage?.storage_mb || 0).toFixed(2)}MB/512MB
+                  </p>
                 </div>
                 <div className="flex justify-between items-center mb-1.5">
                   <span className="text-[9px] font-bold uppercase text-muted-foreground/70 flex items-center gap-1">
-                    Storage <Info className="w-3 h-3 text-primary animate-pulse" />
+                    Storage <Info className="w-3 h-3 text-primary" />
                   </span>
                   <span className="text-[10px] font-bold text-primary">
                     {Math.min(((usage?.storage_mb || 0) / 512) * 100, 100).toFixed(1)}%
@@ -199,29 +191,33 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
                 </div>
                 <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
                   <div 
-                    className="bg-primary h-full transition-all duration-700 ease-out" 
+                    className="bg-primary h-full transition-all duration-700" 
                     style={{ width: `${Math.min(((usage?.storage_mb || 0) / 512) * 100, 100)}%` }} 
                   />
                 </div>
               </div>
 
-              {/* Traffic (5GB) */}
+              {/* Traffic */}
               <div className="group relative bg-muted/20 p-3 rounded-xl border border-border/40 hover:bg-muted/30 transition-colors">
-                <div className="absolute bottom-full right-0 mb-2 w-52 scale-0 group-hover:scale-100 transition-all z-20 bg-slate-900 text-white p-2.5 rounded-lg text-[9px] border border-white/10 shadow-2xl text-right">
-                  <p className="font-bold text-blue-400 mb-1 uppercase tracking-tight">Traffic Status</p>
-                  Monthly Usage: {(usage?.egress_gb || 0).toFixed(3)} GB of 5 GB. Resets first of every month.
+                <div className="absolute bottom-full right-0 mb-2 w-56 scale-0 group-hover:scale-100 transition-all z-20 bg-slate-900 text-white p-3 rounded-lg text-[9px] border border-white/10 shadow-2xl text-right">
+                  <p className="font-bold text-blue-400 mb-1 uppercase flex items-center justify-end gap-1">
+                    Traffic Tip <Lightbulb className="w-3 h-3 text-amber-400" />
+                  </p>
+                  <p className="leading-relaxed opacity-90">
+                    Use smaller, compressed images for items to handle more scans every month. Current: {(usage?.egress_gb || 0).toFixed(3)}GB/5GB
+                  </p>
                 </div>
                 <div className="flex justify-between items-center mb-1.5">
                    <span className="text-[10px] font-bold text-blue-500">
                     {Math.min(((usage?.egress_gb || 0) / 5) * 100, 100).toFixed(1)}%
                    </span>
                    <span className="text-[9px] font-bold uppercase text-muted-foreground/70 flex items-center gap-1">
-                    <Info className="w-3 h-3 text-blue-500 animate-pulse" /> Traffic
+                    <Info className="w-3 h-3 text-blue-500" /> Traffic
                   </span>
                 </div>
                 <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
                   <div 
-                    className="bg-blue-500 h-full transition-all duration-700 ease-out" 
+                    className="bg-blue-500 h-full transition-all duration-700" 
                     style={{ width: `${Math.min(((usage?.egress_gb || 0) / 5) * 100, 100)}%` }} 
                   />
                 </div>
