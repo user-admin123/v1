@@ -21,6 +21,28 @@ export function useMenuData() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // --- NEW: DOORBELL LOGIC ---
+  useEffect(() => {
+    async function ringDoorbell() {
+      // Only ring the bell if we have a restaurant ID and haven't rung it this session
+      if (restaurant?.id) {
+        const sessionKey = `doorbell_rung_${restaurant.id}`;
+        const hasRung = sessionStorage.getItem(sessionKey);
+
+        if (!hasRung) {
+          try {
+            await supabase.rpc('log_customer_view', { target_rest_id: restaurant.id });
+            sessionStorage.setItem(sessionKey, 'true');
+          } catch (err) {
+            console.error("Doorbell failed to ring:", err);
+          }
+        }
+      }
+    }
+    ringDoorbell();
+  }, [restaurant?.id]); // Fires as soon as restaurant data is loaded
+  // ---------------------------
+
   // Check auth on mount + listen for changes
   useEffect(() => {
     isAuthenticated().then(setAuthed);
