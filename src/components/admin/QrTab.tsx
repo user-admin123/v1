@@ -22,13 +22,12 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
 
   const getBase64 = async (url: string): Promise<string | null> => {
     try {
-      const res = await fetch(url, { mode: 'cors' });
+      const res = await fetch(url);
       if (!res.ok) return null;
       const blob = await res.blob();
       return new Promise((resolve) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = () => resolve(null);
         reader.readAsDataURL(blob);
       });
     } catch { return null; }
@@ -45,7 +44,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
         logoData = await getBase64(restaurant.logo_url);
         if (!logoData) {
           toast.error("Logo load failed. Generating full QR code...", { position: "top-center", duration: 3000 });
-          await new Promise(r => setTimeout(r, 2500));
+          await new Promise(r => setTimeout(r, 2500)); // Wait for user to read alert
           useFull = true;
         }
       }
@@ -98,24 +97,13 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       if (!ctx) return;
       cvs.width = 900; cvs.height = 1200;
 
-      // 1. Background and Border
       ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, 900, 1200);
       ctx.strokeStyle = `hsl(${getPrimaryColor()})`; ctx.lineWidth = 16;
       if (ctx.roundRect) ctx.roundRect(40, 40, 820, 1120, 60); else ctx.rect(40, 40, 820, 1120);
       ctx.stroke();
 
-      // 2. Restaurant Name
-      ctx.textAlign = "center"; 
-      ctx.fillStyle = "#000"; 
-      ctx.font = "bold 64px sans-serif";
-      ctx.fillText(restaurant.name, 450, 180);
-
-      // 3. Restaurant Tagline (Added changes here)
-      if (restaurant.tagline) {
-        ctx.fillStyle = "#666";
-        ctx.font = "italic 32px sans-serif";
-        ctx.fillText(restaurant.tagline, 450, 240);
-      }
+      ctx.textAlign = "center"; ctx.fillStyle = "#000"; ctx.font = "bold 72px serif";
+      ctx.fillText(restaurant.name, 450, 220);
       
       let logoImg = null;
       let useFull = !restaurant.logo_url || restaurant.show_qr_logo === false;
@@ -134,13 +122,10 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
 
       const svgToUse = useFull ? hiddenFullQrRef.current : qrRef.current;
       const svgStr = new XMLSerializer().serializeToString(svgToUse?.querySelector("svg")!);
-      const qrBlob = new Blob([svgStr], { type: "image/svg+xml" });
-      const qrUrl = URL.createObjectURL(qrBlob);
-      
+      const qrUrl = URL.createObjectURL(new Blob([svgStr], { type: "image/svg+xml" }));
       const qrImg = new Image();
       await new Promise(r => { qrImg.onload = r; qrImg.src = qrUrl; });
 
-      // 4. QR Code Drawing
       ctx.fillStyle = "#fff";
       if (ctx.roundRect) ctx.roundRect(170, 350, 560, 560, 40); else ctx.rect(170, 350, 560, 560);
       ctx.fill();
@@ -151,7 +136,6 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
         ctx.drawImage(logoImg, 395, 575, 110, 110);
       }
 
-      // 5. Footer Text
       ctx.fillStyle = "#000"; ctx.font = "bold 44px sans-serif";
       ctx.fillText("Scan to view our digital menu", 450, 1040);
 
@@ -159,7 +143,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       URL.revokeObjectURL(qrUrl);
 
       if (blob) {
-        const f = new File([blob], "menu-qr.png", { type: "image/png" });
+        const f = new File([blob], "menu.png", { type: "image/png" });
         if (navigator.share && navigator.canShare?.({ files: [f] })) {
           await navigator.share({ 
             files: [f], 
@@ -167,10 +151,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
             text: `View our menu here: ${menuUrl}` 
           });
         } else {
-          const a = document.createElement('a'); 
-          a.href = cvs.toDataURL("image/png"); 
-          a.download = `${restaurant.name}-menu.png`; 
-          a.click();
+          const a = document.createElement('a'); a.href = cvs.toDataURL(); a.download = "menu.png"; a.click();
         }
       }
     } catch (e: any) {
