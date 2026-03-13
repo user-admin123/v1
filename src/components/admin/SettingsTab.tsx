@@ -128,76 +128,95 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
           ))}
         </div>
       </div>
-      {/* --- MINIMALIST SYSTEM INSIGHTS --- */}
+      {/* --- DYNAMIC SYSTEM INSIGHTS --- */}
       <div className="border-t border-border/30 pt-6 mt-6 space-y-4">
         <div className="flex justify-between items-end">
           <div>
             <Label className="text-sm font-bold">Performance</Label>
-            <p className="text-[10px] text-muted-foreground">Weekly customer visits</p>
+            <p className="text-[10px] text-muted-foreground">Customer interactions this week</p>
           </div>
-          <div className="flex gap-1.5">
-            <Button variant="outline" className="h-6 px-2 text-[10px] rounded-md">Last Week</Button>
-            <Button variant="outline" className="h-6 px-2 text-[10px] rounded-md text-primary font-bold bg-primary/5 border-primary/20">This Week</Button>
+          {/* Week Toggle - In a real app, this would change the 'currentWeekOffset' state */}
+          <div className="flex bg-muted/50 p-0.5 rounded-lg border border-border/50">
+            <button className="px-2 py-1 text-[9px] font-bold text-muted-foreground hover:text-foreground transition-colors">Prev</button>
+            <button className="px-2 py-1 text-[9px] font-bold bg-background shadow-sm rounded-md text-primary">Current Week</button>
           </div>
         </div>
 
-        {/* 1. CUSTOMER VISITS (Compact Letter Bubbles) */}
+        {/* 1. DYNAMIC CUSTOMER VISITS (Letter Bubbles) */}
         <div className="bg-muted/20 p-3 rounded-xl border border-border/40">
           <div className="flex justify-between items-center px-1">
-            {[
-              { d: 'M', v: '42', s: 'green' },
-              { d: 'T', v: '28', s: 'yellow' },
-              { d: 'W', v: '15', s: 'red' },
-              { d: 'T', v: '56', s: 'green' },
-              { d: 'F', v: '92', s: 'green' },
-              { d: 'S', v: '0', s: 'upcoming' },
-              { d: 'S', v: '0', s: 'upcoming' },
-            ].map((day, i) => (
-              <div key={i} className="group relative flex flex-col items-center gap-1">
-                {/* Modern Tooltip: Appears on Hover/Click */}
-                <div className="absolute -top-8 scale-0 group-hover:scale-100 group-active:scale-100 transition-all z-10 bg-foreground text-background text-[9px] px-2 py-1 rounded font-bold shadow-xl pointer-events-none">
-                  {day.s === 'upcoming' ? 'No Data' : `${day.v} visits`}
+            {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, i) => {
+              // DYNAMIC LOGIC: Get current day of week (0=Sun, 1=Mon, etc.)
+              const today = new Array(0, 1, 2, 3, 4, 5, 6)[new Date().getDay()];
+              const dayIndex = i + 1; // Adjusting so Monday is 1
+              const isUpcoming = dayIndex > (today === 0 ? 7 : today); // Handle Sunday as 7
+              
+              // This is where you will eventually map your Supabase data
+              const mockValue = Math.floor(Math.random() * 60) + 10; 
+              const status = isUpcoming ? 'upcoming' : mockValue > 40 ? 'green' : 'yellow';
+
+              return (
+                <div key={i} className="group relative flex flex-col items-center gap-1">
+                  {/* Modern Tooltip */}
+                  <div className="absolute -top-8 scale-0 group-hover:scale-100 transition-all z-10 bg-foreground text-background text-[9px] px-2 py-1 rounded font-bold shadow-xl whitespace-nowrap">
+                    {isUpcoming ? 'Upcoming' : `${mockValue} visits`}
+                  </div>
+                  
+                  <span className="text-[9px] font-bold text-muted-foreground/60">{day}</span>
+                  <div className={cn(
+                    "w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-all",
+                    status === 'green' && "bg-green-500/10 text-green-600 border-green-500/20 shadow-sm shadow-green-500/5",
+                    status === 'yellow' && "bg-amber-500/10 text-amber-600 border-amber-500/20",
+                    status === 'upcoming' && "border-dashed border-muted-foreground/10 text-muted-foreground/20"
+                  )}>
+                    {day}
+                  </div>
                 </div>
-                
-                <span className="text-[9px] font-bold text-muted-foreground/60">{day.d}</span>
-                <div className={cn(
-                  "w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-colors",
-                  day.s === 'green' && "bg-green-500/10 text-green-600 border-green-500/20",
-                  day.s === 'yellow' && "bg-amber-500/10 text-amber-600 border-amber-500/20",
-                  day.s === 'red' && "bg-destructive/10 text-destructive border-destructive/20",
-                  day.s === 'upcoming' && "border-dashed border-muted-foreground/10 text-muted-foreground/20"
-                )}>
-                  {day.d}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
-        {/* 2 & 3. COMPACT HEALTH BARS (Side-by-Side) */}
+        {/* 2 & 3. COMPACT HEALTH BARS WITH INFO TOOLTIPS */}
         <div className="grid grid-cols-2 gap-3">
-          {/* Storage (512MB) */}
-          <div className="bg-muted/20 p-3 rounded-xl border border-border/40">
+          {/* Storage Tooltip Wrapper */}
+          <div className="group relative bg-muted/20 p-3 rounded-xl border border-border/40 hover:bg-muted/30 transition-colors">
+            {/* Info Popup */}
+            <div className="absolute bottom-full left-0 mb-2 w-40 scale-0 group-hover:scale-100 transition-all z-20 bg-slate-900 text-white p-2 rounded-lg text-[9px] leading-relaxed shadow-2xl border border-white/10">
+              <p className="font-bold text-primary mb-1">Menu Capacity</p>
+              Your 512MB limit covers ~1,000 items. Delete old photos if you get close to 100%.
+            </div>
+
             <div className="flex justify-between items-center mb-1.5">
-              <span className="text-[9px] font-bold uppercase text-muted-foreground/70">Storage</span>
-              <span className="text-[10px] font-bold">12%</span>
+              <span className="text-[9px] font-bold uppercase text-muted-foreground/70 flex items-center gap-1">
+                Storage ⓘ
+              </span>
+              <span className="text-[10px] font-bold text-primary">12%</span>
             </div>
             <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
               <div className="bg-primary h-full rounded-full" style={{ width: '12%' }} />
             </div>
-            <p className="text-[9px] text-muted-foreground mt-1.5">15MB of 512MB used</p>
+            <p className="text-[8px] text-muted-foreground mt-1.5">15MB used of 512MB</p>
           </div>
 
-          {/* Traffic (5GB) */}
-          <div className="bg-muted/20 p-3 rounded-xl border border-border/40">
+          {/* Traffic Tooltip Wrapper */}
+          <div className="group relative bg-muted/20 p-3 rounded-xl border border-border/40 hover:bg-muted/30 transition-colors">
+            {/* Info Popup */}
+            <div className="absolute bottom-full right-0 mb-2 w-44 scale-0 group-hover:scale-100 transition-all z-20 bg-slate-900 text-white p-2 rounded-lg text-[9px] leading-relaxed shadow-2xl border border-white/10 text-right">
+              <p className="font-bold text-blue-400 mb-1 text-right">Visitor Data</p>
+              Resets every 30 days. Use web links for photos (not heavy uploads) to keep this low!
+            </div>
+
             <div className="flex justify-between items-center mb-1.5">
-              <span className="text-[9px] font-bold uppercase text-muted-foreground/70">Traffic</span>
               <span className="text-[10px] font-bold text-blue-500">4%</span>
+              <span className="text-[9px] font-bold uppercase text-muted-foreground/70 flex items-center gap-1 text-right">
+                ⓘ Traffic
+              </span>
             </div>
             <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
-              <div className="bg-blue-500 h-full rounded-full" style={{ width: '4%' }} />
+              <div className="bg-blue-500 h-full rounded-full transition-all" style={{ width: '4%' }} />
             </div>
-            <p className="text-[9px] text-muted-foreground mt-1.5">0.2GB of 5GB used</p>
+            <p className="text-[8px] text-muted-foreground mt-1.5 text-right">0.2GB used of 5GB</p>
           </div>
         </div>
       </div>
