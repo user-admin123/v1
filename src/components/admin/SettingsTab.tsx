@@ -129,6 +129,71 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
         </div>
       </div>
     </div>
+    {/* --- NEW INSIGHTS SECTION --- */}
+      <div className="border-t border-border/30 pt-6 mt-6 space-y-4">
+        <div>
+          <p className="text-sm font-semibold text-foreground">System Health & Insights</p>
+          <p className="text-xs text-muted-foreground">Monitor your app usage and performance</p>
+        </div>
+
+        {/* 1. Weekly Traffic Lights */}
+        <div className="bg-muted/30 p-4 rounded-xl border border-border/50">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">Customer Traffic (7 Days)</p>
+          <div className="flex justify-between items-center px-1">
+            {[
+              { d: 'M', v: 45, s: 'yellow' },
+              { d: 'T', v: 12, s: 'red' },
+              { d: 'W', v: 88, s: 'green' },
+              { d: 'T', v: 65, s: 'green' },
+              { d: 'F', v: 120, s: 'green' },
+              { d: 'S', v: 0, s: 'upcoming' },
+              { d: 'S', v: 0, s: 'upcoming' },
+            ].map((item, i) => (
+              <div key={i} className="flex flex-col items-center gap-1.5">
+                <span className="text-[10px] font-bold text-muted-foreground/70">{item.d}</span>
+                <div 
+                  className={cn(
+                    "w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold transition-all border",
+                    item.s === 'green' && "bg-green-500/10 text-green-600 border-green-500/20",
+                    item.s === 'yellow' && "bg-amber-500/10 text-amber-600 border-amber-500/20",
+                    item.s === 'red' && "bg-destructive/10 text-destructive border-destructive/20",
+                    item.s === 'upcoming' && "bg-transparent text-muted-foreground/30 border-dashed border-muted-foreground/20"
+                  )}
+                >
+                  {item.s !== 'upcoming' ? item.v : ''}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 2. Health Bars */}
+        <div className="grid gap-3">
+          {/* Storage Bar */}
+          <div className="bg-muted/30 p-3 rounded-xl border border-border/50">
+            <div className="flex justify-between items-end mb-2">
+              <Label className="text-xs">Menu Capacity</Label>
+              <span className="text-[10px] font-bold text-primary">12% Used</span>
+            </div>
+            <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+              <div className="bg-primary h-full rounded-full transition-all" style={{ width: '12%' }} />
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-2">Space for roughly 450 more dishes.</p>
+          </div>
+
+          {/* Traffic Bar */}
+          <div className="bg-muted/30 p-3 rounded-xl border border-border/50">
+            <div className="flex justify-between items-end mb-2">
+              <Label className="text-xs">Monthly Data Traffic</Label>
+              <span className="text-[10px] font-bold text-blue-500">2.4k / 50k views</span>
+            </div>
+            <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+              <div className="bg-blue-500 h-full rounded-full transition-all" style={{ width: '5%' }} />
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-2">Free traffic limit resets in 18 days.</p>
+          </div>
+        </div>
+      </div>
   );
 };
 
