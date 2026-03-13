@@ -42,7 +42,7 @@ export async function fetchMenuItems(): Promise<MenuItem[]> {
 
 export async function fetchRestaurant(): Promise<RestaurantInfo> {
   logger.db("SELECT", "restaurant", "fetching first row with .limit(1)");
-  // Use .limit(1) instead of .maybeSingle() to avoid error when multiple rows exist
+  
   const { data, error } = await supabase
     .from("restaurant")
     .select("*")
@@ -55,14 +55,14 @@ export async function fetchRestaurant(): Promise<RestaurantInfo> {
 
   if (data && data.length > 0) {
     const rest = data[0] as RestaurantInfo;
-    logger.db("SELECT", "restaurant", `got row: ${rest.name}`);
+    logger.db("SELECT", "restaurant", `got row: ${rest.name} (ID: ${rest.id})`);
     saveLocalRestaurant(rest);
     return rest;
   }
 
   logger.warn("No restaurant row found, returning blank");
-  const blank: RestaurantInfo = { name: "", tagline: "", logo_url: "" };
-  return blank;
+  // If no ID exists, the Doorbell in useMenuData will simply stay quiet (correct behavior)
+  return { name: "", tagline: "", logo_url: "" };
 }
 
 // ---------- Save helpers ----------
