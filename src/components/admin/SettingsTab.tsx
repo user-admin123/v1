@@ -128,8 +128,7 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
           ))}
         </div>
       </div>
-    </div>
-    {/* --- NEW INSIGHTS SECTION --- */}
+      {/* --- NEW INSIGHTS SECTION --- */}
       <div className="border-t border-border/30 pt-6 mt-6 space-y-4">
         <div>
           <p className="text-sm font-semibold text-foreground">System Health & Insights</p>
@@ -194,6 +193,7 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
           </div>
         </div>
       </div>
+    </div>
   );
 };
 
