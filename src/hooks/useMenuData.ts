@@ -23,30 +23,21 @@ export function useMenuData() {
 
  // --- PRODUCTION DOORBELL LOGIC ---
   useEffect(() => {
-    async function ringDoorbell() {
-      if (restaurant?.id) {
-        const sessionKey = `doorbell_rung_${restaurant.id}`;
-        const hasRung = sessionStorage.getItem(sessionKey);
-
-        if (!hasRung) {
-          try {
-            const { error: rpcError } = await supabase.rpc('log_customer_view', { 
-              target_rest_id: restaurant.id 
-            });
-            
-            // If RPC returns an error object, handle it silently
-            if (rpcError) throw rpcError;
-
-            sessionStorage.setItem(sessionKey, 'true');
-          } catch (err) {
-            // ONLY logs during development mode
-            if (process.env.NODE_ENV === 'development') {
-              console.error("DEBUG: Doorbell RPC failed:", err);
-            }
-          }
-        }
+    const ringDoorbell = async () => {
+      const restId = restaurant?.id;
+      const sessionKey = `doorbell_rung_${restId}`;         
+      // Guard clauses
+      if (!restId || sessionStorage.getItem(sessionKey)) return;
+      const { error: rpcError } = await supabase.rpc('log_customer_view', { 
+        target_rest_id: restId 
+      });
+      if (rpcError) {
+        // Vite-specific dev logging
+        if (import.meta.env.DEV) console.error("Doorbell Error:", rpcError);
+        return; 
       }
-    }
+      sessionStorage.setItem(sessionKey, 'true');
+    };
     ringDoorbell();
   }, [restaurant?.id]);
 
