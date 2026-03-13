@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Upload, X, Loader2, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
-import { fetchAdminUsage } from "@/lib/db";
+import { fetchAdminUsage } from "@/lib/database";
 
 interface Props {
   restaurant: RestaurantInfo;
