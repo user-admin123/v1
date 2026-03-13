@@ -206,7 +206,7 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
                     <Lightbulb className="w-3 h-3 text-amber-400" /> Storage Tip
                   </p>
                   <p className="leading-tight opacity-90">
-                    Remove unused items to save space. <br/>
+                    Keep your storage low by removing unused menu items. <br/>
                     Used: <span className="text-primary font-bold">{(usage?.storage_mb || 0).toFixed(2)}MB</span> / 512MB
                   </p>
                 </div>
@@ -235,7 +235,7 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
                     <Lightbulb className="w-3 h-3 text-amber-400" /> Traffic Tip
                   </p>
                   <p className="leading-tight opacity-90">
-                    Use small images for faster scans. <br/>
+                    Using compressed and low size images allows more scans every month. <br/>
                     Used: <span className="text-blue-400 font-bold">{(usage?.egress_gb || 0).toFixed(3)}GB</span> / 5GB
                   </p>
                 </div>
