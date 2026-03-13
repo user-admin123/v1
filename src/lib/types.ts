@@ -21,6 +21,7 @@ export interface MenuItem {
 }
 
 export interface RestaurantInfo {
+  id?: string;
   name: string;
   tagline: string;
   logo_url: string;
