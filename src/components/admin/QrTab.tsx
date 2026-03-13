@@ -44,7 +44,8 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       if (!useFull && restaurant.logo_url) {
         logoData = await getBase64(restaurant.logo_url);
         if (!logoData) {
-          toast.error("Logo load failed. Generating full QR code...");
+          toast.error("Logo load failed. Generating full QR code...", { position: "top-center" });
+          await new Promise(r => setTimeout(r, 2000));
           useFull = true;
         }
       }
@@ -56,7 +57,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
 
       const pw = window.open("", "_blank");
       if (!pw) {
-        toast.error("Popup blocked. Please allow popups to print.");
+        toast.error("Popup blocked. Please allow popups to print.", { position: "top-center" });
         return;
       }
 
@@ -87,15 +88,19 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
             </div>
             <script>
               window.onload = () => {
-                setTimeout(() => { window.print(); }, 500);
+                setTimeout(() => { 
+                  window.print(); 
+                }, 500);
               };
+              // This ensures the window closes ONLY after the print dialog is dismissed
+              window.onafterprint = () => { window.close(); };
             </script>
           </body>
         </html>
       `);
       pw.document.close();
     } catch (error) {
-      toast.error("Print failed to initialize.");
+      toast.error("Failed to initialize print.", { position: "top-center" });
     } finally {
       setIsPrinting(false);
     }
@@ -117,6 +122,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
 
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, 900, 1200);
+
       ctx.strokeStyle = `hsl(${primaryColor})`;
       ctx.lineWidth = 16;
       if (ctx.roundRect) ctx.roundRect(40, 40, 820, 1120, 60); else ctx.rect(40, 40, 820, 1120);
@@ -126,7 +132,6 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       let currentY = 180;
       const maxWidth = 780;
 
-      // Draw Name
       let nameFontSize = 72;
       ctx.font = `bold ${nameFontSize}px sans-serif`;
       while (ctx.measureText(restaurant.name).width > maxWidth && nameFontSize > 32) {
@@ -138,7 +143,6 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
 
       currentY += 70;
 
-      // Draw Tagline
       if (restaurant.tagline) {
         let taglineFontSize = 36;
         ctx.font = `italic ${taglineFontSize}px sans-serif`;
@@ -155,7 +159,6 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
 
       const qrY = currentY + 30;
 
-      // Logic to finalize sharing
       const finishAndShare = () => {
         ctx.fillStyle = "#000000";
         ctx.font = "bold 44px sans-serif";
@@ -178,7 +181,9 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
                 a.click();
               }
             } catch (err) {
-              if ((err as any).name !== 'AbortError') throw err;
+              if ((err as any).name !== 'AbortError') {
+                toast.error("Share action interrupted.", { position: "top-center" });
+              }
             }
           }
           setIsSharing(false);
@@ -196,7 +201,9 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       }
 
       const svgToUse = useFull ? hiddenFullQrRef.current : qrRef.current;
-      const svgData = new XMLSerializer().serializeToString(svgToUse?.querySelector("svg")!);
+      const svgElement = svgToUse?.querySelector("svg");
+      if (!svgElement) throw new Error("SVG not found");
+      const svgData = new XMLSerializer().serializeToString(svgElement);
       const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
       
       qrUrl = URL.createObjectURL(svgBlob);
@@ -205,8 +212,11 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       qrImg.onload = () => {
         ctx.drawImage(qrImg, 200, qrY, 500, 500);
         
-        // REVOKE IMMEDIATELY AFTER DRAWING
-        if (qrUrl) URL.revokeObjectURL(qrUrl);
+        // Memory Cleanup: Revoke URL after it's drawn to canvas
+        if (qrUrl) {
+          URL.revokeObjectURL(qrUrl);
+          qrUrl = null; 
+        }
 
         if (logoData) {
           const logoImg = new Image();
@@ -215,7 +225,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
             const x = 390;
             const y = qrY + 190;
             ctx.fillStyle = "#ffffff";
-            ctx.fillRect(x - 10, y - 10, size + 20, size + 20); // Added white buffer
+            ctx.fillRect(x - 10, y - 10, size + 20, size + 20); // White buffer for scannability
             ctx.drawImage(logoImg, x, y, size, size);
             finishAndShare();
           };
@@ -228,9 +238,11 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       qrImg.src = qrUrl;
 
     } catch (e: any) {
-      // CLEANUP ON ERROR
+      // Memory Cleanup on failure
       if (qrUrl) URL.revokeObjectURL(qrUrl);
-      if (e.name !== 'AbortError') toast.error("Share failed");
+      if (e.name !== 'AbortError') {
+        toast.error("Share failed to process.", { position: "top-center" });
+      }
       setIsSharing(false);
     }
   };
