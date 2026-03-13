@@ -3,8 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Upload, X } from "lucide-react";
+import { Upload, X, Loader2, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useState, useEffect } from "react";
+import { fetchAdminUsage } from "@/lib/database"; // Ensure this matches your db file path
 
 interface Props {
   restaurant: RestaurantInfo;
@@ -19,6 +21,28 @@ const MAX_LIMITS = {
 };
 
 const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props) => {
+  // --- DATABASE INTEGRATION STATE ---
+  const [usage, setUsage] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadUsageStats() {
+      try {
+        setLoading(true);
+        const data = await fetchAdminUsage(restaurant.id);
+        setUsage(data);
+      } catch (err) {
+        console.error("Failed to fetch usage metrics:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (restaurant.id) {
+      loadUsageStats();
+    }
+  }, [restaurant.id]);
+
   const update = (partial: Partial<RestaurantInfo>) => {
     onUpdate({ ...restaurant, ...partial });
     markChanged();
@@ -128,114 +152,95 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
           ))}
         </div>
       </div>
+
       {/* --- DYNAMIC SYSTEM INSIGHTS V3 --- */}
       <div className="border-t border-border/30 pt-6 mt-6 space-y-4">
         <div className="flex justify-between items-end px-0.5">
           <div>
             <Label className="text-sm font-bold">Performance</Label>
-            <p className="text-[10px] text-muted-foreground font-medium">How many customers viewed your menu</p>
-          </div>
-          
-          {/* Navigation - Logic: Only show 'Next' if we aren't on current week */}
-          <div className="flex bg-muted/50 p-0.5 rounded-lg border border-border/50 shadow-sm transition-all">
-            <button 
-              className="px-2.5 py-1 text-[10px] font-bold text-muted-foreground hover:text-foreground hover:bg-background rounded-md transition-all active:scale-95"
-              onClick={() => {}} 
-            >
-              ← Prev Week
-            </button>
-            
-            {/* Logic: Hide next button if on current week */}
-            {false && ( // Change 'false' to 'weekOffset < 0' in your real logic
-              <>
-                <div className="w-[1px] h-3 bg-border/50 self-center mx-0.5" />
-                <button 
-                  className="px-2.5 py-1 text-[10px] font-bold text-muted-foreground hover:text-foreground hover:bg-background rounded-md transition-all active:scale-95"
-                  onClick={() => {}} 
-                >
-                  Next →
-                </button>
-              </>
-            )}
+            <p className="text-[10px] text-muted-foreground font-medium">Real-time menu usage & analytics</p>
           </div>
         </div>
 
-        {/* 1. DYNAMIC CUSTOMER VISITS */}
-        <div className="bg-muted/20 p-3 rounded-xl border border-border/40">
-          <div className="flex justify-between items-center px-1">
-            {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, i) => {
-              const today = new Date().getDay();
-              const currentDayIndex = today === 0 ? 7 : today; 
-              const isUpcoming = (i + 1) > currentDayIndex;
-              
-              const mockValue = isUpcoming ? 0 : 45; 
-              const status = isUpcoming ? 'upcoming' : mockValue > 40 ? 'green' : 'yellow';
-
-              return (
-                <div key={i} className="group relative flex flex-col items-center gap-1">
-                  <div className="absolute -top-8 scale-0 group-hover:scale-100 transition-all z-10 bg-slate-900 text-white text-[9px] px-2 py-1 rounded-md font-bold shadow-xl whitespace-nowrap border border-white/10">
-                    {isUpcoming ? 'Soon' : `${mockValue} visitors`}
-                  </div>
+        {loading ? (
+          /* SPINNER SECTION */
+          <div className="flex flex-col items-center justify-center py-10 bg-muted/10 rounded-xl border border-dashed border-border/40">
+            <Loader2 className="w-5 h-5 animate-spin text-primary/60" />
+            <p className="text-[10px] mt-2 text-muted-foreground animate-pulse">Fetching database stats...</p>
+          </div>
+        ) : (
+          <>
+            {/* 1. DYNAMIC CUSTOMER VISITS (FROM DB) */}
+            <div className="bg-muted/20 p-3 rounded-xl border border-border/40">
+              <div className="flex justify-between items-center px-1">
+                {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, i) => {
+                  // data comes from usage.weekly_data array from SQL view
+                  const count = usage?.weekly_data?.[i] ?? 0;
+                  const hasData = usage?.weekly_data && i < usage.weekly_data.length;
                   
-                  <span className="text-[9px] font-bold text-muted-foreground/60">{day}</span>
-                  <div className={cn(
-                    "w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-all cursor-default",
-                    status === 'green' && "bg-green-500/10 text-green-600 border-green-500/20 shadow-sm shadow-green-500/5",
-                    status === 'yellow' && "bg-amber-500/10 text-amber-600 border-amber-500/20",
-                    status === 'upcoming' && "border-dashed border-muted-foreground/10 text-muted-foreground/20"
-                  )}>
-                    {day}
-                  </div>
+                  return (
+                    <div key={i} className="group relative flex flex-col items-center gap-1">
+                      <div className="absolute -top-8 scale-0 group-hover:scale-100 transition-all z-10 bg-slate-900 text-white text-[9px] px-2 py-1 rounded-md font-bold shadow-xl whitespace-nowrap border border-white/10">
+                        {count} visitors
+                      </div>
+                      
+                      <span className="text-[9px] font-bold text-muted-foreground/60">{day}</span>
+                      <div className={cn(
+                        "w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-all cursor-default",
+                        hasData && count > 0 ? "bg-green-500/10 text-green-600 border-green-500/20 shadow-sm shadow-green-500/5" : 
+                        hasData && count === 0 ? "bg-amber-500/5 text-amber-600/50 border-amber-500/10" :
+                        "border-dashed border-muted-foreground/10 text-muted-foreground/20"
+                      )}>
+                        {count > 99 ? '99+' : count}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 2 & 3. DYNAMIC HEALTH BARS */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Storage Bar (512MB Limit) */}
+              <div className="group relative bg-muted/20 p-3 rounded-xl border border-border/40 hover:bg-muted/30 transition-colors cursor-help">
+                <div className="flex justify-between items-center mb-1.5">
+                  <span className="text-[9px] font-bold uppercase text-muted-foreground/70 flex items-center gap-1">
+                    Storage <Info className="w-2.5 h-2.5 text-primary" />
+                  </span>
+                  <span className="text-[10px] font-bold text-primary">
+                    {Math.min(((usage?.storage_mb || 0) / 512) * 100, 100).toFixed(1)}%
+                  </span>
                 </div>
-              );
-            })}
-          </div>
-        </div>
+                <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+                  <div 
+                    className="bg-primary h-full rounded-full transition-all duration-700" 
+                    style={{ width: `${Math.min(((usage?.storage_mb || 0) / 512) * 100, 100)}%` }} 
+                  />
+                </div>
+                <p className="text-[8px] text-muted-foreground mt-1.5 font-medium italic underline decoration-primary/20">512MB Free Limit</p>
+              </div>
 
-        {/* 2 & 3. COMPACT HEALTH BARS */}
-        <div className="grid grid-cols-2 gap-3">
-          {/* Storage (512MB) */}
-          <div className="group relative bg-muted/20 p-3 rounded-xl border border-border/40 hover:bg-muted/30 transition-colors cursor-help">
-            <div className="absolute bottom-full left-0 mb-2 w-52 scale-0 group-hover:scale-100 transition-all z-20 bg-slate-900 text-white p-2.5 rounded-lg text-[9px] shadow-2xl border border-white/10">
-              <p className="font-bold text-primary mb-1 uppercase tracking-tight">What is Storage?</p>
-              This is the total space for your menu data.
-              <p className="mt-2 font-bold text-white/90 underline">How to free up space:</p>
-              Simply delete menu items you no longer sell. This removes the item and its photo data instantly.
+              {/* Traffic Bar (5GB Limit) */}
+              <div className="group relative bg-muted/20 p-3 rounded-xl border border-border/40 hover:bg-muted/30 transition-colors cursor-help">
+                <div className="flex justify-between items-center mb-1.5">
+                  <span className="text-[10px] font-bold text-blue-500">
+                    {Math.min(((usage?.egress_gb || 0) / 5) * 100, 100).toFixed(1)}%
+                  </span>
+                  <span className="text-[9px] font-bold uppercase text-muted-foreground/70 flex items-center gap-1 text-right">
+                    <Info className="w-2.5 h-2.5 text-blue-500" /> Traffic
+                  </span>
+                </div>
+                <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+                  <div 
+                    className="bg-blue-500 h-full rounded-full transition-all duration-700" 
+                    style={{ width: `${Math.min(((usage?.egress_gb || 0) / 5) * 100, 100)}%` }} 
+                  />
+                </div>
+                <p className="text-[8px] text-muted-foreground mt-1.5 text-right font-medium italic underline decoration-blue-500/20">5GB Monthly Limit</p>
+              </div>
             </div>
-
-            <div className="flex justify-between items-center mb-1.5">
-              <span className="text-[9px] font-bold uppercase text-muted-foreground/70 flex items-center gap-1">
-                Storage <span className="text-primary font-black">ⓘ</span>
-              </span>
-              <span className="text-[10px] font-bold text-primary">12%</span>
-            </div>
-            <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
-              <div className="bg-primary h-full rounded-full transition-all duration-700" style={{ width: '12%' }} />
-            </div>
-            <p className="text-[8px] text-muted-foreground mt-1.5 font-medium italic underline decoration-primary/20">512MB Free Limit</p>
-          </div>
-
-          {/* Traffic (5GB) */}
-          <div className="group relative bg-muted/20 p-3 rounded-xl border border-border/40 hover:bg-muted/30 transition-colors cursor-help">
-            <div className="absolute bottom-full right-0 mb-2 w-52 scale-0 group-hover:scale-100 transition-all z-20 bg-slate-900 text-white p-2.5 rounded-lg text-[9px] shadow-2xl border border-white/10 text-right">
-              <p className="font-bold text-blue-400 mb-1 tracking-tight uppercase">What is Traffic?</p>
-              This is the amount of data sent to customers when they scan your QR code.
-              <p className="mt-2 font-bold text-white/90 underline text-right">How to control this:</p>
-              Usage resets every month. To keep it low, try not to upload massive, high-resolution photos.
-            </div>
-
-            <div className="flex justify-between items-center mb-1.5">
-              <span className="text-[10px] font-bold text-blue-500">4%</span>
-              <span className="text-[9px] font-bold uppercase text-muted-foreground/70 flex items-center gap-1 text-right">
-                <span className="text-blue-500 font-black">ⓘ</span> Traffic
-              </span>
-            </div>
-            <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
-              <div className="bg-blue-500 h-full rounded-full transition-all duration-700" style={{ width: '4%' }} />
-            </div>
-            <p className="text-[8px] text-muted-foreground mt-1.5 text-right font-medium italic underline decoration-blue-500/20">5GB Monthly Limit</p>
-          </div>
-        </div>
+          </>
+        )}
       </div>
     </div>
   );
