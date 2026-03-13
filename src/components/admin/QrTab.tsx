@@ -43,8 +43,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       if (!useFull && restaurant.logo_url) {
         logoData = await getBase64(restaurant.logo_url);
         if (!logoData) {
-          toast.error("Logo load failed. Generating full QR code...", { position: "top-center", duration: 3000 });
-          await new Promise(r => setTimeout(r, 2500)); // Wait for user to read alert
+          toast.error("Logo load failed. Using full QR code.");
           useFull = true;
         }
       }
@@ -114,8 +113,6 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           logoImg = new Image();
           await new Promise((res) => { logoImg!.onload = res; logoImg!.src = data; });
         } else {
-          toast.error("Logo load failed. Generating full QR code...", { position: "top-center", duration: 3000 });
-          await new Promise(r => setTimeout(r, 2500));
           useFull = true;
         }
       }
@@ -155,7 +152,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
         }
       }
     } catch (e: any) {
-      if (e.name !== 'AbortError') toast.error("Share failed", { position: "top-center" });
+      if (e.name !== 'AbortError') toast.error("Share failed");
     } finally {
       setIsSharing(false);
     }
