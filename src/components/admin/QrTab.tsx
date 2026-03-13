@@ -103,11 +103,9 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
   const handleShare = async () => {
     setIsSharing(true);
     try {
-      // Ensure fonts are loaded before measuring text on canvas
       await document.fonts.ready;
-
       const cvs = document.createElement("canvas");
-      const ctx = cvs.getContext("2d", { alpha: false }); // Performance optimization
+      const ctx = cvs.getContext("2d", { alpha: false });
       if (!ctx) throw new Error("Canvas context failed");
 
       const primaryColor = getPrimaryColor();
@@ -123,6 +121,43 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       ctx.stroke();
 
       ctx.textAlign = "center";
+
+      // --- DYNAMIC LAYOUT START ---
+      let currentY = 180; // Starting Y for the Name
+      const maxWidth = 780;
+
+      // 1. Draw Name
+      let nameFontSize = 72;
+      ctx.font = `bold ${nameFontSize}px sans-serif`;
+      while (ctx.measureText(restaurant.name).width > maxWidth && nameFontSize > 32) {
+        nameFontSize -= 2;
+        ctx.font = `bold ${nameFontSize}px sans-serif`;
+      }
+      ctx.fillStyle = "#000000";
+      ctx.fillText(restaurant.name, 450, currentY);
+
+      // Move Y down after name
+      currentY += 70; 
+
+      // 2. Draw Tagline (Only if exists)
+      if (restaurant.tagline) {
+        let taglineFontSize = 36;
+        ctx.font = `italic ${taglineFontSize}px sans-serif`;
+        while (ctx.measureText(restaurant.tagline).width > maxWidth && taglineFontSize > 20) {
+          taglineFontSize -= 2;
+          ctx.font = `italic ${taglineFontSize}px sans-serif`;
+        }
+        ctx.fillStyle = "#666666";
+        ctx.fillText(restaurant.tagline, 450, currentY);
+        
+        currentY += 80; // Add space for tagline
+      } else {
+        currentY += 20; // Just a small nudge if no tagline
+      }
+
+      // 3. QR Code Y is now dynamic based on currentY
+      const qrY = currentY + 30; 
+      // --- DYNAMIC LAYOUT END ---
 
       const finishAndShare = () => {
         ctx.fillStyle = "#000000";
@@ -153,38 +188,13 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
         }, "image/png");
       };
 
-      const maxWidth = 780;
-
-      // Draw Name
-      let nameFontSize = 72;
-      ctx.font = `bold ${nameFontSize}px sans-serif`;
-      while (ctx.measureText(restaurant.name).width > maxWidth && nameFontSize > 32) {
-        nameFontSize -= 2;
-        ctx.font = `bold ${nameFontSize}px sans-serif`;
-      }
-      ctx.fillStyle = "#000000";
-      ctx.fillText(restaurant.name, 450, 180);
-
-      // Draw Tagline
-      if (restaurant.tagline) {
-        let taglineFontSize = 36;
-        ctx.font = `italic ${taglineFontSize}px sans-serif`;
-        while (ctx.measureText(restaurant.tagline).width > maxWidth && taglineFontSize > 20) {
-          taglineFontSize -= 2;
-          ctx.font = `italic ${taglineFontSize}px sans-serif`;
-        }
-        ctx.fillStyle = "#666666";
-        ctx.fillText(restaurant.tagline, 450, 255);
-      }
-
       let logoData = null;
       let useFull = !restaurant.logo_url || restaurant.show_qr_logo === false;
 
       if (!useFull && restaurant.logo_url) {
         logoData = await getBase64(restaurant.logo_url);
         if (!logoData) {
-          toast.error("Logo load failed. Generating full QR code...", { position: "top-center" });
-          await new Promise(r => setTimeout(r, 2000));
+          toast.error("Logo load failed. Using full QR...");
           useFull = true;
         }
       }
@@ -196,7 +206,8 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       const qrImg = new Image();
 
       qrImg.onload = () => {
-        ctx.drawImage(qrImg, 200, 380, 500, 500);
+        // Draw the QR at the dynamic QR Y
+        ctx.drawImage(qrImg, 200, qrY, 500, 500);
         URL.revokeObjectURL(qrUrl);
 
         if (logoData) {
@@ -204,7 +215,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           logoImg.onload = () => {
             const size = 120;
             const x = 390;
-            const y = 570;
+            const y = qrY + 190; // Center logo relative to dynamic QR Y
             ctx.fillStyle = "#ffffff";
             ctx.fillRect(x - 5, y - 5, size + 10, size + 10);
             ctx.drawImage(logoImg, x, y, size, size);
@@ -215,10 +226,6 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
         } else {
           finishAndShare();
         }
-      };
-      qrImg.onerror = () => {
-        URL.revokeObjectURL(qrUrl);
-        finishAndShare();
       };
       qrImg.src = qrUrl;
 
