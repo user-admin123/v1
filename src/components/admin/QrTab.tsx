@@ -91,111 +91,120 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
     }
   };
 
-  const handleShare = async () => {
-    setIsSharing(true);
+const handleShare = async () => {
+  setIsSharing(true);
+  try {
+    // 1. Wait for fonts, but don't hang forever
     try {
-      // 1. Force a small delay and check fonts
       await document.fonts.ready;
-
-      const cvs = document.createElement("canvas");
-      const ctx = cvs.getContext("2d");
-      if (!ctx) return;
-      
-      cvs.width = 900; 
-      cvs.height = 1200;
-
-      // 2. CLEAR and FILL background (Essential for some mobile browsers)
-      ctx.fillStyle = "#ffffff"; 
-      ctx.fillRect(0, 0, 900, 1200);
-
-      // 3. Draw the Border
-      ctx.strokeStyle = `hsl(${getPrimaryColor()})`; 
-      ctx.lineWidth = 16;
-      if (ctx.roundRect) ctx.roundRect(40, 40, 820, 1120, 60); else ctx.rect(40, 40, 820, 1120);
-      ctx.stroke();
-
-      // 4. Setup Text Alignment
-      ctx.textAlign = "center"; 
-      ctx.textBaseline = "middle"; // This ensures Y coordinates are more predictable
-
-      // 5. Draw Restaurant Name (Using a very safe font stack first)
-      ctx.fillStyle = "#000000"; 
-      ctx.font = "bold 72px 'Playfair Display', serif"; 
-      ctx.fillText(restaurant.name, 450, 160);
-      
-      // 6. Draw Tagline
-      if (restaurant.tagline) {
-        ctx.fillStyle = "#4b5563"; // Specific hex for better contrast
-        ctx.font = "italic 36px 'Inter', sans-serif";
-        ctx.fillText(restaurant.tagline, 450, 240);
-      }
-      
-      // --- LOGO & QR LOADING LOGIC ---
-      let logoImg = null;
-      let useFull = !restaurant.logo_url || restaurant.show_qr_logo === false;
-
-      if (!useFull && restaurant.logo_url) {
-        const data = await getBase64(restaurant.logo_url);
-        if (data) {
-          logoImg = new Image();
-          logoImg.crossOrigin = "anonymous"; // Prevents tainted canvas
-          await new Promise((res) => { logoImg!.onload = res; logoImg!.src = data; });
-        }
-      }
-
-      const svgToUse = useFull ? hiddenFullQrRef.current : qrRef.current;
-      const svgStr = new XMLSerializer().serializeToString(svgToUse?.querySelector("svg")!);
-      const qrBlob = new Blob([svgStr], { type: "image/svg+xml" });
-      const qrUrl = URL.createObjectURL(qrBlob);
-      
-      const qrImg = new Image();
-      await new Promise(r => { qrImg.onload = r; qrImg.src = qrUrl; });
-
-      // 7. QR Background & Draw
-      ctx.fillStyle = "#ffffff";
-      if (ctx.roundRect) ctx.roundRect(170, 350, 560, 560, 40); else ctx.rect(170, 350, 560, 560);
-      ctx.fill();
-      ctx.drawImage(qrImg, 200, 380, 500, 500);
-
-      // 8. Embedded Logo in QR
-      if (logoImg) {
-        ctx.fillStyle = "#ffffff"; 
-        ctx.fillRect(387, 567, 126, 126);
-        ctx.drawImage(logoImg, 395, 575, 110, 110);
-      }
-
-      // 9. Footer Text
-      ctx.fillStyle = "#000000"; 
-      ctx.font = "bold 44px sans-serif";
-      ctx.fillText("Scan to view our digital menu", 450, 1040);
-
-      // --- FINALIZING ---
-      const blob = await new Promise<Blob | null>(r => cvs.toBlob(r, "image/png", 1.0));
-      URL.revokeObjectURL(qrUrl);
-
-      if (blob) {
-        const f = new File([blob], `${restaurant.name.replace(/\s+/g, '-').toLowerCase()}-qr.png`, { type: "image/png" });
-        if (navigator.share && navigator.canShare?.({ files: [f] })) {
-          await navigator.share({ 
-            files: [f], 
-            title: restaurant.name,
-            text: `Check out the menu at ${restaurant.name}!` 
-          });
-        } else {
-          const a = document.createElement('a'); 
-          a.href = cvs.toDataURL("image/png"); 
-          a.download = `${restaurant.name}-menu-qr.png`; 
-          a.click();
-        }
-      }
-    } catch (e: any) {
-      console.error("Canvas Error:", e);
-      if (e.name !== 'AbortError') toast.error("Share failed");
-    } finally {
-      setIsSharing(false);
+    } catch (e) {
+      console.warn("Font loading timed out, using system fonts");
     }
-  };
 
+    const cvs = document.createElement("canvas");
+    const ctx = cvs.getContext("2d");
+    if (!ctx) return;
+    
+    cvs.width = 900; 
+    cvs.height = 1200;
+
+    // 2. FORCE WHITE BACKGROUND
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(0, 0, 900, 1200);
+
+    // 3. DRAW BORDER
+    ctx.strokeStyle = `hsl(${getPrimaryColor()})`; 
+    ctx.lineWidth = 20;
+    if (ctx.roundRect) ctx.roundRect(40, 40, 820, 1120, 60); else ctx.rect(40, 40, 820, 1120);
+    ctx.stroke();
+
+    // 4. DRAW RESTAURANT NAME (Force Black)
+    ctx.save(); // Save state
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    ctx.fillStyle = "#000000"; // Pure Black
+    // Fallback font stack: Playfair -> Times New Roman -> Serif
+    ctx.font = "bold 80px 'Playfair Display', 'Times New Roman', serif";
+    ctx.fillText(restaurant.name, 450, 120); 
+    ctx.restore();
+
+    // 5. DRAW TAGLINE (Force Dark Grey)
+    if (restaurant.tagline) {
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      ctx.fillStyle = "#374151"; // Charcoal grey
+      ctx.font = "italic 40px 'Inter', 'Arial', sans-serif";
+      ctx.fillText(restaurant.tagline, 450, 220);
+      ctx.restore();
+    }
+
+    // --- QR CODE LOADING ---
+    let logoImg = null;
+    let useFull = !restaurant.logo_url || restaurant.show_qr_logo === false;
+
+    if (!useFull && restaurant.logo_url) {
+      const data = await getBase64(restaurant.logo_url);
+      if (data) {
+        logoImg = new Image();
+        logoImg.crossOrigin = "anonymous";
+        await new Promise((res) => { logoImg!.onload = res; logoImg!.src = data; });
+      }
+    }
+
+    const svgToUse = useFull ? hiddenFullQrRef.current : qrRef.current;
+    if (!svgToUse) throw new Error("QR Source not found");
+    
+    const svgStr = new XMLSerializer().serializeToString(svgToUse.querySelector("svg")!);
+    const qrBlob = new Blob([svgStr], { type: "image/svg+xml" });
+    const qrUrl = URL.createObjectURL(qrBlob);
+    
+    const qrImg = new Image();
+    await new Promise(r => { qrImg.onload = r; qrImg.src = qrUrl; });
+
+    // 6. DRAW QR AREA
+    ctx.fillStyle = "#FFFFFF";
+    if (ctx.roundRect) ctx.roundRect(170, 350, 560, 560, 40); else ctx.rect(170, 350, 560, 560);
+    ctx.fill();
+    ctx.drawImage(qrImg, 200, 380, 500, 500);
+
+    // 7. DRAW EMBEDDED LOGO
+    if (logoImg) {
+      ctx.fillStyle = "#FFFFFF"; 
+      ctx.fillRect(387, 567, 126, 126);
+      ctx.drawImage(logoImg, 395, 575, 110, 110);
+    }
+
+    // 8. DRAW FOOTER
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#000000";
+    ctx.font = "bold 44px sans-serif";
+    ctx.fillText("Scan to view our digital menu", 450, 1060);
+    ctx.restore();
+
+    // 9. CONVERT TO BLOB AND SHARE
+    const blob = await new Promise<Blob | null>(r => cvs.toBlob(r, "image/png", 1.0));
+    URL.revokeObjectURL(qrUrl);
+
+    if (blob) {
+      const f = new File([blob], `qr-menu.png`, { type: "image/png" });
+      if (navigator.share && navigator.canShare?.({ files: [f] })) {
+        await navigator.share({ files: [f], title: restaurant.name });
+      } else {
+        const a = document.createElement('a'); 
+        a.href = cvs.toDataURL("image/png"); 
+        a.download = `${restaurant.name}-qr.png`; 
+        a.click();
+      }
+    }
+  } catch (e) {
+    console.error("Share failed:", e);
+    toast.error("Could not generate share image");
+  } finally {
+    setIsSharing(false);
+  }
+};
   const hasEmbeddedLogo = restaurant.show_qr_logo !== false && !!restaurant.logo_url;
 
   return (
