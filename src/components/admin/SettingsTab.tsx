@@ -128,85 +128,76 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
           ))}
         </div>
       </div>
-      {/* --- MVP HEALTH & INSIGHTS --- */}
-      <div className="border-t border-border/30 pt-6 mt-6 space-y-6">
-        <header>
-          <Label className="text-base font-bold text-foreground">App Performance</Label>
-          <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Live System Status</p>
-        </header>
-
-        {/* 1. INTERACTIVE INSIGHTS (3-WEEK HISTORY) */}
-        <div className="bg-muted/30 p-4 rounded-2xl border border-border/50 space-y-4">
-          <div className="flex justify-between items-center">
-            <Label className="text-xs font-semibold text-foreground">Menu Views</Label>
-            <div className="flex gap-1">
-               {/* Simplified button for MVP testing */}
-               <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => alert("Loading Previous Week...")}>
-                 <span className="text-[10px]">{"<"}</span>
-               </Button>
-               <Button variant="outline" size="icon" className="h-6 w-6" disabled>
-                 <span className="text-[10px] text-muted-foreground/30">{">"}</span>
-               </Button>
-            </div>
+      {/* --- MINIMALIST SYSTEM INSIGHTS --- */}
+      <div className="border-t border-border/30 pt-6 mt-6 space-y-4">
+        <div className="flex justify-between items-end">
+          <div>
+            <Label className="text-sm font-bold">Performance</Label>
+            <p className="text-[10px] text-muted-foreground">Weekly customer visits</p>
           </div>
-
-          <div className="flex justify-between items-center px-1">
-            {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, i) => {
-              // TEST LOGIC: 5 days have passed, 2 are upcoming
-              const isUpcoming = i > 4; 
-              const randomViews = Math.floor(Math.random() * 100);
-              
-              // Color Logic: Red < 15, Yellow < 50, Green 50+
-              const colorClass = isUpcoming ? "border-dashed border-muted-foreground/20 text-muted-foreground/30 bg-transparent" :
-                                randomViews > 50 ? "bg-green-500/10 text-green-600 border-green-500/20" :
-                                randomViews > 15 ? "bg-amber-500/10 text-amber-600 border-amber-500/20" :
-                                "bg-destructive/10 text-destructive border-destructive/20";
-
-              return (
-                <button 
-                  key={i}
-                  disabled={isUpcoming}
-                  onClick={() => alert(`Views for ${day}: ${randomViews}`)}
-                  className={cn(
-                    "w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all border-2",
-                    colorClass,
-                    isUpcoming ? "cursor-not-allowed" : "hover:scale-110 active:scale-95 cursor-pointer"
-                  )}
-                >
-                  {day}
-                </button>
-              );
-            })}
+          <div className="flex gap-1.5">
+            <Button variant="outline" className="h-6 px-2 text-[10px] rounded-md">Last Week</Button>
+            <Button variant="outline" className="h-6 px-2 text-[10px] rounded-md text-primary font-bold bg-primary/5 border-primary/20">This Week</Button>
           </div>
-          <p className="text-[10px] text-muted-foreground text-center italic">
-            Tap a day to see view counts
-          </p>
         </div>
 
-        {/* 2 & 3. SYSTEM LIMITS (Storage & Egress) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* STORAGE BAR */}
-          <div className="bg-muted/30 p-4 rounded-2xl border border-border/50">
-            <div className="flex justify-between items-end mb-2">
-              <span className="text-[11px] font-bold text-muted-foreground uppercase">Storage</span>
-              <span className="text-xs font-bold text-primary">15.5 / 512 MB</span>
+        {/* 1. CUSTOMER VISITS (Compact Letter Bubbles) */}
+        <div className="bg-muted/20 p-3 rounded-xl border border-border/40">
+          <div className="flex justify-between items-center px-1">
+            {[
+              { d: 'M', v: '42', s: 'green' },
+              { d: 'T', v: '28', s: 'yellow' },
+              { d: 'W', v: '15', s: 'red' },
+              { d: 'T', v: '56', s: 'green' },
+              { d: 'F', v: '92', s: 'green' },
+              { d: 'S', v: '0', s: 'upcoming' },
+              { d: 'S', v: '0', s: 'upcoming' },
+            ].map((day, i) => (
+              <div key={i} className="group relative flex flex-col items-center gap-1">
+                {/* Modern Tooltip: Appears on Hover/Click */}
+                <div className="absolute -top-8 scale-0 group-hover:scale-100 group-active:scale-100 transition-all z-10 bg-foreground text-background text-[9px] px-2 py-1 rounded font-bold shadow-xl pointer-events-none">
+                  {day.s === 'upcoming' ? 'No Data' : `${day.v} visits`}
+                </div>
+                
+                <span className="text-[9px] font-bold text-muted-foreground/60">{day.d}</span>
+                <div className={cn(
+                  "w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-colors",
+                  day.s === 'green' && "bg-green-500/10 text-green-600 border-green-500/20",
+                  day.s === 'yellow' && "bg-amber-500/10 text-amber-600 border-amber-500/20",
+                  day.s === 'red' && "bg-destructive/10 text-destructive border-destructive/20",
+                  day.s === 'upcoming' && "border-dashed border-muted-foreground/10 text-muted-foreground/20"
+                )}>
+                  {day.d}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 2 & 3. COMPACT HEALTH BARS (Side-by-Side) */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* Storage (512MB) */}
+          <div className="bg-muted/20 p-3 rounded-xl border border-border/40">
+            <div className="flex justify-between items-center mb-1.5">
+              <span className="text-[9px] font-bold uppercase text-muted-foreground/70">Storage</span>
+              <span className="text-[10px] font-bold">12%</span>
             </div>
-            <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-              <div className="bg-primary h-full rounded-full" style={{ width: '3%' }} />
+            <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+              <div className="bg-primary h-full rounded-full" style={{ width: '12%' }} />
             </div>
-            <p className="text-[10px] text-muted-foreground mt-2 font-medium">Menu Capacity (Free Tier)</p>
+            <p className="text-[9px] text-muted-foreground mt-1.5">15MB of 512MB used</p>
           </div>
 
-          {/* EGRESS BAR */}
-          <div className="bg-muted/30 p-4 rounded-2xl border border-border/50">
-            <div className="flex justify-between items-end mb-2">
-              <span className="text-[11px] font-bold text-muted-foreground uppercase">Data Traffic</span>
-              <span className="text-xs font-bold text-blue-500">0.2 / 5 GB</span>
+          {/* Traffic (5GB) */}
+          <div className="bg-muted/20 p-3 rounded-xl border border-border/40">
+            <div className="flex justify-between items-center mb-1.5">
+              <span className="text-[9px] font-bold uppercase text-muted-foreground/70">Traffic</span>
+              <span className="text-[10px] font-bold text-blue-500">4%</span>
             </div>
-            <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+            <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
               <div className="bg-blue-500 h-full rounded-full" style={{ width: '4%' }} />
             </div>
-            <p className="text-[10px] text-muted-foreground mt-2 font-medium">Monthly Visitor Data</p>
+            <p className="text-[9px] text-muted-foreground mt-1.5">0.2GB of 5GB used</p>
           </div>
         </div>
       </div>
