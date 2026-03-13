@@ -61,8 +61,25 @@ export async function fetchRestaurant(): Promise<RestaurantInfo> {
   }
 
   logger.warn("No restaurant row found, returning blank");
-  // If no ID exists, the Doorbell in useMenuData will simply stay quiet (correct behavior)
   return { name: "", tagline: "", logo_url: "" };
+}
+
+export async function fetchAdminUsage(restaurantId: string): Promise<any> {
+  logger.db("SELECT", "admin_usage_dashboard", `fetching stats for id=${restaurantId}`);
+  
+  const { data, error } = await supabase
+    .from("admin_usage_dashboard")
+    .select("*")
+    .eq("restaurant_id", restaurantId)
+    .single();
+
+  if (error) {
+    logger.error("fetchAdminUsage failed:", error.message, error);
+    throw error; 
+  }
+
+  logger.db("SELECT", "admin_usage_dashboard", "got usage stats successfully");
+  return data;
 }
 
 // ---------- Save helpers ----------
