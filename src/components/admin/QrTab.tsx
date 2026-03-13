@@ -194,7 +194,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       if (!useFull && restaurant.logo_url) {
         logoData = await getBase64(restaurant.logo_url);
         if (!logoData) {
-          toast.error("Logo load failed. Using full QR...");
+          toast.error("Logo load failed. Generating full QR code...", { position: "top-center" });
           useFull = true;
         }
       }
