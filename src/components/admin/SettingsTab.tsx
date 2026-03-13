@@ -128,33 +128,39 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
           ))}
         </div>
       </div>
-      {/* --- DYNAMIC SYSTEM INSIGHTS V2 --- */}
+      {/* --- DYNAMIC SYSTEM INSIGHTS V3 --- */}
       <div className="border-t border-border/30 pt-6 mt-6 space-y-4">
         <div className="flex justify-between items-end px-0.5">
           <div>
             <Label className="text-sm font-bold">Performance</Label>
-            <p className="text-[10px] text-muted-foreground font-medium">Customer interactions this week</p>
+            <p className="text-[10px] text-muted-foreground font-medium">How many customers viewed your menu</p>
           </div>
           
-          {/* Pro Navigation */}
-          <div className="flex bg-muted/50 p-0.5 rounded-lg border border-border/50 shadow-sm">
+          {/* Navigation - Logic: Only show 'Next' if we aren't on current week */}
+          <div className="flex bg-muted/50 p-0.5 rounded-lg border border-border/50 shadow-sm transition-all">
             <button 
               className="px-2.5 py-1 text-[10px] font-bold text-muted-foreground hover:text-foreground hover:bg-background rounded-md transition-all active:scale-95"
               onClick={() => {}} 
             >
-              ← Prev
+              ← Prev Week
             </button>
-            <div className="w-[1px] h-3 bg-border/50 self-center mx-0.5" />
-            <button 
-              className="px-2.5 py-1 text-[10px] font-bold text-muted-foreground hover:text-foreground hover:bg-background rounded-md transition-all active:scale-95 disabled:opacity-30"
-              disabled={true} 
-            >
-              Next →
-            </button>
+            
+            {/* Logic: Hide next button if on current week */}
+            {false && ( // Change 'false' to 'weekOffset < 0' in your real logic
+              <>
+                <div className="w-[1px] h-3 bg-border/50 self-center mx-0.5" />
+                <button 
+                  className="px-2.5 py-1 text-[10px] font-bold text-muted-foreground hover:text-foreground hover:bg-background rounded-md transition-all active:scale-95"
+                  onClick={() => {}} 
+                >
+                  Next →
+                </button>
+              </>
+            )}
           </div>
         </div>
 
-        {/* 1. DYNAMIC CUSTOMER VISITS (Letter Bubbles) */}
+        {/* 1. DYNAMIC CUSTOMER VISITS */}
         <div className="bg-muted/20 p-3 rounded-xl border border-border/40">
           <div className="flex justify-between items-center px-1">
             {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, i) => {
@@ -162,20 +168,19 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
               const currentDayIndex = today === 0 ? 7 : today; 
               const isUpcoming = (i + 1) > currentDayIndex;
               
-              const values = [942, 8, 10995, 5996, 92, 0, 0];
-              const mockValue = values[i];
+              const mockValue = isUpcoming ? 0 : 45; 
               const status = isUpcoming ? 'upcoming' : mockValue > 40 ? 'green' : 'yellow';
 
               return (
                 <div key={i} className="group relative flex flex-col items-center gap-1">
                   <div className="absolute -top-8 scale-0 group-hover:scale-100 transition-all z-10 bg-slate-900 text-white text-[9px] px-2 py-1 rounded-md font-bold shadow-xl whitespace-nowrap border border-white/10">
-                    {isUpcoming ? 'No Data' : `${mockValue} visits`}
+                    {isUpcoming ? 'Soon' : `${mockValue} visitors`}
                   </div>
                   
                   <span className="text-[9px] font-bold text-muted-foreground/60">{day}</span>
                   <div className={cn(
                     "w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-all cursor-default",
-                    status === 'green' && "bg-green-500/10 text-green-600 border-green-500/20 shadow-sm",
+                    status === 'green' && "bg-green-500/10 text-green-600 border-green-500/20 shadow-sm shadow-green-500/5",
                     status === 'yellow' && "bg-amber-500/10 text-amber-600 border-amber-500/20",
                     status === 'upcoming' && "border-dashed border-muted-foreground/10 text-muted-foreground/20"
                   )}>
@@ -187,14 +192,15 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
           </div>
         </div>
 
-        {/* 2 & 3. COMPACT HEALTH BARS WITH VISIBLE INFO ICONS */}
+        {/* 2 & 3. COMPACT HEALTH BARS */}
         <div className="grid grid-cols-2 gap-3">
           {/* Storage (512MB) */}
           <div className="group relative bg-muted/20 p-3 rounded-xl border border-border/40 hover:bg-muted/30 transition-colors cursor-help">
-            {/* Info Popup - Explicit Advice without Markdown */}
-            <div className="absolute bottom-full left-0 mb-2 w-48 scale-0 group-hover:scale-100 transition-all z-20 bg-slate-900 text-white p-2.5 rounded-lg text-[9px] leading-relaxed shadow-2xl border border-white/10">
-              <p className="font-bold text-primary mb-1 tracking-tight uppercase">Storage Limit</p>
-              Free 512MB limit. To save space, delete old menu items you no longer use and clear unused photos.
+            <div className="absolute bottom-full left-0 mb-2 w-52 scale-0 group-hover:scale-100 transition-all z-20 bg-slate-900 text-white p-2.5 rounded-lg text-[9px] shadow-2xl border border-white/10">
+              <p className="font-bold text-primary mb-1 uppercase tracking-tight">What is Storage?</p>
+              This is the total space for your menu data.
+              <p className="mt-2 font-bold text-white/90 underline">How to free up space:</p>
+              Simply delete menu items you no longer sell. This removes the item and its photo data instantly.
             </div>
 
             <div className="flex justify-between items-center mb-1.5">
@@ -206,15 +212,16 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
             <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
               <div className="bg-primary h-full rounded-full transition-all duration-700" style={{ width: '12%' }} />
             </div>
-            <p className="text-[8px] text-muted-foreground mt-1.5 font-medium italic">512MB Free Tier</p>
+            <p className="text-[8px] text-muted-foreground mt-1.5 font-medium italic underline decoration-primary/20">512MB Free Limit</p>
           </div>
 
           {/* Traffic (5GB) */}
           <div className="group relative bg-muted/20 p-3 rounded-xl border border-border/40 hover:bg-muted/30 transition-colors cursor-help">
-            {/* Info Popup - Explicit Advice without Markdown */}
-            <div className="absolute bottom-full right-0 mb-2 w-48 scale-0 group-hover:scale-100 transition-all z-20 bg-slate-900 text-white p-2.5 rounded-lg text-[9px] leading-relaxed shadow-2xl border border-white/10 text-right">
-              <p className="font-bold text-blue-400 mb-1 text-right tracking-tight uppercase">Monthly Traffic</p>
-              Resets monthly. To keep usage low, use smaller image files and compress photos before uploading.
+            <div className="absolute bottom-full right-0 mb-2 w-52 scale-0 group-hover:scale-100 transition-all z-20 bg-slate-900 text-white p-2.5 rounded-lg text-[9px] shadow-2xl border border-white/10 text-right">
+              <p className="font-bold text-blue-400 mb-1 tracking-tight uppercase">What is Traffic?</p>
+              This is the amount of data sent to customers when they scan your QR code.
+              <p className="mt-2 font-bold text-white/90 underline text-right">How to control this:</p>
+              Usage resets every month. To keep it low, try not to upload massive, high-resolution photos.
             </div>
 
             <div className="flex justify-between items-center mb-1.5">
@@ -226,7 +233,7 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
             <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
               <div className="bg-blue-500 h-full rounded-full transition-all duration-700" style={{ width: '4%' }} />
             </div>
-            <p className="text-[8px] text-muted-foreground mt-1.5 text-right font-medium italic">5GB Monthly Limit</p>
+            <p className="text-[8px] text-muted-foreground mt-1.5 text-right font-medium italic underline decoration-blue-500/20">5GB Monthly Limit</p>
           </div>
         </div>
       </div>
