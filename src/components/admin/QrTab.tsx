@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState } from "react";
 import { RestaurantInfo } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { QRCodeSVG } from "qrcode.react";
@@ -14,16 +14,8 @@ interface Props {
 const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
   const qrRef = useRef<HTMLDivElement>(null);
   const hiddenFullQrRef = useRef<HTMLDivElement>(null);
-  const isMounted = useRef(true);
   const [isPrinting, setIsPrinting] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
-
-  // Cleanup on unmount to prevent state updates on ghost components
-  useEffect(() => {
-    return () => {
-      isMounted.current = false;
-    };
-  }, []);
 
   const getPrimaryColor = () =>
     getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || "0 0% 0%";
@@ -52,22 +44,16 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       if (!useFull && restaurant.logo_url) {
         logoData = await getBase64(restaurant.logo_url);
         if (!logoData) {
-          toast.error("Logo load failed. Generating full QR code...");
+          toast.error("Logo load failed. Generating full QR code...", { position: "top-center", duration: 3000 });
           useFull = true;
         }
       }
 
       const svgToUse = useFull ? hiddenFullQrRef.current : qrRef.current;
-      const svgElement = svgToUse?.querySelector("svg");
-      if (!svgElement) throw new Error("SVG not found");
-      
-      const svgData = new XMLSerializer().serializeToString(svgElement);
+      const svgData = new XMLSerializer().serializeToString(svgToUse?.querySelector("svg")!);
 
       const pw = window.open("", "_blank");
-      if (!pw) {
-        toast.error("Popup blocked. Please allow popups to print.");
-        return;
-      }
+      if (!pw) return;
 
       pw.document.write(`
         <html>
@@ -76,11 +62,20 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
             <style>
               @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;700&display=swap');
               @page { size: auto; margin: 0mm !important; }
-              html, body { margin: 0; padding: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #fff; font-family: 'Inter', sans-serif; }
+              html, body { margin: 0; padding: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #fff; font-family: 'Inter', sans-serif; overflow: hidden; }
               .card { background: white; border-radius: 32px; padding: 60px 40px; text-align: center; border: 8px solid hsl(${primary}); width: 450px; box-sizing: border-box; }
               .logo { width: 80px; height: 80px; border-radius: 16px; object-fit: cover; border: 1px solid #eee; margin-bottom: 15px; }
-              h2 { font-family: 'Playfair Display', serif; font-size: 32px; color: #000; margin: 0 0 8px 0; line-height: 1.2; }
-              .tagline { color: #666; font-size: 18px; font-style: italic; margin-bottom: 30px; }
+              h2 { 
+                font-family: 'Playfair Display', serif; 
+                font-size: clamp(24px, ${40 / restaurant.name.length * 38}px, 38px); 
+                color: #000; margin: 0 0 8px 0; 
+                line-height: 1.2;
+              }
+              .tagline { 
+                color: #666; 
+                font-size: clamp(14px, ${60 / (restaurant.tagline?.length || 1) * 18}px, 18px); 
+                font-style: italic; margin-bottom: 30px; 
+              }
               .qr-wrap { display: inline-block; padding: 20px; border-radius: 24px; border: 2px solid #f0f0f0; margin: 10px 0; background: white; }
               .qr-wrap svg { width: 250px !important; height: 250px !important; }
               .scan-text { margin-top: 30px; font-size: 20px; font-weight: 700; }
@@ -88,7 +83,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           </head>
           <body>
             <div class="card">
-              ${logoData ? `<img src="${logoData}" class="logo" />` : ""}
+              ${logoData ? `<img src="${logoData}" class="logo" id="logo-img" />` : ""}
               <h2>${restaurant.name}</h2>
               ${restaurant.tagline ? `<p class="tagline">${restaurant.tagline}</p>` : ""}
               <div class="qr-wrap">${svgData}</div>
@@ -96,20 +91,21 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
             </div>
             <script>
               window.onload = () => {
-                setTimeout(() => { 
-                  window.print();
-                  window.onafterprint = () => window.close();
-                }, 500);
+                const img = document.getElementById('logo-img');
+                if (img && !img.complete) {
+                  img.onload = () => { window.print(); window.close(); };
+                  img.onerror = () => { window.print(); window.close(); };
+                } else {
+                  setTimeout(() => { window.print(); window.close(); }, 300);
+                }
               };
             </script>
           </body>
         </html>
       `);
       pw.document.close();
-    } catch (err) {
-      toast.error("Print failed");
     } finally {
-      if (isMounted.current) setIsPrinting(false);
+      setIsPrinting(false);
     }
   };
 
@@ -118,7 +114,9 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
     let qrUrl: string | null = null;
     
     try {
+      // Ensure fonts are loaded before drawing to canvas
       await document.fonts.ready;
+      
       const cvs = document.createElement("canvas");
       const ctx = cvs.getContext("2d", { alpha: false });
       if (!ctx) throw new Error("Canvas context failed");
@@ -127,11 +125,9 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       cvs.width = 900;
       cvs.height = 1200;
 
-      // Background
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, 900, 1200);
 
-      // Border
       ctx.strokeStyle = `hsl(${primaryColor})`;
       ctx.lineWidth = 16;
       if (ctx.roundRect) ctx.roundRect(40, 40, 820, 1120, 60); else ctx.rect(40, 40, 820, 1120);
@@ -171,13 +167,12 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
 
       const qrY = currentY + 30;
 
-      // Logic to finalize sharing
-      const finishAndShare = (canvas: HTMLCanvasElement) => {
+      const finishAndShare = () => {
         ctx.fillStyle = "#000000";
         ctx.font = "bold 44px sans-serif";
         ctx.fillText("Scan to view our digital menu", 450, 1060);
 
-        canvas.toBlob(async (blob) => {
+        cvs.toBlob(async (blob) => {
           if (blob) {
             const f = new File([blob], "menu-qr.png", { type: "image/png" });
             try {
@@ -189,39 +184,39 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
                 });
               } else {
                 const a = document.createElement('a');
-                a.href = canvas.toDataURL("image/png");
+                a.href = cvs.toDataURL("image/png");
                 a.download = `${restaurant.name}-menu.png`;
                 a.click();
               }
             } catch (err) {
-              if ((err as any).name !== 'AbortError') toast.error("Sharing failed");
+              if ((err as any).name !== 'AbortError') throw err;
             }
           }
-          // Memory Cleanup: Zero out canvas memory
-          canvas.width = 0;
-          canvas.height = 0;
-          if (isMounted.current) setIsSharing(false);
+          setIsSharing(false);
         }, "image/png");
       };
 
-      // Load images
-      let useFull = !restaurant.logo_url || restaurant.show_qr_logo === false;
       let logoData = null;
+      let useFull = !restaurant.logo_url || restaurant.show_qr_logo === false;
 
       if (!useFull && restaurant.logo_url) {
         logoData = await getBase64(restaurant.logo_url);
-        if (!logoData) useFull = true;
+        if (!logoData) {
+          toast.error("Logo load failed. Generating full QR code...", { position: "top-center" });
+          useFull = true;
+        }
       }
 
+      // Use the clean QR (no internal logo) if we are manually drawing the logo on top
       const svgToUse = useFull ? hiddenFullQrRef.current : qrRef.current;
-      const svgMarkup = new XMLSerializer().serializeToString(svgToUse?.querySelector("svg")!);
-      const svgBlob = new Blob([svgMarkup], { type: "image/svg+xml;charset=utf-8" });
+      const svgData = new XMLSerializer().serializeToString(svgToUse?.querySelector("svg")!);
+      const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
       qrUrl = URL.createObjectURL(svgBlob);
-
       const qrImg = new Image();
+
       qrImg.onload = () => {
         ctx.drawImage(qrImg, 200, qrY, 500, 500);
-        if (qrUrl) URL.revokeObjectURL(qrUrl); // Clean up immediately after drawing
+        if (qrUrl) URL.revokeObjectURL(qrUrl);
 
         if (logoData) {
           const logoImg = new Image();
@@ -229,27 +224,33 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
             const size = 120;
             const x = 390;
             const y = qrY + 190;
+            const padding = 12; // Buffer to prevent QR data from touching logo
+            
             ctx.fillStyle = "#ffffff";
-            ctx.fillRect(x - 5, y - 5, size + 10, size + 10);
+            // Draw a rounded white background for the logo
+            if (ctx.roundRect) {
+              ctx.beginPath();
+              ctx.roundRect(x - padding, y - padding, size + (padding * 2), size + (padding * 2), 16);
+              ctx.fill();
+            } else {
+              ctx.fillRect(x - padding, y - padding, size + (padding * 2), size + (padding * 2));
+            }
+            
             ctx.drawImage(logoImg, x, y, size, size);
-            finishAndShare(cvs);
+            finishAndShare();
           };
-          logoImg.onerror = () => finishAndShare(cvs);
+          logoImg.onerror = () => finishAndShare();
           logoImg.src = logoData;
         } else {
-          finishAndShare(cvs);
+          finishAndShare();
         }
-      };
-      qrImg.onerror = () => {
-        if (qrUrl) URL.revokeObjectURL(qrUrl);
-        throw new Error("QR Load Failed");
       };
       qrImg.src = qrUrl;
 
     } catch (e: any) {
       if (qrUrl) URL.revokeObjectURL(qrUrl);
       if (e.name !== 'AbortError') toast.error("Share failed");
-      if (isMounted.current) setIsSharing(false);
+      setIsSharing(false);
     }
   };
 
