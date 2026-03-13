@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+limport { useRef, useState } from "react";
 import { RestaurantInfo } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { QRCodeSVG } from "qrcode.react";
