@@ -94,32 +94,43 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
   const handleShare = async () => {
     setIsSharing(true);
     try {
-      // Ensure fonts are loaded before drawing to canvas
+      // 1. Force a small delay and check fonts
       await document.fonts.ready;
 
-      const cvs = document.createElement("canvas"), ctx = cvs.getContext("2d");
+      const cvs = document.createElement("canvas");
+      const ctx = cvs.getContext("2d");
       if (!ctx) return;
-      cvs.width = 900; cvs.height = 1200;
+      
+      cvs.width = 900; 
+      cvs.height = 1200;
 
-      // 1. Background & Border
-      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, 900, 1200);
-      ctx.strokeStyle = `hsl(${getPrimaryColor()})`; ctx.lineWidth = 16;
+      // 2. CLEAR and FILL background (Essential for some mobile browsers)
+      ctx.fillStyle = "#ffffff"; 
+      ctx.fillRect(0, 0, 900, 1200);
+
+      // 3. Draw the Border
+      ctx.strokeStyle = `hsl(${getPrimaryColor()})`; 
+      ctx.lineWidth = 16;
       if (ctx.roundRect) ctx.roundRect(40, 40, 820, 1120, 60); else ctx.rect(40, 40, 820, 1120);
       ctx.stroke();
 
-      // 2. Draw Restaurant Name
+      // 4. Setup Text Alignment
       ctx.textAlign = "center"; 
-      ctx.fillStyle = "#000"; 
-      ctx.font = "bold 72px serif"; // Will fall back to serif if custom not available
-      ctx.fillText(restaurant.name, 450, 180);
+      ctx.textBaseline = "middle"; // This ensures Y coordinates are more predictable
+
+      // 5. Draw Restaurant Name (Using a very safe font stack first)
+      ctx.fillStyle = "#000000"; 
+      ctx.font = "bold 72px 'Playfair Display', serif"; 
+      ctx.fillText(restaurant.name, 450, 160);
       
-      // 3. Draw Tagline (Added this part)
+      // 6. Draw Tagline
       if (restaurant.tagline) {
-        ctx.fillStyle = "#666";
-        ctx.font = "italic 36px sans-serif";
-        ctx.fillText(restaurant.tagline, 450, 250);
+        ctx.fillStyle = "#4b5563"; // Specific hex for better contrast
+        ctx.font = "italic 36px 'Inter', sans-serif";
+        ctx.fillText(restaurant.tagline, 450, 240);
       }
       
+      // --- LOGO & QR LOADING LOGIC ---
       let logoImg = null;
       let useFull = !restaurant.logo_url || restaurant.show_qr_logo === false;
 
@@ -127,11 +138,8 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
         const data = await getBase64(restaurant.logo_url);
         if (data) {
           logoImg = new Image();
+          logoImg.crossOrigin = "anonymous"; // Prevents tainted canvas
           await new Promise((res) => { logoImg!.onload = res; logoImg!.src = data; });
-        } else {
-          toast.error("Logo load failed. Generating full QR code...", { position: "top-center", duration: 3000 });
-          await new Promise(r => setTimeout(r, 2500));
-          useFull = true;
         }
       }
 
@@ -143,42 +151,46 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       const qrImg = new Image();
       await new Promise(r => { qrImg.onload = r; qrImg.src = qrUrl; });
 
-      // 4. QR Background & Draw
-      ctx.fillStyle = "#fff";
+      // 7. QR Background & Draw
+      ctx.fillStyle = "#ffffff";
       if (ctx.roundRect) ctx.roundRect(170, 350, 560, 560, 40); else ctx.rect(170, 350, 560, 560);
       ctx.fill();
       ctx.drawImage(qrImg, 200, 380, 500, 500);
 
-      // 5. Embedded Logo
+      // 8. Embedded Logo in QR
       if (logoImg) {
-        ctx.fillStyle = "#fff"; ctx.fillRect(387, 567, 126, 126);
+        ctx.fillStyle = "#ffffff"; 
+        ctx.fillRect(387, 567, 126, 126);
         ctx.drawImage(logoImg, 395, 575, 110, 110);
       }
 
-      // 6. Footer Text
-      ctx.fillStyle = "#000"; ctx.font = "bold 44px sans-serif";
+      // 9. Footer Text
+      ctx.fillStyle = "#000000"; 
+      ctx.font = "bold 44px sans-serif";
       ctx.fillText("Scan to view our digital menu", 450, 1040);
 
-      const blob = await new Promise<Blob | null>(r => cvs.toBlob(r, "image/png"));
+      // --- FINALIZING ---
+      const blob = await new Promise<Blob | null>(r => cvs.toBlob(r, "image/png", 1.0));
       URL.revokeObjectURL(qrUrl);
 
       if (blob) {
-        const f = new File([blob], "menu-qr.png", { type: "image/png" });
+        const f = new File([blob], `${restaurant.name.replace(/\s+/g, '-').toLowerCase()}-qr.png`, { type: "image/png" });
         if (navigator.share && navigator.canShare?.({ files: [f] })) {
           await navigator.share({ 
             files: [f], 
             title: restaurant.name,
-            text: `View our menu here: ${menuUrl}` 
+            text: `Check out the menu at ${restaurant.name}!` 
           });
         } else {
           const a = document.createElement('a'); 
           a.href = cvs.toDataURL("image/png"); 
-          a.download = `${restaurant.name}-menu.png`; 
+          a.download = `${restaurant.name}-menu-qr.png`; 
           a.click();
         }
       }
     } catch (e: any) {
-      if (e.name !== 'AbortError') toast.error("Share failed", { position: "top-center" });
+      console.error("Canvas Error:", e);
+      if (e.name !== 'AbortError') toast.error("Share failed");
     } finally {
       setIsSharing(false);
     }
