@@ -21,27 +21,34 @@ export function useMenuData() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // --- NEW: DOORBELL LOGIC ---
+ // --- PRODUCTION DOORBELL LOGIC ---
   useEffect(() => {
     async function ringDoorbell() {
-      // Only ring the bell if we have a restaurant ID and haven't rung it this session
       if (restaurant?.id) {
         const sessionKey = `doorbell_rung_${restaurant.id}`;
         const hasRung = sessionStorage.getItem(sessionKey);
 
         if (!hasRung) {
           try {
-            await supabase.rpc('log_customer_view', { target_rest_id: restaurant.id });
+            const { error: rpcError } = await supabase.rpc('log_customer_view', { 
+              target_rest_id: restaurant.id 
+            });
+            
+            // If RPC returns an error object, handle it silently
+            if (rpcError) throw rpcError;
+
             sessionStorage.setItem(sessionKey, 'true');
           } catch (err) {
-            console.error("Doorbell failed to ring:", err);
+            // ONLY logs during development mode
+            if (process.env.NODE_ENV === 'development') {
+              console.error("DEBUG: Doorbell RPC failed:", err);
+            }
           }
         }
       }
     }
     ringDoorbell();
-  }, [restaurant?.id]); // Fires as soon as restaurant data is loaded
-  // ---------------------------
+  }, [restaurant?.id]);
 
   // Check auth on mount + listen for changes
   useEffect(() => {
