@@ -91,7 +91,7 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
         />
       </div>
 
-      {/* Logo Section - RESTORED ORIGINAL LOGIC */}
+      {/* Logo Section */}
       <div className="space-y-2">
         <Label>Logo</Label>
         {restaurant.logo_url && (
@@ -178,7 +178,7 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
 
                   return (
                     <div key={dayLabel} className="group relative flex flex-col items-center gap-1">
-                      <div className="absolute -top-8 scale-0 group-hover:scale-100 transition-all z-10 bg-slate-900 text-white text-[9px] px-2 py-1 rounded-md shadow-xl border border-white/10">
+                      <div className="absolute -top-8 scale-0 group-hover:scale-100 transition-all z-10 bg-slate-900 text-white text-[9px] px-2 py-1 rounded-md shadow-xl border border-white/10 whitespace-nowrap">
                         {count} scans
                       </div>
                       <span className={cn("text-[8px] font-bold uppercase", isToday ? "text-primary" : "text-muted-foreground/60")}>
@@ -198,16 +198,19 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              {/* Storage with Owner Tips */}
+              {/* Storage */}
               <div className="group relative bg-muted/20 p-3 rounded-xl border border-border/40 hover:bg-muted/30 transition-colors">
-                <div className="absolute bottom-full left-0 mb-2 w-56 scale-0 group-hover:scale-100 transition-all z-20 bg-slate-900 text-white p-3 rounded-lg text-[9px] border border-white/10 shadow-2xl">
+                {/* FLUID TOOLTIP */}
+                <div className="absolute bottom-full left-0 mb-2 max-w-[180px] w-max scale-0 group-hover:scale-100 transition-all z-20 bg-slate-900 text-white p-2.5 rounded-lg text-[9px] border border-white/10 shadow-2xl pointer-events-none">
                   <p className="font-bold text-primary mb-1 uppercase flex items-center gap-1">
                     <Lightbulb className="w-3 h-3 text-amber-400" /> Storage Tip
                   </p>
-                  <p className="leading-relaxed opacity-90">
-                    Keep your storage low by removing unused menu items. Current: {(usage?.storage_mb || 0).toFixed(2)}MB/512MB
+                  <p className="leading-tight opacity-90">
+                    Remove unused items to save space. <br/>
+                    Used: <span className="text-primary font-bold">{(usage?.storage_mb || 0).toFixed(2)}MB</span> / 512MB
                   </p>
                 </div>
+                
                 <div className="flex justify-between items-center mb-1.5">
                   <span className="text-[9px] font-bold uppercase text-muted-foreground/70 flex items-center gap-1">
                     Storage <Info className="w-3 h-3 text-primary" />
@@ -224,16 +227,19 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
                 </div>
               </div>
 
-              {/* Traffic with Owner Tips - FIXED TOOLTIP ALIGNMENT & TEXT */}
+              {/* Traffic */}
               <div className="group relative bg-muted/20 p-3 rounded-xl border border-border/40 hover:bg-muted/30 transition-colors">
-                <div className="absolute bottom-full left-0 mb-2 w-56 scale-0 group-hover:scale-100 transition-all z-20 bg-slate-900 text-white p-3 rounded-lg text-[9px] border border-white/10 shadow-2xl text-left">
+                {/* FLUID TOOLTIP */}
+                <div className="absolute bottom-full right-0 mb-2 max-w-[180px] w-max scale-0 group-hover:scale-100 transition-all z-20 bg-slate-900 text-white p-2.5 rounded-lg text-[9px] border border-white/10 shadow-2xl pointer-events-none">
                   <p className="font-bold text-blue-400 mb-1 uppercase flex items-center gap-1">
                     <Lightbulb className="w-3 h-3 text-amber-400" /> Traffic Tip
                   </p>
-                  <p className="leading-relaxed opacity-90">
-                    Using compressed and low size images allows more scans every month. Current: {(usage?.egress_gb || 0).toFixed(3)}GB/5GB
+                  <p className="leading-tight opacity-90">
+                    Use small images for faster scans. <br/>
+                    Used: <span className="text-blue-400 font-bold">{(usage?.egress_gb || 0).toFixed(3)}GB</span> / 5GB
                   </p>
                 </div>
+
                 <div className="flex justify-between items-center mb-1.5">
                   <span className="text-[9px] font-bold uppercase text-muted-foreground/70 flex items-center gap-1">
                     Traffic <Info className="w-3 h-3 text-blue-500" />
