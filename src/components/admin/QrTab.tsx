@@ -94,17 +94,37 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
   const handleShare = async () => {
     setIsSharing(true);
     try {
+      // Ensure fonts are ready before drawing
+      await document.fonts.ready;
+
       const cvs = document.createElement("canvas"), ctx = cvs.getContext("2d");
       if (!ctx) return;
       cvs.width = 900; cvs.height = 1200;
 
-      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, 900, 1200);
+      // Fill background
+      ctx.fillStyle = "#ffffff"; 
+      ctx.fillRect(0, 0, 900, 1200);
+
+      // Draw border
       ctx.strokeStyle = `hsl(${getPrimaryColor()})`; ctx.lineWidth = 16;
       if (ctx.roundRect) ctx.roundRect(40, 40, 820, 1120, 60); else ctx.rect(40, 40, 820, 1120);
       ctx.stroke();
 
-      ctx.textAlign = "center"; ctx.fillStyle = "#000"; ctx.font = "bold 72px serif";
-      ctx.fillText(restaurant.name, 450, 220);
+      // Setup Text rendering
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+
+      // 1. Restaurant Name
+      ctx.fillStyle = "#000000"; 
+      ctx.font = "bold 72px serif";
+      ctx.fillText(restaurant.name, 450, 180);
+
+      // 2. Tagline (Added visibility fix)
+      if (restaurant.tagline) {
+        ctx.fillStyle = "#666666";
+        ctx.font = "italic 36px sans-serif";
+        ctx.fillText(restaurant.tagline, 450, 260);
+      }
       
       let logoImg = null;
       let useFull = !restaurant.logo_url || restaurant.show_qr_logo === false;
@@ -129,21 +149,23 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       const qrImg = new Image();
       await new Promise(r => { qrImg.onload = r; qrImg.src = qrUrl; });
 
+      // QR Area
       ctx.fillStyle = "#fff";
-      if (ctx.roundRect) ctx.roundRect(170, 350, 560, 560, 40); else ctx.rect(170, 350, 560, 560);
+      if (ctx.roundRect) ctx.roundRect(170, 360, 560, 560, 40); else ctx.rect(170, 360, 560, 560);
       ctx.fill();
-      ctx.drawImage(qrImg, 200, 380, 500, 500);
+      ctx.drawImage(qrImg, 200, 390, 500, 500);
 
       if (logoImg) {
-        ctx.fillStyle = "#fff"; ctx.fillRect(387, 567, 126, 126);
-        ctx.drawImage(logoImg, 395, 575, 110, 110);
+        ctx.fillStyle = "#fff"; ctx.fillRect(387, 577, 126, 126);
+        ctx.drawImage(logoImg, 395, 585, 110, 110);
       }
 
-      ctx.fillStyle = "#000"; ctx.font = "bold 44px sans-serif";
+      // Footer
+      ctx.fillStyle = "#000000"; ctx.font = "bold 44px sans-serif";
       ctx.fillText("Scan to view our digital menu", 450, 1040);
 
       const blob = await new Promise<Blob | null>(r => cvs.toBlob(r, "image/png"));
-      URL.revokeObjectURL(qrUrl); // Memory cleanup
+      URL.revokeObjectURL(qrUrl);
 
       if (blob) {
         const f = new File([blob], "menu-qr.png", { type: "image/png" });
