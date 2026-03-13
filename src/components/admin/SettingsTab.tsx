@@ -236,7 +236,12 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
                   </p>
                   <p className="leading-tight opacity-90">
                     Using compressed and low size images allows more scans every month. <br/>
-                    Used: <span className="text-blue-400 font-bold">{(usage?.egress_gb || 0).toFixed(3)}GB</span> / 5GB
+                    <span className="block mt-1">
+                      Approx. used: <span className="text-blue-400 font-bold">{(usage?.egress_gb || 0).toFixed(3)}GB</span> / 5GB
+                    </span>
+                    <span className="text-[8px] opacity-70 block mt-0.5 italic">
+                      Resets monthly
+                    </span>
                   </p>
                 </div>
 
