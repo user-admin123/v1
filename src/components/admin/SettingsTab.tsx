@@ -128,17 +128,21 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
           ))}
         </div>
       </div>
-      {/* --- NEW INSIGHTS SECTION --- */}
-      <div className="border-t border-border/30 pt-6 mt-6 space-y-4">
+      {/* --- SYSTEM INSIGHTS SECTION --- */}
+      <div className="border-t border-border/30 pt-6 mt-6 space-y-5">
         <div>
-          <p className="text-sm font-semibold text-foreground">System Health & Insights</p>
-          <p className="text-xs text-muted-foreground">Monitor your app usage and performance</p>
+          <Label className="text-base font-bold">App Health & Performance</Label>
+          <p className="text-xs text-muted-foreground">Insights and limits for your digital menu</p>
         </div>
 
-        {/* 1. Weekly Traffic Lights */}
-        <div className="bg-muted/30 p-4 rounded-xl border border-border/50">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">Customer Traffic (7 Days)</p>
-          <div className="flex justify-between items-center px-1">
+        {/* 1. WEEKLY INSIGHTS (Rounded Day-Bubbles) */}
+        <div className="bg-muted/30 p-4 rounded-2xl border border-border/50">
+          <div className="flex justify-between items-center mb-4">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Weekly Traffic</span>
+            <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">Live Insights</span>
+          </div>
+          
+          <div className="flex justify-between items-center">
             {[
               { d: 'M', v: 45, s: 'yellow' },
               { d: 'T', v: 12, s: 'red' },
@@ -148,15 +152,15 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
               { d: 'S', v: 0, s: 'upcoming' },
               { d: 'S', v: 0, s: 'upcoming' },
             ].map((item, i) => (
-              <div key={i} className="flex flex-col items-center gap-1.5">
-                <span className="text-[10px] font-bold text-muted-foreground/70">{item.d}</span>
+              <div key={i} className="flex flex-col items-center gap-2">
+                <span className="text-[10px] font-medium text-muted-foreground">{item.d}</span>
                 <div 
                   className={cn(
-                    "w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold transition-all border",
+                    "w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold transition-all border-2",
                     item.s === 'green' && "bg-green-500/10 text-green-600 border-green-500/20",
                     item.s === 'yellow' && "bg-amber-500/10 text-amber-600 border-amber-500/20",
                     item.s === 'red' && "bg-destructive/10 text-destructive border-destructive/20",
-                    item.s === 'upcoming' && "bg-transparent text-muted-foreground/30 border-dashed border-muted-foreground/20"
+                    item.s === 'upcoming' && "bg-transparent text-muted-foreground/20 border-dashed border-muted-foreground/20"
                   )}
                 >
                   {item.s !== 'upcoming' ? item.v : ''}
@@ -164,32 +168,43 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
               </div>
             ))}
           </div>
+          <p className="text-[10px] text-muted-foreground mt-4 text-center italic">
+            Tap a day to see detailed customer interactions
+          </p>
         </div>
 
-        {/* 2. Health Bars */}
+        {/* 2 & 3. HEALTH BARS (Storage & Egress) */}
         <div className="grid gap-3">
-          {/* Storage Bar */}
-          <div className="bg-muted/30 p-3 rounded-xl border border-border/50">
+          {/* STORAGE (Menu Capacity) */}
+          <div className="bg-muted/30 p-4 rounded-2xl border border-border/50">
             <div className="flex justify-between items-end mb-2">
-              <Label className="text-xs">Menu Capacity</Label>
-              <span className="text-[10px] font-bold text-primary">12% Used</span>
+              <div>
+                <Label className="text-xs font-semibold">Menu Capacity</Label>
+                <p className="text-[10px] text-muted-foreground">Photos and dish data storage</p>
+              </div>
+              <span className="text-xs font-bold text-primary">12%</span>
             </div>
-            <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-              <div className="bg-primary h-full rounded-full transition-all" style={{ width: '12%' }} />
+            <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+              <div className="bg-primary h-full rounded-full transition-all duration-500" style={{ width: '12%' }} />
             </div>
-            <p className="text-[10px] text-muted-foreground mt-2">Space for roughly 450 more dishes.</p>
           </div>
 
-          {/* Traffic Bar */}
-          <div className="bg-muted/30 p-3 rounded-xl border border-border/50">
+          {/* EGRESS (Monthly Data Traffic) */}
+          <div className="bg-muted/30 p-4 rounded-2xl border border-border/50">
             <div className="flex justify-between items-end mb-2">
-              <Label className="text-xs">Monthly Data Traffic</Label>
-              <span className="text-[10px] font-bold text-blue-500">2.4k / 50k views</span>
+              <div>
+                <Label className="text-xs font-semibold">Monthly Data Traffic</Label>
+                <p className="text-[10px] text-muted-foreground">Data used by customer phones</p>
+              </div>
+              <span className="text-xs font-bold text-blue-500">5%</span>
             </div>
-            <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-              <div className="bg-blue-500 h-full rounded-full transition-all" style={{ width: '5%' }} />
+            <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+              <div className="bg-blue-500 h-full rounded-full transition-all duration-500" style={{ width: '5%' }} />
             </div>
-            <p className="text-[10px] text-muted-foreground mt-2">Free traffic limit resets in 18 days.</p>
+            <p className="text-[10px] text-muted-foreground mt-3 flex justify-between">
+              <span>Used: 2.4GB</span>
+              <span className="font-medium text-foreground">Limit: 50GB Free</span>
+            </p>
           </div>
         </div>
       </div>
