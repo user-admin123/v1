@@ -128,83 +128,85 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
           ))}
         </div>
       </div>
-      {/* --- SYSTEM INSIGHTS SECTION --- */}
-      <div className="border-t border-border/30 pt-6 mt-6 space-y-5">
-        <div>
-          <Label className="text-base font-bold">App Health & Performance</Label>
-          <p className="text-xs text-muted-foreground">Insights and limits for your digital menu</p>
-        </div>
+      {/* --- MVP HEALTH & INSIGHTS --- */}
+      <div className="border-t border-border/30 pt-6 mt-6 space-y-6">
+        <header>
+          <Label className="text-base font-bold text-foreground">App Performance</Label>
+          <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Live System Status</p>
+        </header>
 
-        {/* 1. WEEKLY INSIGHTS (Rounded Day-Bubbles) */}
-        <div className="bg-muted/30 p-4 rounded-2xl border border-border/50">
-          <div className="flex justify-between items-center mb-4">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Weekly Traffic</span>
-            <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">Live Insights</span>
-          </div>
-          
+        {/* 1. INTERACTIVE INSIGHTS (3-WEEK HISTORY) */}
+        <div className="bg-muted/30 p-4 rounded-2xl border border-border/50 space-y-4">
           <div className="flex justify-between items-center">
-            {[
-              { d: 'M', v: 45, s: 'yellow' },
-              { d: 'T', v: 12, s: 'red' },
-              { d: 'W', v: 88, s: 'green' },
-              { d: 'T', v: 65, s: 'green' },
-              { d: 'F', v: 120, s: 'green' },
-              { d: 'S', v: 0, s: 'upcoming' },
-              { d: 'S', v: 0, s: 'upcoming' },
-            ].map((item, i) => (
-              <div key={i} className="flex flex-col items-center gap-2">
-                <span className="text-[10px] font-medium text-muted-foreground">{item.d}</span>
-                <div 
+            <Label className="text-xs font-semibold text-foreground">Menu Views</Label>
+            <div className="flex gap-1">
+               {/* Simplified button for MVP testing */}
+               <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => alert("Loading Previous Week...")}>
+                 <span className="text-[10px]">{"<"}</span>
+               </Button>
+               <Button variant="outline" size="icon" className="h-6 w-6" disabled>
+                 <span className="text-[10px] text-muted-foreground/30">{">"}</span>
+               </Button>
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center px-1">
+            {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, i) => {
+              // TEST LOGIC: 5 days have passed, 2 are upcoming
+              const isUpcoming = i > 4; 
+              const randomViews = Math.floor(Math.random() * 100);
+              
+              // Color Logic: Red < 15, Yellow < 50, Green 50+
+              const colorClass = isUpcoming ? "border-dashed border-muted-foreground/20 text-muted-foreground/30 bg-transparent" :
+                                randomViews > 50 ? "bg-green-500/10 text-green-600 border-green-500/20" :
+                                randomViews > 15 ? "bg-amber-500/10 text-amber-600 border-amber-500/20" :
+                                "bg-destructive/10 text-destructive border-destructive/20";
+
+              return (
+                <button 
+                  key={i}
+                  disabled={isUpcoming}
+                  onClick={() => alert(`Views for ${day}: ${randomViews}`)}
                   className={cn(
-                    "w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold transition-all border-2",
-                    item.s === 'green' && "bg-green-500/10 text-green-600 border-green-500/20",
-                    item.s === 'yellow' && "bg-amber-500/10 text-amber-600 border-amber-500/20",
-                    item.s === 'red' && "bg-destructive/10 text-destructive border-destructive/20",
-                    item.s === 'upcoming' && "bg-transparent text-muted-foreground/20 border-dashed border-muted-foreground/20"
+                    "w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all border-2",
+                    colorClass,
+                    isUpcoming ? "cursor-not-allowed" : "hover:scale-110 active:scale-95 cursor-pointer"
                   )}
                 >
-                  {item.s !== 'upcoming' ? item.v : ''}
-                </div>
-              </div>
-            ))}
+                  {day}
+                </button>
+              );
+            })}
           </div>
-          <p className="text-[10px] text-muted-foreground mt-4 text-center italic">
-            Tap a day to see detailed customer interactions
+          <p className="text-[10px] text-muted-foreground text-center italic">
+            Tap a day to see view counts
           </p>
         </div>
 
-        {/* 2 & 3. HEALTH BARS (Storage & Egress) */}
-        <div className="grid gap-3">
-          {/* STORAGE (Menu Capacity) */}
+        {/* 2 & 3. SYSTEM LIMITS (Storage & Egress) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* STORAGE BAR */}
           <div className="bg-muted/30 p-4 rounded-2xl border border-border/50">
             <div className="flex justify-between items-end mb-2">
-              <div>
-                <Label className="text-xs font-semibold">Menu Capacity</Label>
-                <p className="text-[10px] text-muted-foreground">Photos and dish data storage</p>
-              </div>
-              <span className="text-xs font-bold text-primary">12%</span>
+              <span className="text-[11px] font-bold text-muted-foreground uppercase">Storage</span>
+              <span className="text-xs font-bold text-primary">15.5 / 512 MB</span>
             </div>
             <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-              <div className="bg-primary h-full rounded-full transition-all duration-500" style={{ width: '12%' }} />
+              <div className="bg-primary h-full rounded-full" style={{ width: '3%' }} />
             </div>
+            <p className="text-[10px] text-muted-foreground mt-2 font-medium">Menu Capacity (Free Tier)</p>
           </div>
 
-          {/* EGRESS (Monthly Data Traffic) */}
+          {/* EGRESS BAR */}
           <div className="bg-muted/30 p-4 rounded-2xl border border-border/50">
             <div className="flex justify-between items-end mb-2">
-              <div>
-                <Label className="text-xs font-semibold">Monthly Data Traffic</Label>
-                <p className="text-[10px] text-muted-foreground">Data used by customer phones</p>
-              </div>
-              <span className="text-xs font-bold text-blue-500">5%</span>
+              <span className="text-[11px] font-bold text-muted-foreground uppercase">Data Traffic</span>
+              <span className="text-xs font-bold text-blue-500">0.2 / 5 GB</span>
             </div>
             <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-              <div className="bg-blue-500 h-full rounded-full transition-all duration-500" style={{ width: '5%' }} />
+              <div className="bg-blue-500 h-full rounded-full" style={{ width: '4%' }} />
             </div>
-            <p className="text-[10px] text-muted-foreground mt-3 flex justify-between">
-              <span>Used: 2.4GB</span>
-              <span className="font-medium text-foreground">Limit: 50GB Free</span>
-            </p>
+            <p className="text-[10px] text-muted-foreground mt-2 font-medium">Monthly Visitor Data</p>
           </div>
         </div>
       </div>
