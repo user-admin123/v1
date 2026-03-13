@@ -156,7 +156,7 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
       <div className="border-t border-border/30 pt-6 mt-6 space-y-4">
         <div className="flex justify-between items-end px-0.5">
           <div>
-            <Label className="text-sm font-bold">Insights</Label>
+            <Label className="text-sm font-bold">Reach & Usage</Label>
             <p className="text-[10px] text-muted-foreground font-medium">Daily scans (Last 7 days)</p>
           </div>
         </div>
@@ -226,7 +226,7 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
 
               {/* Traffic with Owner Tips */}
               <div className="group relative bg-muted/20 p-3 rounded-xl border border-border/40 hover:bg-muted/30 transition-colors">
-                <div className="absolute bottom-full right-0 mb-2 w-56 scale-0 group-hover:scale-100 transition-all z-20 bg-slate-900 text-white p-3 rounded-lg text-[9px] border border-white/10 shadow-2xl text-right">
+                <div className="absolute bottom-full left-0 mb-2 w-56 scale-0 group-hover:scale-100 transition-all z-20 bg-slate-900 text-white p-3 rounded-lg text-[9px] border border-white/10 shadow-2xl text-left">
                   <p className="font-bold text-blue-400 mb-1 uppercase flex items-center justify-end gap-1">
                     Traffic Tip <Lightbulb className="w-3 h-3 text-amber-400" />
                   </p>
@@ -235,11 +235,11 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
                   </p>
                 </div>
                 <div className="flex justify-between items-center mb-1.5">
-                   <span className="text-[10px] font-bold text-blue-500">
+                  <span className="text-[9px] font-bold uppercase text-muted-foreground/70 flex items-center gap-1">
+                    Traffic <Info className="w-3 h-3 text-blue-500" />
+                  </span>
+                  <span className="text-[10px] font-bold text-blue-500">
                     {Math.min(((usage?.egress_gb || 0) / 5) * 100, 100).toFixed(1)}%
-                   </span>
-                   <span className="text-[9px] font-bold uppercase text-muted-foreground/70 flex items-center gap-1">
-                    <Info className="w-3 h-3 text-blue-500" /> Traffic
                   </span>
                 </div>
                 <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
