@@ -1,4 +1,4 @@
-limport { useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { RestaurantInfo } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { QRCodeSVG } from "qrcode.react";
@@ -68,13 +68,13 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
               .logo { width: 80px; height: 80px; border-radius: 16px; object-fit: cover; border: 1px solid #eee; margin-bottom: 15px; }
               h2 { 
                 font-family: 'Playfair Display', serif; 
-                font-size: clamp(24px, ${(40 / (restaurant.name.length || 1)) * 38}px, 38px); 
+                font-size: clamp(24px, ${40 / restaurant.name.length * 38}px, 38px); 
                 color: #000; margin: 0 0 8px 0; 
                 line-height: 1.2;
               }
               .tagline { 
                 color: #666; 
-                font-size: clamp(14px, ${(60 / (restaurant.tagline?.length || 1)) * 18}px, 18px); 
+                font-size: clamp(14px, ${60 / (restaurant.tagline?.length || 1) * 18}px, 18px); 
                 font-style: italic; margin-bottom: 30px; 
               }
               .qr-wrap { display: inline-block; padding: 20px; border-radius: 24px; border: 2px solid #f0f0f0; margin: 10px 0; background: white; }
@@ -90,7 +90,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
               <div class="qr-wrap">${svgData}</div>
               <p class="scan-text">Scan to view our digital menu</p>
             </div>
-            <script>window.onload = () => { setTimeout(() => { window.print(); window.close(); }, 500); };</script>
+            <script>window.onload = () => { setTimeout(() => { window.print(); }, 500); };</script>
           </body>
         </html>
       `);
@@ -103,17 +103,20 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
   const handleShare = async () => {
     setIsSharing(true);
     try {
+      // Ensure fonts are loaded before measuring text on canvas
+      await document.fonts.ready;
+
       const cvs = document.createElement("canvas");
-      const ctx = cvs.getContext("2d");
+      const ctx = cvs.getContext("2d", { alpha: false }); // Performance optimization
       if (!ctx) throw new Error("Canvas context failed");
 
       const primaryColor = getPrimaryColor();
       cvs.width = 900;
       cvs.height = 1200;
 
-      // Background & Border
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, 900, 1200);
+
       ctx.strokeStyle = `hsl(${primaryColor})`;
       ctx.lineWidth = 16;
       if (ctx.roundRect) ctx.roundRect(40, 40, 820, 1120, 60); else ctx.rect(40, 40, 820, 1120);
@@ -139,19 +142,20 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
               } else {
                 const a = document.createElement('a');
                 a.href = cvs.toDataURL("image/png");
-                a.download = `${restaurant.name.replace(/\s+/g, '-').toLowerCase()}-qr.png`;
+                a.download = `${restaurant.name}-menu.png`;
                 a.click();
               }
             } catch (err) {
-              if ((err as any).name !== 'AbortError') toast.error("Sharing interrupted");
+              if ((err as any).name !== 'AbortError') throw err;
             }
           }
           setIsSharing(false);
         }, "image/png");
       };
 
-      // Text Shrinking Logic
       const maxWidth = 780;
+
+      // Draw Name
       let nameFontSize = 72;
       ctx.font = `bold ${nameFontSize}px sans-serif`;
       while (ctx.measureText(restaurant.name).width > maxWidth && nameFontSize > 32) {
@@ -161,6 +165,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       ctx.fillStyle = "#000000";
       ctx.fillText(restaurant.name, 450, 180);
 
+      // Draw Tagline
       if (restaurant.tagline) {
         let taglineFontSize = 36;
         ctx.font = `italic ${taglineFontSize}px sans-serif`;
@@ -172,14 +177,14 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
         ctx.fillText(restaurant.tagline, 450, 255);
       }
 
-      // Logo Pre-fetch for QR decision
       let logoData = null;
       let useFull = !restaurant.logo_url || restaurant.show_qr_logo === false;
 
       if (!useFull && restaurant.logo_url) {
         logoData = await getBase64(restaurant.logo_url);
         if (!logoData) {
-          toast.error("Logo load failed. Generating full QR code...");
+          toast.error("Logo load failed. Generating full QR code...", { position: "top-center" });
+          await new Promise(r => setTimeout(r, 2000));
           useFull = true;
         }
       }
@@ -232,14 +237,18 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           imageSettings={hasEmbeddedLogo ? { src: restaurant.logo_url!, height: 38, width: 38, excavate: true } : undefined}
         />
       </div>
-      <div className="hidden" ref={hiddenFullQrRef}><QRCodeSVG value={menuUrl} size={160} level="H" /></div>
+      <div className="hidden" ref={hiddenFullQrRef}>
+        <QRCodeSVG value={menuUrl} size={160} level="H" />
+      </div>
       
       <div className="text-center">
         <p className="text-sm text-muted-foreground">Your menu QR code</p>
         {hasEmbeddedLogo && <p className="text-xs text-primary font-medium mt-1">Logo embedded ✓</p>}
       </div>
 
-      <Button className="w-full" onClick={onViewFullscreen}><Eye className="w-4 h-4 mr-2" />View QR Display</Button>
+      <Button className="w-full" onClick={onViewFullscreen}>
+        <Eye className="w-4 h-4 mr-2" />View QR Display
+      </Button>
       
       <div className="flex gap-2 w-full">
         <Button variant="outline" className="flex-1" onClick={handlePrint} disabled={isPrinting}>
