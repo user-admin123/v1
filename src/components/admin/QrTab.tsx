@@ -21,10 +21,6 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
   const hasEmbeddedLogo =
     restaurant.show_qr_logo !== false && !!restaurant.logo_url;
 
-  /* ------------------------------------------------ */
-  /* UTILITIES                                        */
-  /* ------------------------------------------------ */
-
   const getPrimaryColor = () =>
     getComputedStyle(document.documentElement)
       .getPropertyValue("--primary")
@@ -40,7 +36,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
 
       const blob = await res.blob();
 
-      return await new Promise((resolve) => {
+      return new Promise((resolve) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result as string);
         reader.onerror = () => resolve(null);
@@ -58,8 +54,9 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
   };
 
   const resolveLogo = async () => {
-    if (!restaurant.logo_url || restaurant.show_qr_logo === false)
+    if (!restaurant.logo_url || restaurant.show_qr_logo === false) {
       return { logo: null, useFull: true };
+    }
 
     const logo = await getBase64(restaurant.logo_url);
 
@@ -71,10 +68,6 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
 
     return { logo, useFull: false };
   };
-
-  /* ------------------------------------------------ */
-  /* PRINT                                            */
-  /* ------------------------------------------------ */
 
   const handlePrint = async () => {
     setIsPrinting(true);
@@ -95,103 +88,26 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       <title>${restaurant.name}</title>
       <style>
       @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;700&display=swap');
-
-      @page { size:auto; margin:0mm !important; }
-
-      html,body{
-        margin:0;
-        padding:0;
-        width:100%;
-        height:100%;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        background:#fff;
-        font-family:'Inter',sans-serif;
-        overflow:hidden;
-      }
-
-      .card{
-        background:white;
-        border-radius:32px;
-        padding:60px 40px;
-        text-align:center;
-        border:8px solid hsl(${primary});
-        width:450px;
-        box-sizing:border-box;
-      }
-
-      .logo{
-        width:80px;
-        height:80px;
-        border-radius:16px;
-        object-fit:cover;
-        border:1px solid #eee;
-        margin-bottom:15px;
-      }
-
-      h2{
-        font-family:'Playfair Display',serif;
-        font-size:clamp(24px,${40 / restaurant.name.length * 38}px,38px);
-        color:#000;
-        margin:0 0 8px;
-        line-height:1.2;
-      }
-
-      .tagline{
-        color:#666;
-        font-size:clamp(14px,${
-          60 / (restaurant.tagline?.length || 1) * 18
-        }px,18px);
-        font-style:italic;
-        margin-bottom:30px;
-      }
-
-      .qr-wrap{
-        display:inline-block;
-        padding:20px;
-        border-radius:24px;
-        border:2px solid #f0f0f0;
-        margin:10px 0;
-        background:white;
-      }
-
-      .qr-wrap svg{
-        width:250px !important;
-        height:250px !important;
-      }
-
-      .scan-text{
-        margin-top:30px;
-        font-size:20px;
-        font-weight:700;
-      }
+      @page{size:auto;margin:0mm!important;}
+      html,body{margin:0;padding:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#fff;font-family:'Inter',sans-serif;overflow:hidden;}
+      .card{background:white;border-radius:32px;padding:60px 40px;text-align:center;border:8px solid hsl(${primary});width:450px;box-sizing:border-box;}
+      .logo{width:80px;height:80px;border-radius:16px;object-fit:cover;border:1px solid #eee;margin-bottom:15px;}
+      h2{font-family:'Playfair Display',serif;font-size:clamp(24px,${40 / restaurant.name.length * 38}px,38px);color:#000;margin:0 0 8px;line-height:1.2;}
+      .tagline{color:#666;font-size:clamp(14px,${60 / (restaurant.tagline?.length || 1) * 18}px,18px);font-style:italic;margin-bottom:30px;}
+      .qr-wrap{display:inline-block;padding:20px;border-radius:24px;border:2px solid #f0f0f0;margin:10px 0;background:white;}
+      .qr-wrap svg{width:250px!important;height:250px!important;}
+      .scan-text{margin-top:30px;font-size:20px;font-weight:700;}
       </style>
       </head>
-
       <body>
       <div class="card">
-
-      ${logo ? `<img src="${logo}" class="logo" />` : ""}
-
+      ${logo ? `<img src="${logo}" class="logo"/>` : ""}
       <h2>${restaurant.name}</h2>
-
-      ${
-        restaurant.tagline
-          ? `<p class="tagline">${restaurant.tagline}</p>`
-          : ""
-      }
-
+      ${restaurant.tagline ? `<p class="tagline">${restaurant.tagline}</p>` : ""}
       <div class="qr-wrap">${svgData}</div>
-
       <p class="scan-text">Scan to view our digital menu</p>
-
       </div>
-
-      <script>
-      window.onload=()=>{setTimeout(()=>{window.print()},500)}
-      </script>
-
+      <script>window.onload=()=>{setTimeout(()=>{window.print()},500)}</script>
       </body>
       </html>
       `);
@@ -202,15 +118,11 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
     }
   };
 
-  /* ------------------------------------------------ */
-  /* SHARE                                            */
-  /* ------------------------------------------------ */
-
   const handleShare = async () => {
     setIsSharing(true);
 
     try {
-      await document.fonts.ready;
+      if (document.fonts?.ready) await document.fonts.ready;
 
       const cvs = document.createElement("canvas");
       const ctx = cvs.getContext("2d", { alpha: false });
@@ -228,12 +140,11 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       ctx.strokeStyle = `hsl(${primary})`;
       ctx.lineWidth = 16;
 
-      ctx.roundRect?.(40, 40, 820, 1120, 60);
+      if (ctx.roundRect) ctx.roundRect(40, 40, 820, 1120, 60);
+      else ctx.rect(40, 40, 820, 1120);
+
       ctx.stroke();
-
       ctx.textAlign = "center";
-
-      /* DYNAMIC TEXT */
 
       let y = 180;
       const maxWidth = 780;
@@ -248,7 +159,6 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
 
       ctx.fillStyle = "#000";
       ctx.fillText(restaurant.name, 450, y);
-
       y += 70;
 
       if (restaurant.tagline) {
@@ -266,7 +176,9 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
         ctx.fillStyle = "#666";
         ctx.fillText(restaurant.tagline, 450, y);
         y += 80;
-      } else y += 20;
+      } else {
+        y += 20;
+      }
 
       const qrY = y + 30;
 
@@ -274,14 +186,12 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       const svgData = getQrSvg(useFull);
       if (!svgData) return;
 
-      const blob = new Blob([svgData], { type: "image/svg+xml" });
-      const qrUrl = URL.createObjectURL(blob);
-
       const qrImg = new Image();
+      qrImg.src = "data:image/svg+xml;base64," + btoa(svgData);
 
       qrImg.onload = () => {
         ctx.drawImage(qrImg, 200, qrY, 500, 500);
-        URL.revokeObjectURL(qrUrl);
+        qrImg.src = "";
 
         const finish = () => {
           ctx.fillStyle = "#000";
@@ -289,35 +199,36 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           ctx.fillText("Scan to view our digital menu", 450, 1060);
 
           cvs.toBlob(async (blob) => {
-            if (!blob) return;
+            if (blob) {
+              const file = new File([blob], "menu-qr.png", {
+                type: "image/png",
+              });
 
-            const file = new File([blob], "menu-qr.png", {
-              type: "image/png",
-            });
+              try {
+                if (navigator.share && navigator.canShare?.({ files: [file] })) {
+                  await navigator.share({
+                    files: [file],
+                    title: restaurant.name,
+                    text: `View our menu here: ${menuUrl}`,
+                  });
+                } else {
+                  const a = document.createElement("a");
+                  a.href = cvs.toDataURL();
+                  a.download = `${restaurant.name}-menu.png`;
+                  a.click();
+                }
+              } catch {}
+            }
 
-            try {
-              if (
-                navigator.share &&
-                navigator.canShare?.({ files: [file] })
-              ) {
-                await navigator.share({
-                  files: [file],
-                  title: restaurant.name,
-                  text: `View our menu here: ${menuUrl}`,
-                });
-              } else {
-                const a = document.createElement("a");
-                a.href = cvs.toDataURL();
-                a.download = `${restaurant.name}-menu.png`;
-                a.click();
-              }
-            } catch {}
+            cvs.width = 0;
+            cvs.height = 0;
             setIsSharing(false);
           });
         };
 
         if (logo) {
           const img = new Image();
+
           img.onload = () => {
             const size = 120;
             const x = 390;
@@ -327,28 +238,31 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
             ctx.fillRect(x - 5, ly - 5, size + 10, size + 10);
 
             ctx.drawImage(img, x, ly, size, size);
+            img.src = "";
+
             finish();
           };
 
           img.onerror = finish;
           img.src = logo;
-        } else finish();
+        } else {
+          finish();
+        }
       };
 
-      qrImg.src = qrUrl;
+      qrImg.onerror = () => {
+        qrImg.src = "";
+        showToast("QR image failed to load");
+        setIsSharing(false);
+      };
     } catch {
       showToast("Share failed");
       setIsSharing(false);
     }
   };
 
-  /* ------------------------------------------------ */
-  /* UI                                               */
-  /* ------------------------------------------------ */
-
   return (
     <div className="mt-3 flex flex-col items-center gap-4">
-
       <div className="bg-white p-6 rounded-2xl border shadow-sm" ref={qrRef}>
         <QRCodeSVG
           value={menuUrl}
@@ -372,9 +286,7 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       </div>
 
       <div className="text-center">
-        <p className="text-sm text-muted-foreground">
-          Your menu QR code
-        </p>
+        <p className="text-sm text-muted-foreground">Your menu QR code</p>
 
         {hasEmbeddedLogo && (
           <p className="text-xs text-primary font-medium mt-1">
@@ -389,7 +301,6 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
       </Button>
 
       <div className="flex gap-2 w-full">
-
         <Button
           variant="outline"
           className="flex-1"
@@ -417,7 +328,6 @@ const QrTab = ({ restaurant, menuUrl, onViewFullscreen }: Props) => {
           )}
           Share
         </Button>
-
       </div>
     </div>
   );
