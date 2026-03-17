@@ -25,7 +25,12 @@ export function useMenuData() {
   useEffect(() => {
     const ringDoorbell = async () => {
       const restId = restaurant?.id;
-      const sessionKey = `doorbell_rung_${restId}`;         
+      const sessionKey = `doorbell_rung_${restId}`;
+      // NEW GUARD: If user is authenticated (Admin), do not ring the doorbell
+      if (authed) {
+        if (import.meta.env.DEV) console.log("Admin detected: Skipping view count.");
+        return;
+      }
       // Guard clauses
       if (!restId || sessionStorage.getItem(sessionKey)) return;
       const { error: rpcError } = await supabase.rpc('log_customer_view', { 
@@ -39,7 +44,7 @@ export function useMenuData() {
       sessionStorage.setItem(sessionKey, 'true');
     };
     ringDoorbell();
-  }, [restaurant?.id]);
+  }, [restaurant?.id, authed]);
 
   // Check auth on mount + listen for changes
   useEffect(() => {
