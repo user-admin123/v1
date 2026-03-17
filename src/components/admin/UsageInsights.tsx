@@ -19,7 +19,7 @@ const UsageInsights = ({ restaurantId }: Props) => {
         const data = await fetchAdminUsage(restaurantId);
         setUsage(data);
       } catch (err) {
-        if (import.meta.env.DEV) console.error("Usage Insights Error:", err);
+        if (import.meta.env.DEV) console.error("Usage Insights Fetch Error:", err);
       } finally {
         setLoading(false);
       }
@@ -30,7 +30,7 @@ const UsageInsights = ({ restaurantId }: Props) => {
   if (loading) return (
     <div className="flex flex-col items-center justify-center py-20 bg-muted/5 rounded-xl border border-dashed border-border/40">
       <Loader2 className="w-6 h-6 animate-spin text-primary/40" />
-      <p className="text-[10px] text-muted-foreground mt-2 font-medium uppercase tracking-widest">Gathering Metrics...</p>
+      <p className="text-[10px] text-muted-foreground mt-2 font-medium uppercase tracking-widest text-center">Gathering Metrics...</p>
     </div>
   );
 
@@ -39,7 +39,7 @@ const UsageInsights = ({ restaurantId }: Props) => {
 
   return (
     <div className="space-y-6 mt-2 pb-4 animate-in fade-in duration-500">
-      {/* 7-Day Activity */}
+      {/* 7-Day Activity Section */}
       <div className="space-y-3">
         <div className="px-1">
           <Label className="text-sm font-bold flex items-center gap-2">
@@ -55,6 +55,7 @@ const UsageInsights = ({ restaurantId }: Props) => {
             const dayLabel = date.toLocaleDateString('en-US', { weekday: 'short' });
             const count = usage?.weekly_data_obj?.[dayLabel] ?? 0;
             const isToday = i === 6;
+            // Bar maxes at 50 for visual logic, but allows any number
             const barHeight = Math.min((count / 50) * 100, 100);
 
             return (
@@ -68,9 +69,8 @@ const UsageInsights = ({ restaurantId }: Props) => {
                     )} 
                     style={{ height: `${Math.max(barHeight, 5)}%` }}
                   />
-                  {/* HOVER TOOLTIP FOR BAR */}
                   <span className="absolute -top-8 scale-0 group-hover:scale-100 transition-all text-[9px] font-bold bg-slate-900 text-white px-2 py-1 rounded shadow-xl z-20 whitespace-nowrap border border-white/10">
-                    {count} scans
+                    {count.toLocaleString()} scans
                   </span>
                 </div>
                 <span className={cn("text-[8px] sm:text-[9px] font-bold uppercase", isToday ? "text-primary" : "text-muted-foreground/50")}>
@@ -88,17 +88,19 @@ const UsageInsights = ({ restaurantId }: Props) => {
         
         {/* Storage Bar */}
         <div className="group relative p-4 bg-muted/20 rounded-xl border border-border/40 transition-colors hover:bg-muted/30">
-          {/* TOOLTIP */}
-          <div className="absolute bottom-full left-0 mb-2 w-full max-w-[200px] scale-0 group-hover:scale-100 transition-all z-30 bg-slate-900 text-white p-3 rounded-lg text-[10px] border border-white/10 shadow-2xl pointer-events-none">
+          <div className="absolute bottom-full left-0 mb-2 w-full max-w-[220px] scale-0 group-hover:scale-100 transition-all z-30 bg-slate-900 text-white p-3 rounded-lg text-[10px] border border-white/10 shadow-2xl pointer-events-none">
              <p className="font-bold text-primary mb-1 uppercase flex items-center gap-1">
                <Lightbulb className="w-3 h-3 text-amber-400" /> Storage Tip
              </p>
-             <p className="opacity-90">Used: {(usage?.storage_mb || 0).toFixed(2)}MB / 512MB</p>
+             <p className="opacity-90 leading-relaxed">
+               Keep storage low by removing unused items. <br/>
+               Used: <span className="text-primary font-bold">{(usage?.storage_mb || 0).toFixed(2)}MB</span> / 512MB
+             </p>
           </div>
 
           <div className="flex justify-between items-center mb-3">
             <span className="text-xs font-semibold flex items-center gap-2">
-              <Database className="w-4 h-4 text-primary" /> Assets Storage <Info className="w-3 h-3 opacity-50" />
+              <Database className="w-4 h-4 text-primary" /> Assets Storage <Info className="w-3 h-3 opacity-40" />
             </span>
             <span className="text-xs font-bold tabular-nums text-primary">
               {storagePct.toFixed(1)}%
@@ -111,17 +113,19 @@ const UsageInsights = ({ restaurantId }: Props) => {
 
         {/* Traffic Bar */}
         <div className="group relative p-4 bg-muted/20 rounded-xl border border-border/40 transition-colors hover:bg-muted/30">
-          {/* TOOLTIP */}
-          <div className="absolute bottom-full right-0 mb-2 w-full max-w-[200px] scale-0 group-hover:scale-100 transition-all z-30 bg-slate-900 text-white p-3 rounded-lg text-[10px] border border-white/10 shadow-2xl pointer-events-none">
+          <div className="absolute bottom-full left-0 mb-2 w-full max-w-[220px] scale-0 group-hover:scale-100 transition-all z-30 bg-slate-900 text-white p-3 rounded-lg text-[10px] border border-white/10 shadow-2xl pointer-events-none">
              <p className="font-bold text-blue-400 mb-1 uppercase flex items-center gap-1">
                <Lightbulb className="w-3 h-3 text-amber-400" /> Traffic Tip
              </p>
-             <p className="opacity-90 font-medium">Used: {(usage?.egress_gb || 0).toFixed(3)}GB / 5GB</p>
+             <p className="opacity-90 leading-relaxed">
+               Optimized images allow more scans per month. <br/>
+               Used: <span className="text-blue-400 font-bold">{(usage?.egress_gb || 0).toFixed(3)}GB</span> / 5GB
+             </p>
           </div>
 
           <div className="flex justify-between items-center mb-3">
             <span className="text-xs font-semibold flex items-center gap-2">
-              <Globe className="w-4 h-4 text-blue-500" /> Monthly Bandwidth <Info className="w-3 h-3 opacity-50" />
+              <Globe className="w-4 h-4 text-blue-500" /> Monthly Bandwidth <Info className="w-3 h-3 opacity-40" />
             </span>
             <span className="text-xs font-bold text-blue-500 tabular-nums">
               {trafficPct.toFixed(1)}%
@@ -130,6 +134,9 @@ const UsageInsights = ({ restaurantId }: Props) => {
           <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
             <div className="bg-blue-500 h-full transition-all duration-1000" style={{ width: `${trafficPct}%` }} />
           </div>
+          <p className="mt-3 text-[9px] text-muted-foreground italic flex items-center gap-1 opacity-70">
+            <Info className="w-3 h-3" /> Resets on the 1st of every month
+          </p>
         </div>
       </div>
     </div>
