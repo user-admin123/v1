@@ -45,17 +45,16 @@ const RestaurantHeader = ({ restaurant, onTripleTap }: Props) => {
         </div>
 
         {/* Handling long names with line-clamp and word-break */}
-        <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground tracking-tight 
-                       break-words line-clamp-2 leading-tight px-2">
-          {restaurant.name}
-        </h1>
+        <h1 className="text-3xl md:text-5xl font-bold text-foreground 
+                 tracking-tight leading-[1.1] break-words hyphens-auto">
+    {restaurant.name}
+  </h1>
 
-        {/* Handling long taglines */}
-        {restaurant.tagline && (
-          <p className="mt-3 text-muted-foreground text-base md:text-lg italic tracking-wide 
-                        max-w-prose mx-auto break-words line-clamp-3">
-            {restaurant.tagline}
-          </p>
+  {restaurant.tagline && (
+    <p className="mt-3 text-muted-foreground text-base md:text-lg 
+                  italic tracking-wide leading-relaxed max-w-[40ch] mx-auto">
+      {restaurant.tagline}
+    </p>
         )}
       </div>
     </header>
