@@ -48,27 +48,21 @@ const CharCounter = ({ current, max }: { current: number; max: number }) => {
 const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props) => {
   
   const update = (partial: Partial<RestaurantInfo>) => {
-  // 1. Create a clean clone of the current state
-  const nextInfo = { ...restaurant };
+  // 1. Get the key and value being changed
+  const key = Object.keys(partial)[0] as keyof RestaurantInfo;
+  const newValue = partial[key];
 
-  // 2. Safely apply the partial updates
-  Object.keys(partial).forEach((key) => {
-    const k = key as keyof RestaurantInfo;
-    let val = partial[k];
+  // 2. SAFETY CHECK: If we are updating a string field (Name/Tagline)
+  if (typeof newValue === 'string') {
+    const limit = key === 'name' ? MAX_LIMITS.NAME : MAX_LIMITS.TAGLINE;
+    
+    // If the new value is longer than the limit, IGNORE the update.
+    // This prevents the "erasing" bug by not sending bad data to React.
+    if (newValue.length > limit) return; 
+  }
 
-    // 3. Logic: Only slice if it's a string. 
-    // This prevents the "crash and clear" bug if Supabase returns null.
-    if (typeof val === "string") {
-      if (k === "name") val = val.slice(0, MAX_LIMITS.NAME);
-      if (k === "tagline") val = val.slice(0, MAX_LIMITS.TAGLINE);
-    }
-
-    // @ts-ignore - Dynamic assignment safety
-    nextInfo[k] = val;
-  });
-
-  // 4. Send the cleaned data back up
-  onUpdate(nextInfo);
+  // 3. Perform the update normally if within limits
+  onUpdate({ ...restaurant, ...partial });
   markChanged();
 };
   
@@ -89,10 +83,11 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
             </div>
           </div>
           <Input
-            value={restaurant.name ?? ""} // Fallback to empty string if null
-  maxLength={MAX_LIMITS.NAME}   // Hardware-level stop
+            value={restaurant.name || ""} // Force string type
+  maxLength={MAX_LIMITS.NAME}
   onChange={(e) => update({ name: e.target.value })}
-  className="bg-muted/30 border-muted focus:bg-background transition-all h-10 w-full"
+  // Important: Remove any other "onBlur" or "onInput" listeners
+  className="bg-muted/30 border-muted focus:bg-background h-10 w-full"
             placeholder="Enter restaurant name"
           />
         </div>
@@ -107,10 +102,10 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
             </div>
           </div>
           <Input
-            value={restaurant.tagline ?? ""} // Critical for Supabase nulls
+            value={restaurant.tagline || ""} 
   maxLength={MAX_LIMITS.TAGLINE}
   onChange={(e) => update({ tagline: e.target.value })}
-  className="bg-muted/30 border-muted focus:bg-background transition-all h-10 w-full"
+  className="bg-muted/30 border-muted focus:bg-background h-10 w-full"
             placeholder="e.g. Authentic Wood-Fired Pizza"
           />
         </div>
