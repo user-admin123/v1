@@ -20,7 +20,7 @@ const Index = () => {
     categories, items, restaurant, authed, login, logout,
     loading, error, updateCategories, updateItems, updateRestaurant, saveAll, refresh,
   } = useMenuData();
-  const { cartItems, totalItems, totalPrice, addItem, removeItem, getQuantity, clearCart } = useCart();
+  const { cartItems, totalItems, totalPrice, addItem, removeItem, getQuantity, clearCart } = useCart(items);
 
   const [activeCat, setActiveCat] = useState("");
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
