@@ -47,22 +47,28 @@ const CharCounter = ({ current, max }: { current: number; max: number }) => {
 
 const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props) => {
   
-  // FIXED UPDATE LOGIC: More robust handling of string slicing
   const update = (partial: Partial<RestaurantInfo>) => {
-  // Merge everything immediately so you don't need Object.assign later
-  const updatedInfo = { ...restaurant, ...partial };
-  
-  // Now apply the specific string-slicing logic to the merged object
-  if (partial.name !== undefined) {
-    updatedInfo.name = partial.name.slice(0, MAX_LIMITS.NAME);
-  }
-  
-  if (partial.tagline !== undefined) {
-    updatedInfo.tagline = (partial.tagline || "").slice(0, MAX_LIMITS.TAGLINE);
-  }
+  // 1. Create a clean clone of the current state
+  const nextInfo = { ...restaurant };
 
-  // Object.assign is no longer needed!
-  onUpdate(updatedInfo);
+  // 2. Safely apply the partial updates
+  Object.keys(partial).forEach((key) => {
+    const k = key as keyof RestaurantInfo;
+    let val = partial[k];
+
+    // 3. Logic: Only slice if it's a string. 
+    // This prevents the "crash and clear" bug if Supabase returns null.
+    if (typeof val === "string") {
+      if (k === "name") val = val.slice(0, MAX_LIMITS.NAME);
+      if (k === "tagline") val = val.slice(0, MAX_LIMITS.TAGLINE);
+    }
+
+    // @ts-ignore - Dynamic assignment safety
+    nextInfo[k] = val;
+  });
+
+  // 4. Send the cleaned data back up
+  onUpdate(nextInfo);
   markChanged();
 };
   
@@ -83,10 +89,10 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
             </div>
           </div>
           <Input
-            value={restaurant.name}
-            maxLength={MAX_LIMITS.NAME} // UI Level Block
-            onChange={(e) => update({ name: e.target.value })}
-            className="bg-muted/30 border-muted focus:bg-background transition-all h-10 shadow-sm w-full"
+            value={restaurant.name ?? ""} // Fallback to empty string if null
+  maxLength={MAX_LIMITS.NAME}   // Hardware-level stop
+  onChange={(e) => update({ name: e.target.value })}
+  className="bg-muted/30 border-muted focus:bg-background transition-all h-10 w-full"
             placeholder="Enter restaurant name"
           />
         </div>
@@ -101,10 +107,10 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
             </div>
           </div>
           <Input
-            value={restaurant.tagline || ""}
-            maxLength={MAX_LIMITS.TAGLINE} // UI Level Block
-            onChange={(e) => update({ tagline: e.target.value })}
-            className="bg-muted/30 border-muted focus:bg-background transition-all h-10 shadow-sm w-full"
+            value={restaurant.tagline ?? ""} // Critical for Supabase nulls
+  maxLength={MAX_LIMITS.TAGLINE}
+  onChange={(e) => update({ tagline: e.target.value })}
+  className="bg-muted/30 border-muted focus:bg-background transition-all h-10 w-full"
             placeholder="e.g. Authentic Wood-Fired Pizza"
           />
         </div>
