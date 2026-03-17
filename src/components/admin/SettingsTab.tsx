@@ -55,8 +55,8 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
     // 2. Strict Guard: If it's a string and exceeds limit, do nothing.
     // This stops the "Reset/Erase" loop before it hits the parent state.
     if (typeof newValue === "string") {
-      const limit = field === "name" ? MAX_LIMITS.NAME : MAX_LIMITS.TAGLINE;
-      if (newValue.length > limit) return;
+      if (field === "name" && newValue.length > MAX_LIMITS.NAME) return;
+      if (field === "tagline" && newValue.length > MAX_LIMITS.TAGLINE) return;
     }
 
     // 3. Update parent state
