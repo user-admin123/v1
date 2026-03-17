@@ -3,7 +3,7 @@ import { Category, MenuItem, RestaurantInfo } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, BarChart3 } from "lucide-react"; // Added icon
 import { useAdminState } from "@/hooks/useAdminState";
 import AdminFloatingButtons from "@/components/admin/AdminFloatingButtons";
 import DeleteConfirmDialog from "@/components/admin/DeleteConfirmDialog";
@@ -13,6 +13,7 @@ import ItemsTab from "@/components/admin/ItemsTab";
 import SettingsTab from "@/components/admin/SettingsTab";
 import QrTab from "@/components/admin/QrTab";
 import ItemFormDialog from "@/components/admin/ItemFormDialog";
+import UsageInsights from "@/components/admin/UsageInsights";
 
 interface Props {
   categories: Category[];
@@ -55,7 +56,6 @@ const AdminPanel = ({ categories, items, restaurant, onUpdateCategories, onUpdat
         menuUrl={menuUrl}
       />
 
-      {/* Main Admin Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="glass-card border-border/30 sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
@@ -64,17 +64,20 @@ const AdminPanel = ({ categories, items, restaurant, onUpdateCategories, onUpdat
           </DialogHeader>
 
           {admin.hasChanges && (
-            <Button onClick={admin.saveAllChanges} disabled={admin.saving} className="w-full bg-green-600 hover:bg-green-700 text-white disabled:opacity-70">
+            <Button onClick={admin.saveAllChanges} disabled={admin.saving} className="w-full bg-green-600 hover:bg-green-700 text-white disabled:opacity-70 shadow-lg">
               {admin.saving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</> : <><Save className="w-4 h-4 mr-2" /> Update Changes</>}
             </Button>
           )}
 
           <Tabs defaultValue="categories" className="mt-2">
-            <TabsList className="w-full bg-muted/50">
-              <TabsTrigger value="categories" className="flex-1">Categories</TabsTrigger>
-              <TabsTrigger value="items" className="flex-1">Items</TabsTrigger>
-              <TabsTrigger value="settings" className="flex-1">Settings</TabsTrigger>
-              <TabsTrigger value="qr" className="flex-1">QR</TabsTrigger>
+            <TabsList className="w-full bg-muted/50 p-1">
+              <TabsTrigger value="categories" className="flex-1 text-[11px] sm:text-xs">Categories</TabsTrigger>
+              <TabsTrigger value="items" className="flex-1 text-[11px] sm:text-xs">Items</TabsTrigger>
+              <TabsTrigger value="settings" className="flex-1 text-[11px] sm:text-xs">Settings</TabsTrigger>
+              <TabsTrigger value="insights" className="flex-1 text-[11px] sm:text-xs">
+                <BarChart3 className="w-3 h-3 mr-1 hidden sm:block" /> Insights
+              </TabsTrigger>
+              <TabsTrigger value="qr" className="flex-1 text-[11px] sm:text-xs">QR</TabsTrigger>
             </TabsList>
 
             <TabsContent value="categories">
@@ -111,6 +114,11 @@ const AdminPanel = ({ categories, items, restaurant, onUpdateCategories, onUpdat
                 onLogoUpload={admin.handleLogoUpload}
                 markChanged={admin.markChanged}
               />
+            </TabsContent>
+
+            {/* NEW INSIGHTS TAB */}
+            <TabsContent value="insights">
+              <UsageInsights restaurantId={restaurant.id} />
             </TabsContent>
 
             <TabsContent value="qr">
