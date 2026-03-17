@@ -71,12 +71,18 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
             </div>
           </div>
           <Input
-            value={restaurant.name}
-            maxLength={MAX_LIMITS.NAME}
-            onChange={(e) => {
-              const value = e.target.value.slice(0, MAX_LIMITS.NAME);
-              update({ name: value });
-            }}
+  // 1. Ensure the value is NEVER null (crucial for Supabase)
+  value={restaurant.name || ""} 
+  
+  // 2. Browser-level hard stop (User cannot type char 41)
+  maxLength={40} 
+  
+  // 3. Simple update
+  onChange={(e) => onUpdate({ ...restaurant, name: e.target.value })}
+  
+  placeholder="Restaurant Name"
+  className="bg-muted/50"
+/>
             className="bg-muted/30 border-muted focus:bg-background transition-all h-10 shadow-sm w-full"
             placeholder="Enter restaurant name"
           />
