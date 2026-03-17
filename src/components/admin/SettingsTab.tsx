@@ -46,20 +46,17 @@ const CharCounter = ({ current, max }: { current: number; max: number }) => {
 };
 
 const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props) => {
-  
+
   const update = (partial: Partial<RestaurantInfo>) => {
-    // 1. Identify what is being changed
     const field = Object.keys(partial)[0] as keyof RestaurantInfo;
     const newValue = partial[field];
 
-    // 2. Strict Guard: If it's a string and exceeds limit, do nothing.
-    // This stops the "Reset/Erase" loop before it hits the parent state.
+    // Strict Guard: Prevents the "Erase Bug" by stopping input at the limit
     if (typeof newValue === "string") {
       const limit = field === "name" ? MAX_LIMITS.NAME : MAX_LIMITS.TAGLINE;
       if (newValue.length > limit) return;
     }
 
-    // 3. Update parent state
     onUpdate({ ...restaurant, ...partial });
     markChanged();
   };
@@ -67,13 +64,13 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
   const isLogoAvailable = !!restaurant.logo_url;
 
   return (
-    <div className="space-y-8 mt-4 max-w-full pb-4 px-1 animate-in fade-in slide-in-from-bottom-2 duration-500">
-      
+    <div className="space-y-8 mt-4 max-w-full pb-6 px-1 animate-in fade-in slide-in-from-bottom-2 duration-500">
+
       {/* Identity Section */}
       <div className="space-y-6">
         <div className="space-y-2.5 w-full">
           <div className="flex justify-between items-end gap-4 px-0.5">
-            <Label className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70 truncate min-w-0">
+            <Label className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70 truncate">
               Restaurant Name
             </Label>
             <div className="shrink-0">
@@ -91,7 +88,7 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
 
         <div className="space-y-2.5 w-full">
           <div className="flex justify-between items-end gap-4 px-0.5">
-            <Label className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70 truncate min-w-0">
+            <Label className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70 truncate">
               Tagline
             </Label>
             <div className="shrink-0">
@@ -113,10 +110,10 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
         <Label className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70 px-0.5">
           Branding & Logo
         </Label>
-        
+
         <div className="grid gap-4">
           {restaurant.logo_url && (
-            <div className="flex items-center gap-4 p-3 bg-secondary/20 rounded-xl border border-border/50 backdrop-blur-sm group">
+            <div className="flex items-center gap-4 p-3 bg-secondary/20 rounded-xl border border-border/50 backdrop-blur-sm">
               <img
                 src={restaurant.logo_url}
                 alt="Logo"
@@ -191,7 +188,8 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
                 >
                   {label}
                 </Label>
-                <p className="text-[11px] text-muted-foreground/80 leading-relaxed truncate">
+                {/* FIXED: Removed truncate so descriptions are readable on mobile */}
+                <p className="text-[11px] text-muted-foreground/80 leading-relaxed">
                   {desc}
                 </p>
               </div>
