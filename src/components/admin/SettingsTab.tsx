@@ -67,13 +67,13 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
   const isLogoAvailable = !!restaurant.logo_url;
 
   return (
-    <div className="space-y-8 mt-4 max-w-full pb-6 px-1 animate-in fade-in slide-in-from-bottom-2 duration-500">
+    <div className="space-y-8 mt-4 max-w-full pb-4 px-1 animate-in fade-in slide-in-from-bottom-2 duration-500">
       
       {/* Identity Section */}
       <div className="space-y-6">
         <div className="space-y-2.5 w-full">
           <div className="flex justify-between items-end gap-4 px-0.5">
-            <Label className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70 truncate">
+            <Label className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70 truncate min-w-0">
               Restaurant Name
             </Label>
             <div className="shrink-0">
@@ -91,7 +91,7 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
 
         <div className="space-y-2.5 w-full">
           <div className="flex justify-between items-end gap-4 px-0.5">
-            <Label className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70 truncate">
+            <Label className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70 truncate min-w-0">
               Tagline
             </Label>
             <div className="shrink-0">
@@ -153,7 +153,7 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
                 value={restaurant.logo_url?.startsWith("data:") ? "" : restaurant.logo_url || ""}
                 onChange={(e) => update({ logo_url: e.target.value })}
                 className="bg-muted/30 pl-11 text-xs h-9"
-                placeholder="https://your-domain.com/logo.png"
+                placeholder="https://example.com/logo.png"
               />
             </div>
           </div>
@@ -191,14 +191,14 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
                 >
                   {label}
                 </Label>
-                <p className="text-[11px] text-muted-foreground/80 leading-relaxed">
+                <p className="text-[11px] text-muted-foreground/80 leading-relaxed truncate">
                   {desc}
                 </p>
               </div>
               <Switch
                 id={key}
                 disabled={disabled}
-                checked={disabled ? false : (restaurant[key] ?? true)}
+                checked={disabled ? false : (restaurant[key] ?? (key === "show_qr_logo" ? false : true))}
                 onCheckedChange={(v) => update({ [key]: v })}
               />
             </div>
