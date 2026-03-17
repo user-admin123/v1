@@ -48,18 +48,7 @@ const CharCounter = ({ current, max }: { current: number; max: number }) => {
 const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props) => {
   
   const update = (partial: Partial<RestaurantInfo>) => {
-  // Identify which field we are changing
-  const field = Object.keys(partial)[0] as keyof RestaurantInfo;
-  const newValue = partial[field];
-
-  // 1. HARD STOP: If the value is a string and exceeds limits, ABORT.
-  // We don't even call onUpdate. This stops the "erasing" bug.
-  if (typeof newValue === "string") {
-    const limit = field === "name" ? MAX_LIMITS.NAME : MAX_LIMITS.TAGLINE;
-    if (newValue.length > limit) return; 
-  }
-
-  // 2. SUCCESS: If it passes the check, merge and send to parent
+  // Since we slice in the onChange now, this function is 100% safe
   onUpdate({ ...restaurant, ...partial });
   markChanged();
 };
@@ -81,12 +70,19 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
             </div>
           </div>
           <Input
-            value={restaurant.name || ""} 
-  maxLength={MAX_LIMITS.NAME}
-  onChange={(e) => update({ name: e.target.value })}
-  placeholder="Restaurant Name"
+  // 1. Use || "" to ensure it never becomes null
+  value={restaurant.name || ""} 
+  
+  // 2. The Browser-level limit
+  maxLength={MAX_LIMITS.NAME} 
+  
+  onChange={(e) => {
+    // 3. Force the value to be sliced BEFORE it goes to the state
+    const val = e.target.value.slice(0, MAX_LIMITS.NAME);
+    update({ name: val });
+  }}
   className="bg-muted/30 border-muted focus:bg-background h-10 w-full"
-          />
+/>
         </div>
 
         <div className="space-y-2.5 w-full">
