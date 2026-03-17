@@ -175,7 +175,7 @@ export async function saveAllChanges(
       items.length > 0
         ? supabase.from("menu_items").upsert(items, { onConflict: "id" })
         : { error: null },
-      supabase.from("restaurant").upsert(restaurant),
+      supabase.from("restaurant").upsert(restaurant, { onConflict: "id" }),
     ]);
 
     if (catRes.error || itemRes.error || restRes.error) {
