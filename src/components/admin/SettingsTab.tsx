@@ -19,8 +19,8 @@ const MAX_LIMITS = {
 };
 
 /**
- * Modern Character Counter Component
- * High-end UI usually shifts colors before hitting the hard limit.
+ * Modern Character Counter
+ * Scales and changes color when approaching/hitting limits.
  */
 const CharCounter = ({ current, max }: { current: number; max: number }) => {
   const isAtLimit = current >= max;
@@ -32,7 +32,7 @@ const CharCounter = ({ current, max }: { current: number; max: number }) => {
         className={cn(
           "text-[10px] tabular-nums font-medium transition-all duration-300",
           isAtLimit
-            ? "text-destructive scale-110"
+            ? "text-destructive scale-105"
             : isWarning
             ? "text-orange-500"
             : "text-muted-foreground/40"
@@ -42,7 +42,9 @@ const CharCounter = ({ current, max }: { current: number; max: number }) => {
         <span className="mx-0.5 opacity-30">/</span>
         {max}
       </span>
-      {isAtLimit && <CheckCircle2 className="w-2.5 h-2.5 text-destructive animate-in fade-in zoom-in" />}
+      {isAtLimit && (
+        <CheckCircle2 className="w-2.5 h-2.5 text-destructive animate-in fade-in zoom-in" />
+      )}
     </div>
   );
 };
@@ -50,8 +52,7 @@ const CharCounter = ({ current, max }: { current: number; max: number }) => {
 const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props) => {
   /**
    * Professional Update Handler
-   * We apply the "Slicing" logic here to ensure the state is always valid,
-   * even if the user bypasses UI restrictions or pastes long text.
+   * Slices incoming text to prevent state/UI overflow.
    */
   const update = (partial: Partial<RestaurantInfo>) => {
     const sanitized = { ...partial };
@@ -70,41 +71,45 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
   const isLogoAvailable = !!restaurant.logo_url;
 
   return (
-    <div className="space-y-8 mt-4 max-w-full animate-in fade-in slide-in-from-bottom-2 duration-500">
-      {/* --- Identity Section --- */}
-      <div className="space-y-5">
-        <div className="space-y-2.5">
-          <div className="flex justify-between items-end px-0.5">
-            <Label className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70">
+    <div className="space-y-8 mt-4 max-w-full overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-500">
+      {/* Identity Section */}
+      <div className="space-y-6">
+        <div className="space-y-2.5 w-full">
+          <div className="flex justify-between items-end gap-4 px-0.5">
+            <Label className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70 truncate min-w-0">
               Restaurant Name
             </Label>
-            <CharCounter current={restaurant.name.length} max={MAX_LIMITS.NAME} />
+            <div className="shrink-0">
+              <CharCounter current={restaurant.name.length} max={MAX_LIMITS.NAME} />
+            </div>
           </div>
           <Input
             value={restaurant.name}
             onChange={(e) => update({ name: e.target.value })}
-            className="bg-muted/30 border-muted focus:bg-background transition-all h-10 shadow-sm"
+            className="bg-muted/30 border-muted focus:bg-background transition-all h-10 shadow-sm w-full"
             placeholder="Enter restaurant name"
           />
         </div>
 
-        <div className="space-y-2.5">
-          <div className="flex justify-between items-end px-0.5">
-            <Label className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70">
+        <div className="space-y-2.5 w-full">
+          <div className="flex justify-between items-end gap-4 px-0.5">
+            <Label className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70 truncate min-w-0">
               Tagline
             </Label>
-            <CharCounter current={restaurant.tagline?.length || 0} max={MAX_LIMITS.TAGLINE} />
+            <div className="shrink-0">
+              <CharCounter current={restaurant.tagline?.length || 0} max={MAX_LIMITS.TAGLINE} />
+            </div>
           </div>
           <Input
             value={restaurant.tagline || ""}
             onChange={(e) => update({ tagline: e.target.value })}
-            className="bg-muted/30 border-muted focus:bg-background transition-all h-10 shadow-sm"
+            className="bg-muted/30 border-muted focus:bg-background transition-all h-10 shadow-sm w-full"
             placeholder="e.g. Authentic Wood-Fired Pizza"
           />
         </div>
       </div>
 
-      {/* --- Branding Section --- */}
+      {/* Branding Section */}
       <div className="space-y-4 pt-2">
         <Label className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70 px-0.5">
           Branding & Logo
@@ -113,13 +118,11 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
         <div className="grid gap-4">
           {restaurant.logo_url && (
             <div className="flex items-center gap-4 p-3 bg-secondary/20 rounded-xl border border-border/50 backdrop-blur-sm group">
-              <div className="relative">
-                <img
-                  src={restaurant.logo_url}
-                  alt="Logo"
-                  className="w-14 h-14 rounded-full object-cover border-2 border-background shadow-md"
-                />
-              </div>
+              <img
+                src={restaurant.logo_url}
+                alt="Logo"
+                className="w-14 h-14 rounded-full object-cover border-2 border-background shadow-md"
+              />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate italic opacity-60">Brand identity active</p>
                 <Button
@@ -158,7 +161,7 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
         </div>
       </div>
 
-      {/* --- Features Section --- */}
+      {/* Experience Section */}
       <div className="pt-6 border-t border-border/50 mt-2">
         <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-primary/60 mb-6 px-1">
           Storefront Experience
@@ -182,14 +185,14 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
                 disabled && "opacity-30 grayscale pointer-events-none"
               )}
             >
-              <div className="space-y-1 flex-1">
+              <div className="space-y-1 flex-1 min-w-0">
                 <Label
-                  className="text-sm font-semibold cursor-pointer flex items-center gap-2 group-hover:text-primary transition-colors"
+                  className="text-sm font-semibold cursor-pointer block truncate group-hover:text-primary transition-colors"
                   htmlFor={key}
                 >
                   {label}
                 </Label>
-                <p className="text-[11px] text-muted-foreground/80 leading-relaxed max-w-[220px]">
+                <p className="text-[11px] text-muted-foreground/80 leading-relaxed truncate">
                   {desc}
                 </p>
               </div>
@@ -198,7 +201,6 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
                 disabled={disabled}
                 checked={disabled ? false : (restaurant[key] ?? (key === "show_qr_logo" ? false : true))}
                 onCheckedChange={(v) => update({ [key]: v })}
-                className="data-[state=checked]:bg-primary shadow-inner"
               />
             </div>
           ))}
