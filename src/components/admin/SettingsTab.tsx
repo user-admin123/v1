@@ -48,20 +48,18 @@ const CharCounter = ({ current, max }: { current: number; max: number }) => {
 const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props) => {
   
   const update = (partial: Partial<RestaurantInfo>) => {
-  // 1. Get the key and value being changed
-  const key = Object.keys(partial)[0] as keyof RestaurantInfo;
-  const newValue = partial[key];
+  // Identify which field we are changing
+  const field = Object.keys(partial)[0] as keyof RestaurantInfo;
+  const newValue = partial[field];
 
-  // 2. SAFETY CHECK: If we are updating a string field (Name/Tagline)
-  if (typeof newValue === 'string') {
-    const limit = key === 'name' ? MAX_LIMITS.NAME : MAX_LIMITS.TAGLINE;
-    
-    // If the new value is longer than the limit, IGNORE the update.
-    // This prevents the "erasing" bug by not sending bad data to React.
+  // 1. HARD STOP: If the value is a string and exceeds limits, ABORT.
+  // We don't even call onUpdate. This stops the "erasing" bug.
+  if (typeof newValue === "string") {
+    const limit = field === "name" ? MAX_LIMITS.NAME : MAX_LIMITS.TAGLINE;
     if (newValue.length > limit) return; 
   }
 
-  // 3. Perform the update normally if within limits
+  // 2. SUCCESS: If it passes the check, merge and send to parent
   onUpdate({ ...restaurant, ...partial });
   markChanged();
 };
@@ -83,12 +81,11 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
             </div>
           </div>
           <Input
-            value={restaurant.name || ""} // Force string type
+            value={restaurant.name || ""} 
   maxLength={MAX_LIMITS.NAME}
   onChange={(e) => update({ name: e.target.value })}
-  // Important: Remove any other "onBlur" or "onInput" listeners
+  placeholder="Restaurant Name"
   className="bg-muted/30 border-muted focus:bg-background h-10 w-full"
-            placeholder="Enter restaurant name"
           />
         </div>
 
