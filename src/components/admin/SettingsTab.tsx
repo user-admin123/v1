@@ -49,22 +49,25 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
   
   // FIXED UPDATE LOGIC: More robust handling of string slicing
   const update = (partial: Partial<RestaurantInfo>) => {
-    const updatedInfo = { ...restaurant };
-    
-    // Apply changes and slice only if the value exists to avoid "undefined" resets
-    if (partial.name !== undefined) {
-      updatedInfo.name = partial.name.slice(0, MAX_LIMITS.NAME);
-    }
-    if (partial.tagline !== undefined) {
-      updatedInfo.tagline = (partial.tagline || "").slice(0, MAX_LIMITS.TAGLINE);
-    }
-    
-    // For other keys (switches, logo_url)
-    Object.assign(updatedInfo, partial);
-
-    onUpdate(updatedInfo);
-    markChanged();
+  // 1. Create a new object that preserves EVERY field from the original (including 'id')
+  const updatedInfo = { 
+    ...restaurant, 
+    ...partial 
   };
+
+  // 2. Explicitly apply character limits only to the relevant fields
+  if (partial.name !== undefined) {
+    updatedInfo.name = partial.name.slice(0, MAX_LIMITS.NAME);
+  }
+  
+  if (partial.tagline !== undefined) {
+    // We use || "" to handle null/undefined tagline safely
+    updatedInfo.tagline = (partial.tagline || "").slice(0, MAX_LIMITS.TAGLINE);
+  }
+
+  onUpdate(updatedInfo);
+  markChanged();
+};
 
   const isLogoAvailable = !!restaurant.logo_url;
 
