@@ -47,18 +47,10 @@ const CharCounter = ({ current, max }: { current: number; max: number }) => {
 
 const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props) => {
   
+  // ✅ CLEAN UPDATE (no slicing here)
   const update = (partial: Partial<RestaurantInfo>) => {
-    const field = Object.keys(partial)[0] as keyof RestaurantInfo;
-    const newValue = partial[field];
-
-    if (typeof newValue === "string") {
-      const limit = field === "name" ? MAX_LIMITS.NAME : MAX_LIMITS.TAGLINE;
-      
-      // If user exceeds limit, we STOP. This prevents the "Erase Bug".
-      if (newValue.length > limit) return;
-    }
-
-    onUpdate({ ...restaurant, ...partial });
+    const updatedInfo = { ...restaurant, ...partial };
+    onUpdate(updatedInfo);
     markChanged();
   };
   
@@ -79,19 +71,15 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
             </div>
           </div>
           <Input
-  // 1. Use || "" to ensure it never becomes null
-  value={restaurant.name || ""} 
-  
-  // 2. The Browser-level limit
-  maxLength={MAX_LIMITS.NAME} 
-  
-  onChange={(e) => {
-    // 3. Force the value to be sliced BEFORE it goes to the state
-    const val = e.target.value.slice(0, MAX_LIMITS.NAME);
-    update({ name: val });
-  }}
-  className="bg-muted/30 border-muted focus:bg-background h-10 w-full"
-/>
+            value={restaurant.name}
+            maxLength={MAX_LIMITS.NAME}
+            onChange={(e) => {
+              const value = e.target.value.slice(0, MAX_LIMITS.NAME);
+              update({ name: value });
+            }}
+            className="bg-muted/30 border-muted focus:bg-background transition-all h-10 shadow-sm w-full"
+            placeholder="Enter restaurant name"
+          />
         </div>
 
         <div className="space-y-2.5 w-full">
@@ -104,10 +92,13 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
             </div>
           </div>
           <Input
-            value={restaurant.tagline || ""} 
-  maxLength={MAX_LIMITS.TAGLINE}
-  onChange={(e) => update({ tagline: e.target.value })}
-  className="bg-muted/30 border-muted focus:bg-background h-10 w-full"
+            value={restaurant.tagline || ""}
+            maxLength={MAX_LIMITS.TAGLINE}
+            onChange={(e) => {
+              const value = e.target.value.slice(0, MAX_LIMITS.TAGLINE);
+              update({ tagline: value });
+            }}
+            className="bg-muted/30 border-muted focus:bg-background transition-all h-10 shadow-sm w-full"
             placeholder="e.g. Authentic Wood-Fired Pizza"
           />
         </div>
@@ -128,7 +119,9 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
                 className="w-14 h-14 rounded-full object-cover border-2 border-background shadow-md"
               />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate italic opacity-60">Brand identity active</p>
+                <p className="text-sm font-medium truncate italic opacity-60">
+                  Brand identity active
+                </p>
                 <Button
                   size="sm"
                   variant="ghost"
@@ -146,13 +139,17 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
               <div className="p-2 bg-background rounded-full shadow-sm group-hover:scale-110 transition-transform">
                 <Upload className="w-4 h-4 text-muted-foreground" />
               </div>
-              <span className="text-xs font-medium text-muted-foreground">Upload Image File</span>
+              <span className="text-xs font-medium text-muted-foreground">
+                Upload Image File
+              </span>
               <input type="file" accept="image/*" onChange={onLogoUpload} className="hidden" />
             </label>
 
             <div className="relative">
               <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                <span className="text-[10px] font-bold text-muted-foreground/40 uppercase">URL</span>
+                <span className="text-[10px] font-bold text-muted-foreground/40 uppercase">
+                  URL
+                </span>
               </div>
               <Input
                 value={restaurant.logo_url?.startsWith("data:") ? "" : restaurant.logo_url || ""}
