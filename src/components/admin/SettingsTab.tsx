@@ -48,10 +48,19 @@ const CharCounter = ({ current, max }: { current: number; max: number }) => {
 const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props) => {
   
   const update = (partial: Partial<RestaurantInfo>) => {
-  // Since we slice in the onChange now, this function is 100% safe
-  onUpdate({ ...restaurant, ...partial });
-  markChanged();
-};
+    const field = Object.keys(partial)[0] as keyof RestaurantInfo;
+    const newValue = partial[field];
+
+    if (typeof newValue === "string") {
+      const limit = field === "name" ? MAX_LIMITS.NAME : MAX_LIMITS.TAGLINE;
+      
+      // If user exceeds limit, we STOP. This prevents the "Erase Bug".
+      if (newValue.length > limit) return;
+    }
+
+    onUpdate({ ...restaurant, ...partial });
+    markChanged();
+  };
   
   const isLogoAvailable = !!restaurant.logo_url;
 
