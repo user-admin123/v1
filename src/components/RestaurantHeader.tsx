@@ -26,7 +26,8 @@ const RestaurantHeader = ({ restaurant, onTripleTap }: Props) => {
     <header className="relative pt-12 pb-8 px-6 text-center overflow-hidden">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-primary/20 rounded-full blur-3xl pointer-events-none" />
       
-      <div className="relative z-10 max-w-2xl mx-auto"> 
+      <div className="relative z-10 max-w-2xl mx-auto px-6">
+       
         <div 
           onClick={handleLogoTap} 
           className="cursor-pointer select-none active:scale-95 transition-transform"
@@ -44,18 +45,21 @@ const RestaurantHeader = ({ restaurant, onTripleTap }: Props) => {
           )}
         </div>
 
-        {/* Handling long names with line-clamp and word-break */}
-        <h1 className="text-3xl md:text-5xl font-bold text-foreground 
-                 tracking-tight leading-[1.1] break-words hyphens-auto">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground 
+                 tracking-tight leading-[1.1] 
+                 break-words overflow-hidden">
     {restaurant.name}
   </h1>
 
+  {/* Tagline: Max 60 chars */}
   {restaurant.tagline && (
     <p className="mt-3 text-muted-foreground text-base md:text-lg 
-                  italic tracking-wide leading-relaxed max-w-[40ch] mx-auto">
+                  italic tracking-wide leading-relaxed 
+                  max-w-[60ch] mx-auto 
+                  break-all sm:break-words">
       {restaurant.tagline}
     </p>
-        )}
+  )}
       </div>
     </header>
   );
