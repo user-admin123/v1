@@ -45,7 +45,7 @@ const UsageInsights = ({ restaurantId }: Props) => {
           <Label className="text-sm font-bold flex items-center gap-2">
             <Zap className="w-4 h-4 text-amber-500 fill-amber-500" /> Recent Reach
           </Label>
-          <p className="text-[10px] text-muted-foreground">Unique menu scans over the last 7 days</p>
+          <p className="text-[10px] text-muted-foreground">How many people looked at your menu in the last 7 days.</p>
         </div>
 
         <div className="bg-muted/30 p-4 rounded-xl border border-border/40 flex justify-between items-end h-32 gap-2 shadow-inner">
@@ -55,7 +55,6 @@ const UsageInsights = ({ restaurantId }: Props) => {
             const dayLabel = date.toLocaleDateString('en-US', { weekday: 'short' });
             const count = usage?.weekly_data_obj?.[dayLabel] ?? 0;
             const isToday = i === 6;
-            // Bar maxes at 50 for visual logic, but allows any number
             const barHeight = Math.min((count / 50) * 100, 100);
 
             return (
@@ -90,53 +89,63 @@ const UsageInsights = ({ restaurantId }: Props) => {
         <div className="group relative p-4 bg-muted/20 rounded-xl border border-border/40 transition-colors hover:bg-muted/30">
           <div className="absolute bottom-full left-0 mb-2 w-full max-w-[220px] scale-0 group-hover:scale-100 transition-all z-30 bg-slate-900 text-white p-3 rounded-lg text-[10px] border border-white/10 shadow-2xl pointer-events-none">
              <p className="font-bold text-primary mb-1 uppercase flex items-center gap-1">
-               <Lightbulb className="w-3 h-3 text-amber-400" /> Storage Tip
+               <Lightbulb className="w-3 h-3 text-amber-400" /> Maintenance Tip
              </p>
              <p className="opacity-90 leading-relaxed">
-               Keep storage low by removing unused items. <br/>
-               Used: <span className="text-primary font-bold">{(usage?.storage_mb || 0).toFixed(2)}MB</span> / 512MB
+               Delete unused menu items or old photos to keep this space free.
              </p>
           </div>
 
-          <div className="flex justify-between items-center mb-3">
+          <div className="flex justify-between items-center mb-1">
             <span className="text-xs font-semibold flex items-center gap-2">
-              <Database className="w-4 h-4 text-primary" /> Assets Storage <Info className="w-3 h-3 opacity-40" />
+              <Database className="w-4 h-4 text-primary" /> Menu & Photos Storage
             </span>
             <span className="text-xs font-bold tabular-nums text-primary">
               {storagePct.toFixed(1)}%
             </span>
           </div>
+          <p className="text-[10px] text-muted-foreground mb-3 px-0.5">Space used by your menu items and photos on the cloud.</p>
+          
           <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
             <div className="bg-primary h-full transition-all duration-1000" style={{ width: `${storagePct}%` }} />
           </div>
+          <p className="mt-2 text-[9px] font-medium text-muted-foreground/70 tabular-nums">
+            Used: {(usage?.storage_mb || 0).toFixed(1)} MB / 512 MB
+          </p>
         </div>
 
         {/* Traffic Bar */}
         <div className="group relative p-4 bg-muted/20 rounded-xl border border-border/40 transition-colors hover:bg-muted/30">
           <div className="absolute bottom-full left-0 mb-2 w-full max-w-[220px] scale-0 group-hover:scale-100 transition-all z-30 bg-slate-900 text-white p-3 rounded-lg text-[10px] border border-white/10 shadow-2xl pointer-events-none">
              <p className="font-bold text-blue-400 mb-1 uppercase flex items-center gap-1">
-               <Lightbulb className="w-3 h-3 text-amber-400" /> Traffic Tip
+               <Lightbulb className="w-3 h-3 text-amber-400" /> Speed Tip
              </p>
              <p className="opacity-90 leading-relaxed">
-               Optimized images allow more scans per month. <br/>
-               Used: <span className="text-blue-400 font-bold">{(usage?.egress_gb || 0).toFixed(3)}GB</span> / 5GB
+               Optimized images help your menu load faster on customers' phones.
              </p>
           </div>
 
-          <div className="flex justify-between items-center mb-3">
+          <div className="flex justify-between items-center mb-1">
             <span className="text-xs font-semibold flex items-center gap-2">
-              <Globe className="w-4 h-4 text-blue-500" /> Monthly Bandwidth <Info className="w-3 h-3 opacity-40" />
+              <Globe className="w-4 h-4 text-blue-500" /> Monthly Traffic
             </span>
             <span className="text-xs font-bold text-blue-500 tabular-nums">
               {trafficPct.toFixed(1)}%
             </span>
           </div>
+          <p className="text-[10px] text-muted-foreground mb-3 px-0.5">Data used when customers scan and browse your menu.</p>
+          
           <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
             <div className="bg-blue-500 h-full transition-all duration-1000" style={{ width: `${trafficPct}%` }} />
           </div>
-          <p className="mt-3 text-[9px] text-muted-foreground italic flex items-center gap-1 opacity-70">
-            <Info className="w-3 h-3" /> Resets on the 1st of every month
-          </p>
+          <div className="flex justify-between items-center mt-2">
+            <p className="text-[9px] font-medium text-muted-foreground/70 tabular-nums">
+              Approx: {(usage?.egress_gb || 0).toFixed(2)} GB / 5 GB
+            </p>
+            <span className="text-[8px] text-muted-foreground/50 italic flex items-center gap-1">
+              <Info className="w-3 h-3" /> Resets 1st of month
+            </span>
+          </div>
         </div>
       </div>
     </div>
