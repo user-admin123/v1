@@ -26,7 +26,7 @@ const RestaurantHeader = ({ restaurant, onTripleTap }: Props) => {
     <header className="relative pt-12 pb-8 px-6 text-center overflow-hidden">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-primary/20 rounded-full blur-3xl pointer-events-none" />
       
-      <div className="relative z-10 max-w-[90%] sm:max-w-2xl mx-auto px-4">
+      <div className="relative z-10 max-w-4xl mx-auto px-4">
        
         <div 
           onClick={handleLogoTap} 
@@ -45,18 +45,19 @@ const RestaurantHeader = ({ restaurant, onTripleTap }: Props) => {
           )}
         </div>
 
-        <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground 
-                 tracking-tight leading-[1.1] 
-                 [overflow-wrap:anywhere] break-words">
+        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground 
+                 tracking-tight leading-[1.15] 
+                 [overflow-wrap:anywhere] break-words
+                 max-w-[20ch] sm:max-w-none mx-auto">
     {restaurant.name}
   </h1>
 
-  {/* Tagline: 60 chars limit */}
+  {/* Tagline: Optimized for 1-2 lines at 60 chars */}
   {restaurant.tagline && (
-    <p className="mt-4 text-muted-foreground text-base md:text-lg 
-                  italic tracking-wide leading-relaxed 
+    <p className="mt-3 text-muted-foreground text-base md:text-lg 
+                  italic tracking-wide leading-snug
                   [overflow-wrap:anywhere] break-words 
-                  max-w-[50ch] mx-auto"> 
+                  max-w-[45ch] md:max-w-[60ch] mx-auto"> 
       {restaurant.tagline}
     </p>
   )}
