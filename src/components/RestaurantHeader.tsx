@@ -20,17 +20,24 @@ const RestaurantHeader = ({ restaurant, onTripleTap }: Props) => {
       return;
     }
     clearTimeout(tapTimer.current);
-    tapTimer.current = setTimeout(() => { tapCount.current = 0; }, 600);
+    tapTimer.current = setTimeout(() => {
+      tapCount.current = 0;
+    }, 600);
   };
+
   return (
     <header className="relative pt-12 pb-8 px-6 text-center overflow-hidden">
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-primary/20 rounded-full blur-3xl pointer-events-none" />
-      
-      <div className="relative z-10 max-w-4xl mx-auto px-6">
-       
-        <div 
-          onClick={handleLogoTap} 
-          className="cursor-pointer select-none active:scale-95 transition-transform"
+      {/* Decorative gradient orb */}
+      <div 
+        className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-primary/20 rounded-full blur-3xl pointer-events-none" 
+        aria-hidden="true"
+      />
+
+      <div className="relative z-10 max-w-4xl mx-auto">
+        {/* Logo Section */}
+        <div
+          onClick={handleLogoTap}
+          className="cursor-pointer select-none active:scale-95 transition-transform inline-block"
         >
           {restaurant.logo_url ? (
             <img
@@ -39,28 +46,29 @@ const RestaurantHeader = ({ restaurant, onTripleTap }: Props) => {
               className="w-20 h-20 mx-auto mb-4 rounded-full object-cover border-2 border-primary/30 shadow-sm"
             />
           ) : (
-            <div className="w-20 h-20 mx-auto mb-4 rounded-full glass-card flex items-center justify-center">
+            <div className="w-20 h-20 mx-auto mb-4 rounded-full glass-card flex items-center justify-center border-2 border-primary/10">
               <UtensilsCrossed className="w-9 h-9 text-primary" />
             </div>
           )}
         </div>
 
+        {/* Restaurant Name: Handles up to 40 chars, max 2-line target */}
         <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground 
-                 tracking-tight leading-tight 
-                 [overflow-wrap:anywhere] break-words
-                 max-w-[25ch] sm:max-w-none mx-auto">
-    {restaurant.name}
-  </h1>
+                       tracking-tight leading-tight text-balance
+                       [overflow-wrap:anywhere] break-words
+                       max-w-[25ch] sm:max-w-none mx-auto">
+          {restaurant.name}
+        </h1>
 
-  {/* Tagline: 60 chars - Reduced to keep it mostly on 1 line */}
-  {restaurant.tagline && (
-    <p className="mt-2 text-sm sm:text-base md:text-lg 
-                  text-muted-foreground italic tracking-wide leading-relaxed
-                  [overflow-wrap:anywhere] break-words 
-                  max-w-[50ch] md:max-w-[65ch] mx-auto opacity-90"> 
-      {restaurant.tagline}
-    </p>
-  )}
+        {/* Tagline: Handles up to 60 chars, max 1-2 line target */}
+        {restaurant.tagline && (
+          <p className="mt-2 text-sm sm:text-base md:text-lg 
+                        text-muted-foreground italic tracking-wide leading-relaxed
+                        [overflow-wrap:anywhere] break-words 
+                        max-w-[50ch] md:max-w-[65ch] mx-auto opacity-90">
+            {restaurant.tagline}
+          </p>
+        )}
       </div>
     </header>
   );
