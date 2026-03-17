@@ -46,19 +46,29 @@ const CharCounter = ({ current, max }: { current: number; max: number }) => {
 };
 
 const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props) => {
+  
+  // FIXED UPDATE LOGIC: More robust handling of string slicing
   const update = (partial: Partial<RestaurantInfo>) => {
-    const sanitized = { ...partial };
-    if (typeof sanitized.name === "string") sanitized.name = sanitized.name.slice(0, MAX_LIMITS.NAME);
-    if (typeof sanitized.tagline === "string") sanitized.tagline = sanitized.tagline.slice(0, MAX_LIMITS.TAGLINE);
+    const updatedInfo = { ...restaurant };
+    
+    // Apply changes and slice only if the value exists to avoid "undefined" resets
+    if (partial.name !== undefined) {
+      updatedInfo.name = partial.name.slice(0, MAX_LIMITS.NAME);
+    }
+    if (partial.tagline !== undefined) {
+      updatedInfo.tagline = (partial.tagline || "").slice(0, MAX_LIMITS.TAGLINE);
+    }
+    
+    // For other keys (switches, logo_url)
+    Object.assign(updatedInfo, partial);
 
-    onUpdate({ ...restaurant, ...sanitized });
+    onUpdate(updatedInfo);
     markChanged();
   };
 
   const isLogoAvailable = !!restaurant.logo_url;
 
   return (
-    /* pb-4 and px-1 provide space for the focus rings to show on all sides */
     <div className="space-y-8 mt-4 max-w-full pb-4 px-1 animate-in fade-in slide-in-from-bottom-2 duration-500">
       
       {/* Identity Section */}
@@ -74,6 +84,7 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
           </div>
           <Input
             value={restaurant.name}
+            maxLength={MAX_LIMITS.NAME} // UI Level Block
             onChange={(e) => update({ name: e.target.value })}
             className="bg-muted/30 border-muted focus:bg-background transition-all h-10 shadow-sm w-full"
             placeholder="Enter restaurant name"
@@ -91,6 +102,7 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
           </div>
           <Input
             value={restaurant.tagline || ""}
+            maxLength={MAX_LIMITS.TAGLINE} // UI Level Block
             onChange={(e) => update({ tagline: e.target.value })}
             className="bg-muted/30 border-muted focus:bg-background transition-all h-10 shadow-sm w-full"
             placeholder="e.g. Authentic Wood-Fired Pizza"
