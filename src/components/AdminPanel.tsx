@@ -3,7 +3,7 @@ import { Category, MenuItem, RestaurantInfo } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Save, BarChart3 } from "lucide-react"; // Added icon
+import { Loader2, Save } from "lucide-react";
 import { useAdminState } from "@/hooks/useAdminState";
 import AdminFloatingButtons from "@/components/admin/AdminFloatingButtons";
 import DeleteConfirmDialog from "@/components/admin/DeleteConfirmDialog";
@@ -74,9 +74,7 @@ const AdminPanel = ({ categories, items, restaurant, onUpdateCategories, onUpdat
               <TabsTrigger value="categories" className="flex-1 text-[11px] sm:text-xs">Categories</TabsTrigger>
               <TabsTrigger value="items" className="flex-1 text-[11px] sm:text-xs">Items</TabsTrigger>
               <TabsTrigger value="settings" className="flex-1 text-[11px] sm:text-xs">Settings</TabsTrigger>
-              <TabsTrigger value="insights" className="flex-1 text-[11px] sm:text-xs">
-                <BarChart3 className="w-3 h-3 mr-1 hidden sm:block" /> Insights
-              </TabsTrigger>
+              <TabsTrigger value="insights" className="flex-1 text-[11px] sm:text-xs">Insights</TabsTrigger>
               <TabsTrigger value="qr" className="flex-1 text-[11px] sm:text-xs">QR</TabsTrigger>
             </TabsList>
 
