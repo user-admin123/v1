@@ -49,26 +49,23 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
   
   // FIXED UPDATE LOGIC: More robust handling of string slicing
   const update = (partial: Partial<RestaurantInfo>) => {
-  // 1. Create a new object that preserves EVERY field from the original (including 'id')
-  const updatedInfo = { 
-    ...restaurant, 
-    ...partial 
-  };
-
-  // 2. Explicitly apply character limits only to the relevant fields
+  // Merge everything immediately so you don't need Object.assign later
+  const updatedInfo = { ...restaurant, ...partial };
+  
+  // Now apply the specific string-slicing logic to the merged object
   if (partial.name !== undefined) {
     updatedInfo.name = partial.name.slice(0, MAX_LIMITS.NAME);
   }
   
   if (partial.tagline !== undefined) {
-    // We use || "" to handle null/undefined tagline safely
     updatedInfo.tagline = (partial.tagline || "").slice(0, MAX_LIMITS.TAGLINE);
   }
 
+  // Object.assign is no longer needed!
   onUpdate(updatedInfo);
   markChanged();
 };
-
+  
   const isLogoAvailable = !!restaurant.logo_url;
 
   return (
