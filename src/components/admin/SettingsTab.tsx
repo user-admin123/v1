@@ -18,10 +18,6 @@ const MAX_LIMITS = {
   TAGLINE: 60,
 };
 
-/**
- * Modern Character Counter
- * Scales and changes color when approaching/hitting limits.
- */
 const CharCounter = ({ current, max }: { current: number; max: number }) => {
   const isAtLimit = current >= max;
   const isWarning = current >= max * 0.85;
@@ -50,19 +46,10 @@ const CharCounter = ({ current, max }: { current: number; max: number }) => {
 };
 
 const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props) => {
-  /**
-   * Professional Update Handler
-   * Slices incoming text to prevent state/UI overflow.
-   */
   const update = (partial: Partial<RestaurantInfo>) => {
     const sanitized = { ...partial };
-
-    if (typeof sanitized.name === "string") {
-      sanitized.name = sanitized.name.slice(0, MAX_LIMITS.NAME);
-    }
-    if (typeof sanitized.tagline === "string") {
-      sanitized.tagline = sanitized.tagline.slice(0, MAX_LIMITS.TAGLINE);
-    }
+    if (typeof sanitized.name === "string") sanitized.name = sanitized.name.slice(0, MAX_LIMITS.NAME);
+    if (typeof sanitized.tagline === "string") sanitized.tagline = sanitized.tagline.slice(0, MAX_LIMITS.TAGLINE);
 
     onUpdate({ ...restaurant, ...sanitized });
     markChanged();
@@ -71,7 +58,9 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
   const isLogoAvailable = !!restaurant.logo_url;
 
   return (
-    <div className="space-y-8 mt-4 max-w-full overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-500">
+    /* pb-4 and px-1 provide space for the focus rings to show on all sides */
+    <div className="space-y-8 mt-4 max-w-full pb-4 px-1 animate-in fade-in slide-in-from-bottom-2 duration-500">
+      
       {/* Identity Section */}
       <div className="space-y-6">
         <div className="space-y-2.5 w-full">
@@ -142,7 +131,7 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
               <div className="p-2 bg-background rounded-full shadow-sm group-hover:scale-110 transition-transform">
                 <Upload className="w-4 h-4 text-muted-foreground" />
               </div>
-              <span className="text-xs font-medium text-muted-foreground">Upload high-res PNG/JPG</span>
+              <span className="text-xs font-medium text-muted-foreground">Upload Image File</span>
               <input type="file" accept="image/*" onChange={onLogoUpload} className="hidden" />
             </label>
 
