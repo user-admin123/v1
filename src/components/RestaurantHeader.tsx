@@ -47,16 +47,16 @@ const RestaurantHeader = ({ restaurant, onTripleTap }: Props) => {
 
         <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground 
                  tracking-tight leading-[1.1] 
-                 break-words overflow-hidden">
+                 [overflow-wrap:anywhere] [word-break:normal] break-words">
     {restaurant.name}
   </h1>
 
-  {/* Tagline: Max 60 chars */}
+  {/* Tagline (Max 60 chars) */}
   {restaurant.tagline && (
     <p className="mt-3 text-muted-foreground text-base md:text-lg 
                   italic tracking-wide leading-relaxed 
                   max-w-[60ch] mx-auto 
-                  break-all sm:break-words">
+                  [overflow-wrap:anywhere] [word-break:normal] break-words">
       {restaurant.tagline}
     </p>
   )}
