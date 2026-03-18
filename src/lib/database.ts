@@ -186,15 +186,23 @@ export async function saveAllChanges(
     }
 
     // 3. Upsert remaining data
-    const [catRes, itemRes, restRes] = await Promise.all([
-      categories.length > 0
-        ? supabase.from("categories").upsert(categories, { onConflict: "id" })
-        : { error: null },
-      items.length > 0
-        ? supabase.from("menu_items").upsert(items, { onConflict: "id" })
-        : { error: null },
-      supabase.from("restaurant").upsert(restaurant, { onConflict: "id" }),
-    ]);
+    // 3. Upsert remaining data
+// Ensure every item being sent has the restaurant_id attached
+const [catRes, itemRes, restRes] = await Promise.all([
+  categories.length > 0
+    ? supabase.from("categories").upsert(
+        categories.map(c => ({ ...c, restaurant_id: restaurant.id })), // Safety injection
+        { onConflict: "id" }
+      )
+    : { error: null },
+  items.length > 0
+    ? supabase.from("menu_items").upsert(
+        items.map(i => ({ ...i, restaurant_id: restaurant.id })), // Safety injection
+        { onConflict: "id" }
+      )
+    : { error: null },
+  supabase.from("restaurant").upsert(restaurant, { onConflict: "id" }),
+]);
 
     if (catRes.error || itemRes.error || restRes.error) {
       logger.error("Batch save errors:", {
