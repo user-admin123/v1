@@ -38,7 +38,6 @@ const UsageInsights = ({ restaurantId }: Props) => {
   const storagePct = Math.min(((usage?.storage_mb || 0) / 512) * 100, 100);
   const trafficPct = Math.min(((usage?.egress_gb || 0) / 5) * 100, 100);
 
-  // Dynamic scaling logic to ensure bars look correct relative to each other
   const weeklyData = usage?.weekly_data_obj || {};
   const maxCount = Math.max(...Object.values(weeklyData).map(Number), 10);
 
@@ -47,21 +46,19 @@ const UsageInsights = ({ restaurantId }: Props) => {
       {/* 7-Day Activity Section */}
       <div className="space-y-3">
         <div className="px-1 text-left">
-          <Label className="text-sm font-bold flex items-center gap-2">
+          <Label className="text-sm font-bold flex items-center gap-2 text-foreground">
             <Zap className="w-4 h-4 text-amber-500 fill-amber-500" /> Recent Reach
           </Label>
-          <p className="text-[10px] text-muted-foreground">How many people looked at your menu in the last 7 days.</p>
+          <p className="text-[10px] text-muted-foreground">Unique menu views recorded over the last 7 days.</p>
         </div>
 
-        <div className="bg-muted/30 p-4 rounded-xl border border-border/40 flex justify-between items-end h-32 gap-1 shadow-inner relative overflow-hidden">
+        <div className="bg-muted/30 p-4 rounded-xl border border-border/40 flex justify-between items-end h-32 gap-1 shadow-inner relative">
           {Array.from({ length: 7 }).map((_, i) => {
             const date = new Date();
             date.setDate(date.getDate() - (6 - i));
             const dayLabel = date.toLocaleDateString('en-US', { weekday: 'short' });
             
-            // Using your preferred lookup logic
             const count = usage?.weekly_data_obj?.[dayLabel] ?? 0;
-            
             const isToday = i === 6;
             const isSelected = selectedDay === dayLabel;
             const barHeight = (count / maxCount) * 100;
@@ -69,36 +66,37 @@ const UsageInsights = ({ restaurantId }: Props) => {
             return (
               <div 
                 key={dayLabel} 
-                className="flex flex-col items-center gap-2 flex-1 h-full cursor-pointer"
+                className="flex flex-col items-center gap-2 flex-1 h-full cursor-pointer group"
                 onClick={() => setSelectedDay(isSelected ? null : dayLabel)}
               >
-                <div className="relative w-full flex-1 flex items-end justify-center group">
-                  {/* The Bar - Rectangular Shape (No Rounded Corners) */}
+                <div className="relative w-full flex-1 flex items-end justify-center">
+                  {/* The Bar - Professional Rectangular Shape */}
                   <div 
                     className={cn(
                       "w-full max-w-[16px] sm:max-w-[28px] transition-all duration-500 ease-out",
                       count > 0 ? "bg-primary/80" : "bg-muted-foreground/10",
-                      isToday && "bg-primary ring-2 ring-primary/20",
-                      isSelected && "bg-white ring-4 ring-white/30 shadow-[0_0_20px_rgba(255,255,255,0.4)] z-10"
+                      isToday && "bg-primary",
+                      // No color change on selection for the bar itself per your request
                     )} 
                     style={{ height: `${Math.max(barHeight, 6)}%` }} 
                   />
                   
-                  {/* Tooltip - Shows on Hover OR Selection */}
+                  {/* Tooltip - Always centered above bar */}
                   <div className={cn(
                     "absolute -top-10 transition-all z-20 pointer-events-none",
                     isSelected || "group-hover:scale-100 scale-0",
-                    isSelected && "scale-110"
+                    isSelected && "scale-105"
                   )}>
-                    <div className="bg-slate-900 text-white text-[9px] font-bold px-2 py-1 rounded shadow-xl border border-white/10 whitespace-nowrap">
-                       {count.toLocaleString()} {isSelected ? `${dayLabel}` : 'scans'}
+                    <div className="bg-slate-900 text-white text-[9px] font-bold px-2 py-1 rounded shadow-2xl border border-white/10 whitespace-nowrap">
+                       {count.toLocaleString()} scans
                     </div>
                   </div>
                 </div>
                 
+                {/* Day Label - Turns White when selected */}
                 <span className={cn(
-                  "text-[8px] font-bold uppercase transition-colors", 
-                  isToday ? "text-primary" : (isSelected ? "text-white" : "text-muted-foreground/40")
+                  "text-[9px] font-bold uppercase transition-colors duration-300", 
+                  isSelected ? "text-white" : (isToday ? "text-primary" : "text-muted-foreground/40")
                 )}>
                   {dayLabel}
                 </span>
@@ -112,7 +110,7 @@ const UsageInsights = ({ restaurantId }: Props) => {
       <div className="space-y-4">
         <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">Cloud Resources</Label>
         
-        {/* Storage Bar with Tooltip Restored */}
+        {/* Storage Bar */}
         <div className="group relative p-4 bg-muted/20 rounded-xl border border-border/40 transition-colors hover:bg-muted/30">
           <div className="absolute bottom-full left-0 mb-2 w-full max-w-[220px] scale-0 group-hover:scale-100 transition-all z-30 bg-slate-900 text-white p-3 rounded-lg text-[10px] border border-white/10 shadow-2xl pointer-events-none">
               <p className="font-bold text-primary mb-1 uppercase flex items-center gap-1">
@@ -131,17 +129,15 @@ const UsageInsights = ({ restaurantId }: Props) => {
               {storagePct.toFixed(1)}%
             </span>
           </div>
-          <p className="text-[10px] text-muted-foreground mb-3 px-0.5">Space used by your menu items and photos on the cloud.</p>
-          
           <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
             <div className="bg-primary h-full transition-all duration-1000" style={{ width: `${storagePct}%` }} />
           </div>
-          <p className="mt-2 text-[9px] font-medium text-muted-foreground/70 tabular-nums">
+          <p className="mt-2 text-[9px] font-medium text-muted-foreground/70">
             Used: {(usage?.storage_mb || 0).toFixed(1)} MB / 512 MB
           </p>
         </div>
 
-        {/* Traffic Bar with Tooltip Restored */}
+        {/* Traffic Bar */}
         <div className="group relative p-4 bg-muted/20 rounded-xl border border-border/40 transition-colors hover:bg-muted/30">
           <div className="absolute bottom-full left-0 mb-2 w-full max-w-[220px] scale-0 group-hover:scale-100 transition-all z-30 bg-slate-900 text-white p-3 rounded-lg text-[10px] border border-white/10 shadow-2xl pointer-events-none">
               <p className="font-bold text-blue-400 mb-1 uppercase flex items-center gap-1">
@@ -156,17 +152,15 @@ const UsageInsights = ({ restaurantId }: Props) => {
             <span className="text-xs font-semibold flex items-center gap-2">
               <Globe className="w-4 h-4 text-blue-500" /> Monthly Traffic
             </span>
-            <span className="text-xs font-bold text-blue-500 tabular-nums">
+            <span className="text-xs font-bold text-blue-500">
               {trafficPct.toFixed(1)}%
             </span>
           </div>
-          <p className="text-[10px] text-muted-foreground mb-3 px-0.5">Data used when customers scan and browse your menu.</p>
-          
           <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
             <div className="bg-blue-500 h-full transition-all duration-1000" style={{ width: `${trafficPct}%` }} />
           </div>
           <div className="flex justify-between items-center mt-2">
-            <p className="text-[9px] font-medium text-muted-foreground/70 tabular-nums">
+            <p className="text-[9px] font-medium text-muted-foreground/70">
               Approx: {(usage?.egress_gb || 0).toFixed(2)} GB / 5 GB
             </p>
             <span className="text-[8px] text-muted-foreground/50 italic flex items-center gap-1">
