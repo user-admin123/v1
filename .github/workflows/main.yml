@@ -27,8 +27,7 @@ jobs:
 
       # Install Supabase client (ensure it's installed)
       - name: Install supabase
-        run: npm install html-to-image
-
+        run: npm install browser-image-compression
       # Commit changes if any
       - name: Commit changes
         run: |
@@ -40,7 +39,7 @@ jobs:
           git add package.json package-lock.json
           
           # Commit changes (if any)
-          git commit -m "Update html-to-image and package-lock.json" || echo "No changes to commit"
+          git commit -m "Update browser-image-compression and package-lock.json" || echo "No changes to commit"
           
           # Push the changes to the repository
           git push
