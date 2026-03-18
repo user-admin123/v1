@@ -1,8 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { Category, MenuItem, RestaurantInfo } from "@/lib/types";
 import {
-  fetchCategories,
-  fetchMenuItems,
+  fetchFullMenu,
   fetchRestaurant,
   saveAllChanges as dbSaveAll,
 } from "@/lib/database";
@@ -58,25 +57,28 @@ export function useMenuData() {
   // Fetch data from Supabase
   useEffect(() => {
     let cancelled = false;
-    // Inside useMenuData.ts
 async function load() {
   setLoading(true);
+  setError(null);
   try {
-    // 1. Get Restaurant first
+    // 1. Get Restaurant first to get the ID
     const rest = await fetchRestaurant();
     
-    // 2. Get the combined menu data using the Restaurant ID
+    // 2. Use that ID to get Categories and Items in one shot
     const { categories: cats, items: menuItems } = await fetchFullMenu(rest.id);
 
     if (!cancelled) {
-      setCategories(cats); // Already sorted by order_index in the query
+      // Sort categories by index (though the DB now does this, double-check is fine)
+      setCategories(cats.sort((a, b) => a.order_index - b.order_index));
       setItems(menuItems);
       setRestaurant(rest);
     }
   } catch (err: any) {
-    setError(err.message);
+    if (!cancelled) {
+      setError(err?.message || "Failed to load menu data");
+    }
   } finally {
-    setLoading(false);
+    if (!cancelled) setLoading(false);
   }
 }
     load();
@@ -84,23 +86,21 @@ async function load() {
   }, []);
 
   const refresh = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [cats, menuItems, rest] = await Promise.all([
-        fetchCategories(),
-        fetchMenuItems(),
-        fetchRestaurant(),
-      ]);
-      setCategories(cats.sort((a, b) => a.order_index - b.order_index));
-      setItems(menuItems);
-      setRestaurant(rest);
-      setError(null);
-    } catch (err: any) {
-      setError(err?.message || "Failed to refresh");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  setLoading(true);
+  try {
+    const rest = await fetchRestaurant();
+    const { categories: cats, items: menuItems } = await fetchFullMenu(rest.id);
+    
+    setCategories(cats.sort((a, b) => a.order_index - b.order_index));
+    setItems(menuItems);
+    setRestaurant(rest);
+    setError(null);
+  } catch (err: any) {
+    setError(err?.message || "Failed to refresh");
+  } finally {
+    setLoading(false);
+  }
+}, []);
 
   const updateCategories = useCallback((cats: Category[]) => {
     setCategories([...cats].sort((a, b) => a.order_index - b.order_index));
