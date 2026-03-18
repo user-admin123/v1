@@ -11,6 +11,7 @@ interface Props {
 const UsageInsights = ({ restaurantId }: Props) => {
   const [usage, setUsage] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadStats() {
@@ -34,63 +35,70 @@ const UsageInsights = ({ restaurantId }: Props) => {
     </div>
   );
 
-  // --- Logic & Math ---
   const storagePct = Math.min(((usage?.storage_mb || 0) / 512) * 100, 100);
   const trafficPct = Math.min(((usage?.egress_gb || 0) / 5) * 100, 100);
 
-  // Find the highest value across the 7 days to set the bar scale
+  // Dynamic scaling logic to ensure bars look correct relative to each other
   const weeklyData = usage?.weekly_data_obj || {};
-  const allValues = Object.values(weeklyData).map(Number);
-  const maxCount = Math.max(...allValues, 10); // Minimum scale of 10 so 1 scan doesn't look huge
+  const maxCount = Math.max(...Object.values(weeklyData).map(Number), 10);
 
   return (
     <div className="space-y-6 mt-2 pb-4 animate-in fade-in duration-500">
       {/* 7-Day Activity Section */}
       <div className="space-y-3">
-        <div className="px-1 text-center sm:text-left">
-          <Label className="text-sm font-bold flex items-center justify-center sm:justify-start gap-2">
+        <div className="px-1 text-left">
+          <Label className="text-sm font-bold flex items-center gap-2">
             <Zap className="w-4 h-4 text-amber-500 fill-amber-500" /> Recent Reach
           </Label>
           <p className="text-[10px] text-muted-foreground">How many people looked at your menu in the last 7 days.</p>
         </div>
 
-        {/* Bar Graph Container: Height set to h-40 for better visibility */}
-        <div className="bg-muted/30 p-4 rounded-xl border border-border/40 flex justify-between items-end h-40 gap-2 shadow-inner">
+        <div className="bg-muted/30 p-4 rounded-xl border border-border/40 flex justify-between items-end h-32 gap-1 shadow-inner relative overflow-hidden">
           {Array.from({ length: 7 }).map((_, i) => {
             const date = new Date();
             date.setDate(date.getDate() - (6 - i));
-            
-            // Forces "Mon", "Tue", etc. to match Database keys
             const dayLabel = date.toLocaleDateString('en-US', { weekday: 'short' });
-            const count = weeklyData[dayLabel] ?? 0;
-            const isToday = i === 6;
             
-            // Calculate height relative to the maxCount found in the data
+            // Using your preferred lookup logic
+            const count = usage?.weekly_data_obj?.[dayLabel] ?? 0;
+            
+            const isToday = i === 6;
+            const isSelected = selectedDay === dayLabel;
             const barHeight = (count / maxCount) * 100;
 
             return (
-              <div key={dayLabel} className="flex flex-col items-center gap-2 flex-1 h-full">
-                {/* Bar Wrapper: flex-1 takes up the remaining vertical space in h-40 */}
+              <div 
+                key={dayLabel} 
+                className="flex flex-col items-center gap-2 flex-1 h-full cursor-pointer"
+                onClick={() => setSelectedDay(isSelected ? null : dayLabel)}
+              >
                 <div className="relative w-full flex-1 flex items-end justify-center group">
+                  {/* The Bar - Rectangular Shape (No Rounded Corners) */}
                   <div 
                     className={cn(
-                      "w-full max-w-[14px] sm:max-w-[24px] rounded-t-sm transition-all duration-700 ease-out",
-                      count > 0 ? "bg-primary" : "bg-primary/10", // Ghost bar if 0
-                      isToday && "ring-4 ring-primary/10 bg-primary"
+                      "w-full max-w-[16px] sm:max-w-[28px] transition-all duration-500 ease-out",
+                      count > 0 ? "bg-primary/80" : "bg-muted-foreground/10",
+                      isToday && "bg-primary ring-2 ring-primary/20",
+                      isSelected && "bg-white ring-4 ring-white/30 shadow-[0_0_20px_rgba(255,255,255,0.4)] z-10"
                     )} 
-                    style={{ height: `${Math.max(barHeight, 8)}%` }} // Minimum 8% height so it's never "blank"
+                    style={{ height: `${Math.max(barHeight, 6)}%` }} 
                   />
                   
-                  {/* Tooltip on Hover */}
-                  <span className="absolute -top-10 scale-0 group-hover:scale-100 transition-all text-[10px] font-bold bg-slate-900 text-white px-2 py-1 rounded shadow-xl z-20 whitespace-nowrap border border-white/10">
-                    {count.toLocaleString()} scans
-                  </span>
+                  {/* Tooltip - Shows on Hover OR Selection */}
+                  <div className={cn(
+                    "absolute -top-10 transition-all z-20 pointer-events-none",
+                    isSelected || "group-hover:scale-100 scale-0",
+                    isSelected && "scale-110"
+                  )}>
+                    <div className="bg-slate-900 text-white text-[9px] font-bold px-2 py-1 rounded shadow-xl border border-white/10 whitespace-nowrap">
+                       {count.toLocaleString()} {isSelected ? `${dayLabel}` : 'scans'}
+                    </div>
+                  </div>
                 </div>
                 
-                {/* Day Label */}
                 <span className={cn(
-                  "text-[9px] font-bold uppercase tracking-tight", 
-                  isToday ? "text-primary" : "text-muted-foreground/50"
+                  "text-[8px] font-bold uppercase transition-colors", 
+                  isToday ? "text-primary" : (isSelected ? "text-white" : "text-muted-foreground/40")
                 )}>
                   {dayLabel}
                 </span>
@@ -100,19 +108,19 @@ const UsageInsights = ({ restaurantId }: Props) => {
         </div>
       </div>
 
-      {/* Resource Metrics Section */}
+      {/* Resource Metrics */}
       <div className="space-y-4">
         <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">Cloud Resources</Label>
         
-        {/* Storage Metric */}
+        {/* Storage Bar with Tooltip Restored */}
         <div className="group relative p-4 bg-muted/20 rounded-xl border border-border/40 transition-colors hover:bg-muted/30">
           <div className="absolute bottom-full left-0 mb-2 w-full max-w-[220px] scale-0 group-hover:scale-100 transition-all z-30 bg-slate-900 text-white p-3 rounded-lg text-[10px] border border-white/10 shadow-2xl pointer-events-none">
-             <p className="font-bold text-primary mb-1 uppercase flex items-center gap-1">
-               <Lightbulb className="w-3 h-3 text-amber-400" /> Maintenance Tip
-             </p>
-             <p className="opacity-90 leading-relaxed">
-               Delete unused menu items or old photos to keep this space free.
-             </p>
+              <p className="font-bold text-primary mb-1 uppercase flex items-center gap-1">
+                <Lightbulb className="w-3 h-3 text-amber-400" /> Maintenance Tip
+              </p>
+              <p className="opacity-90 leading-relaxed">
+                Delete unused menu items or old photos to keep this space free.
+              </p>
           </div>
 
           <div className="flex justify-between items-center mb-1">
@@ -133,15 +141,15 @@ const UsageInsights = ({ restaurantId }: Props) => {
           </p>
         </div>
 
-        {/* Traffic Metric */}
+        {/* Traffic Bar with Tooltip Restored */}
         <div className="group relative p-4 bg-muted/20 rounded-xl border border-border/40 transition-colors hover:bg-muted/30">
           <div className="absolute bottom-full left-0 mb-2 w-full max-w-[220px] scale-0 group-hover:scale-100 transition-all z-30 bg-slate-900 text-white p-3 rounded-lg text-[10px] border border-white/10 shadow-2xl pointer-events-none">
-             <p className="font-bold text-blue-400 mb-1 uppercase flex items-center gap-1">
-               <Lightbulb className="w-3 h-3 text-amber-400" /> Speed Tip
-             </p>
-             <p className="opacity-90 leading-relaxed">
-               Optimized images help your menu load faster on customers' phones.
-             </p>
+              <p className="font-bold text-blue-400 mb-1 uppercase flex items-center gap-1">
+                <Lightbulb className="w-3 h-3 text-amber-400" /> Speed Tip
+              </p>
+              <p className="opacity-90 leading-relaxed">
+                Optimized images help your menu load faster on customers' phones.
+              </p>
           </div>
 
           <div className="flex justify-between items-center mb-1">
