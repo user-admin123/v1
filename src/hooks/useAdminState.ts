@@ -23,17 +23,39 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
   const [deletedCategoryIds, setDeletedCategoryIds] = useState<string[]>([]);
   const [deletedItemIds, setDeletedItemIds] = useState<string[]>([]);
 
-  // Sync drafts when props change (e.g. after save)
+  // 1. SMART COMPARISON: Automatically detect if anything actually differs from original props
+  useEffect(() => {
+    const isRestaurantChanged = JSON.stringify(draftRestaurant) !== JSON.stringify(restaurant);
+    const isCategoriesChanged = JSON.stringify(draftCategories) !== JSON.stringify(categories);
+    const isItemsChanged = JSON.stringify(draftItems) !== JSON.stringify(items);
+    const hasDeletions = deletedCategoryIds.length > 0 || deletedItemIds.length > 0;
+
+    setHasChanges(isRestaurantChanged || isCategoriesChanged || isItemsChanged || hasDeletions);
+  }, [draftRestaurant, draftCategories, draftItems, restaurant, categories, items, deletedCategoryIds, deletedItemIds]);
+
+  // 2. BROWSER SAFETY: Prevent accidental tab close if changes exist
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasChanges) {
+        e.preventDefault();
+        e.returnValue = ""; 
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasChanges]);
+
+  // Sync drafts when props change (after a successful save)
   useEffect(() => {
     setDraftCategories(categories);
     setDraftItems(items);
     setDraftRestaurant(restaurant);
-    setHasChanges(false);
     setDeletedCategoryIds([]);
     setDeletedItemIds([]);
   }, [categories, items, restaurant]);
 
-  const markChanged = useCallback(() => setHasChanges(true), []);
+  // Replacement for markChanged (no longer strictly needed but kept for compatibility if called)
+  const markChanged = useCallback(() => {}, []);
 
   // --- Category CRUD ---
   const [catName, setCatName] = useState("");
@@ -49,7 +71,6 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
     };
     setDraftCategories((prev) => [...prev, newCat]);
     setCatName("");
-    setHasChanges(true);
   }, [catName, draftCategories.length]);
 
   const deleteCategory = useCallback((id: string) => {
@@ -60,7 +81,6 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
     setDeletedCategoryIds((prev) => [...prev, id]);
     setDraftCategories((prev) => prev.filter((c) => c.id !== id));
     setDraftItems((prev) => prev.filter((i) => i.category_id !== id));
-    setHasChanges(true);
   }, [draftItems]);
 
   const saveEditCat = useCallback(() => {
@@ -69,7 +89,6 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
       prev.map((c) => (c.id === editingCat.id ? editingCat : c))
     );
     setEditingCat(null);
-    setHasChanges(true);
   }, [editingCat]);
 
   // Drag & drop
@@ -88,7 +107,6 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
     dragItem.current = null;
     dragOverItem.current = null;
     setDraftCategories(reindexed);
-    setHasChanges(true);
   };
 
   // --- Item CRUD ---
@@ -147,13 +165,11 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
       setDraftItems((prev) => [...prev, newItem]);
     }
     setItemFormOpen(false);
-    setHasChanges(true);
   }, [itemForm, editingItem]);
 
   const deleteItem = useCallback((id: string) => {
     setDeletedItemIds((prev) => [...prev, id]);
     setDraftItems((prev) => prev.filter((i) => i.id !== id));
-    setHasChanges(true);
   }, []);
 
   const toggleAvailability = useCallback((id: string) => {
@@ -162,7 +178,6 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
         i.id === id ? { ...i, available: !i.available, updated_at: new Date().toISOString() } : i
       )
     );
-    setHasChanges(true);
   }, []);
 
   // --- Image handling ---
@@ -196,7 +211,6 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
     const reader = new FileReader();
     reader.onloadend = () => {
       setDraftRestaurant((prev) => ({ ...prev, logo_url: reader.result as string }));
-      setHasChanges(true);
     };
     reader.readAsDataURL(file);
   }, []);
@@ -208,9 +222,6 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
     setSaving(true);
     try {
       const success = await onSaveAll(draftCategories, draftItems, draftRestaurant, deletedCategoryIds, deletedItemIds);
-      setHasChanges(false);
-      setDeletedCategoryIds([]);
-      setDeletedItemIds([]);
       toast({
         title: "All changes saved!",
         description: success ? "Synced to database." : "Saved locally (database unavailable).",
@@ -233,23 +244,17 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
   }, [deleteConfirm, deleteCategory, deleteItem]);
 
   return {
-    // Draft state
     draftCategories, draftItems, draftRestaurant,
     setDraftRestaurant, hasChanges, markChanged,
-    // Category
     catName, setCatName, editingCat, setEditingCat,
     addCategory, saveEditCat,
     handleDragStart, handleDragEnter, handleDragEnd,
-    // Item
     editingItem, itemFormOpen, setItemFormOpen, itemForm, setItemForm,
     imageInputMode, setImageInputMode, imageUrlInput, setImageUrlInput,
     openNewItem, openEditItem, saveItem, toggleAvailability,
     handleImageUpload, handleImageUrlApply,
-    // Logo
     handleLogoUpload,
-    // Save
     saving, saveAllChanges,
-    // Delete confirmation
     deleteConfirm, setDeleteConfirm, handleConfirmDelete,
   };
 }
