@@ -188,7 +188,7 @@ const [isUploading, setIsUploading] = useState(false); // New: Track compression
 // Generic helper to handle the compression logic
 const processImage = useCallback(async (file: File): Promise<string | null> => {
   const options = {
-    maxSizeMB: 0.2,
+    maxSizeMB: 0.4, // Good balance of quality/speed
     maxWidthOrHeight: 1024,
     useWebWorker: true,
     fileType: 'image/webp'
@@ -196,8 +196,6 @@ const processImage = useCallback(async (file: File): Promise<string | null> => {
 
   try {
     setIsUploading(true);
-    toast({ title: "Optimizing image...", description: "Please wait while we shrink the file." });
-
     const compressedFile = await imageCompression(file, options);
     
     return new Promise((resolve) => {
@@ -206,10 +204,10 @@ const processImage = useCallback(async (file: File): Promise<string | null> => {
       reader.readAsDataURL(compressedFile);
     });
   } catch (error) {
-    toast({ title: "Compression failed", variant: "destructive" });
+    toast({ title: "Upload failed", variant: "destructive" });
     return null;
   } finally {
-    setIsUploading(false);
+    setIsUploading(false); // Stop spinner
   }
 }, []);
 
@@ -276,7 +274,7 @@ const handleLogoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElemen
     addCategory, saveEditCat,
     handleDragStart, handleDragEnter, handleDragEnd,
     editingItem, itemFormOpen, setItemFormOpen, itemForm, setItemForm,
-    imageInputMode, setImageInputMode, imageUrlInput, setImageUrlInput,
+    imageInputMode, setImageInputMode, imageUrlInput, setImageUrlInput, isUploading, 
     openNewItem, openEditItem, saveItem, toggleAvailability,
     handleImageUpload, handleImageUrlApply,
     handleLogoUpload,
