@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 
 interface Props {
   restaurant: RestaurantInfo;
+  isUploading: boolean;
   onUpdate: (info: RestaurantInfo) => void;
   onLogoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   markChanged: () => void;
@@ -111,49 +112,44 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
           Branding & Logo
         </Label>
         
-        <div className="grid gap-4">
-          {restaurant.logo_url && (
-            <div className="flex items-center gap-4 p-3 bg-secondary/20 rounded-xl border border-border/50 backdrop-blur-sm group">
-              <img
-                src={restaurant.logo_url}
-                alt="Logo"
-                className="w-14 h-14 rounded-full object-cover border-2 border-background shadow-md"
-              />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate italic opacity-60">Brand identity active</p>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 px-2 text-[11px] text-destructive hover:bg-destructive/10 -ml-2 transition-colors"
-                  onClick={() => update({ logo_url: "", show_qr_logo: false })}
-                >
-                  <X className="w-3 h-3 mr-1" /> Discard Logo
-                </Button>
-              </div>
-            </div>
-          )}
+<div className="grid gap-4">
+  {restaurant.logo_url && (
+    <div className="flex items-center gap-4 p-3 bg-secondary/20 rounded-xl border border-border/50 backdrop-blur-sm group">
+      <img src={restaurant.logo_url} alt="Logo" className="w-14 h-14 rounded-full object-cover border-2 border-background shadow-md" />
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] font-bold uppercase text-muted-foreground/50">Active Logo</p>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 px-2 text-[11px] text-destructive hover:bg-destructive/10 -ml-2"
+          onClick={() => onUpdate({ ...restaurant, logo_url: "", show_qr_logo: false })}
+          disabled={isUploading}
+        >
+          <X className="w-3 h-3 mr-1" /> Remove
+        </Button>
+      </div>
+    </div>
+  )}
 
-          <div className="flex flex-col gap-3">
-            <label className="flex flex-col items-center justify-center gap-2 cursor-pointer bg-muted/20 border-2 border-dashed border-muted-foreground/20 rounded-xl py-6 hover:bg-muted/40 hover:border-muted-foreground/40 transition-all group">
-              <div className="p-2 bg-background rounded-full shadow-sm group-hover:scale-110 transition-transform">
-                <Upload className="w-4 h-4 text-muted-foreground" />
-              </div>
-              <span className="text-xs font-medium text-muted-foreground">Upload Image File</span>
-              <input type="file" accept="image/*" onChange={onLogoUpload} className="hidden" />
-            </label>
+  <div className="flex flex-col gap-3">
+    <label className={cn(
+      "flex flex-col items-center justify-center gap-2 cursor-pointer border-2 border-dashed rounded-xl py-6 transition-all",
+      isUploading ? "bg-muted/10 opacity-50 cursor-not-allowed" : "bg-muted/20 hover:bg-muted/40 hover:border-muted-foreground/40"
+    )}>
+      {isUploading ? <Loader2 className="w-5 h-5 animate-spin text-primary" /> : <Upload className="w-4 h-4 text-muted-foreground" />}
+      <span className="text-xs font-medium">{isUploading ? "Processing..." : "Upload Logo File"}</span>
+      <input type="file" accept="image/*" onChange={onLogoUpload} className="hidden" disabled={isUploading} />
+    </label>
 
-            <div className="relative">
-              <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                <span className="text-[10px] font-bold text-muted-foreground/40 uppercase">URL</span>
-              </div>
-              <Input
-                value={restaurant.logo_url?.startsWith("data:") ? "" : restaurant.logo_url || ""}
-                onChange={(e) => update({ logo_url: e.target.value })}
-                className="bg-muted/30 pl-11 text-xs h-9"
-                placeholder="https://example.com/logo.png"
-              />
-            </div>
-          </div>
+    <Input
+      disabled={isUploading}
+      value={restaurant.logo_url?.startsWith("data:") ? "" : restaurant.logo_url || ""}
+      onChange={(e) => onUpdate({ ...restaurant, logo_url: e.target.value })}
+      className="bg-muted/30 text-xs h-9"
+      placeholder="Or paste logo image URL..."
+    />
+  </div>
+</div>
         </div>
       </div>
 
