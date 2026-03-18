@@ -3,12 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Upload, X, CheckCircle2 } from "lucide-react";
+import { Upload, X, CheckCircle2, Loader2 } from "lucide-react"; 
 import { cn } from "@/lib/utils";
 
 interface Props {
   restaurant: RestaurantInfo;
-  isUploading: boolean;
+  isUploading: boolean; // This is correct
   onUpdate: (info: RestaurantInfo) => void;
   onLogoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   markChanged: () => void;
@@ -46,20 +46,19 @@ const CharCounter = ({ current, max }: { current: number; max: number }) => {
   );
 };
 
-const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props) => {
+// FIX: Added isUploading to the arguments here
+const SettingsTab = ({ restaurant, isUploading, onUpdate, onLogoUpload, markChanged }: Props) => {
   
   const update = (partial: Partial<RestaurantInfo>) => {
-  const field = Object.keys(partial)[0] as keyof RestaurantInfo;
-  const newValue = partial[field];
+    const field = Object.keys(partial)[0] as keyof RestaurantInfo;
+    const newValue = partial[field];
 
-  // Fix for the text-clearing bug
-  if (typeof newValue === "string") {
-    if (field === "name" && newValue.length > MAX_LIMITS.NAME) return;
-    if (field === "tagline" && newValue.length > MAX_LIMITS.TAGLINE) return;
-  }
+    if (typeof newValue === "string") {
+      if (field === "name" && newValue.length > MAX_LIMITS.NAME) return;
+      if (field === "tagline" && newValue.length > MAX_LIMITS.TAGLINE) return;
+    }
 
-  // Just update the data. The hook will see the difference and show the button.
-  onUpdate({ ...restaurant, ...partial });
+    onUpdate({ ...restaurant, ...partial });
   };
 
   const isLogoAvailable = !!restaurant.logo_url;
@@ -112,46 +111,45 @@ const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props)
           Branding & Logo
         </Label>
         
-<div className="grid gap-4">
-  {restaurant.logo_url && (
-    <div className="flex items-center gap-4 p-3 bg-secondary/20 rounded-xl border border-border/50 backdrop-blur-sm group">
-      <img src={restaurant.logo_url} alt="Logo" className="w-14 h-14 rounded-full object-cover border-2 border-background shadow-md" />
-      <div className="flex-1 min-w-0">
-        <p className="text-[10px] font-bold uppercase text-muted-foreground/50">Active Logo</p>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-7 px-2 text-[11px] text-destructive hover:bg-destructive/10 -ml-2"
-          onClick={() => onUpdate({ ...restaurant, logo_url: "", show_qr_logo: false })}
-          disabled={isUploading}
-        >
-          <X className="w-3 h-3 mr-1" /> Remove
-        </Button>
-      </div>
-    </div>
-  )}
+        <div className="grid gap-4">
+          {restaurant.logo_url && (
+            <div className="flex items-center gap-4 p-3 bg-secondary/20 rounded-xl border border-border/50 backdrop-blur-sm group">
+              <img src={restaurant.logo_url} alt="Logo" className="w-14 h-14 rounded-full object-cover border-2 border-background shadow-md" />
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold uppercase text-muted-foreground/50">Active Logo</p>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2 text-[11px] text-destructive hover:bg-destructive/10 -ml-2"
+                  onClick={() => onUpdate({ ...restaurant, logo_url: "", show_qr_logo: false })}
+                  disabled={isUploading}
+                >
+                  <X className="w-3 h-3 mr-1" /> Remove
+                </Button>
+              </div>
+            </div>
+          )}
 
-  <div className="flex flex-col gap-3">
-    <label className={cn(
-      "flex flex-col items-center justify-center gap-2 cursor-pointer border-2 border-dashed rounded-xl py-6 transition-all",
-      isUploading ? "bg-muted/10 opacity-50 cursor-not-allowed" : "bg-muted/20 hover:bg-muted/40 hover:border-muted-foreground/40"
-    )}>
-      {isUploading ? <Loader2 className="w-5 h-5 animate-spin text-primary" /> : <Upload className="w-4 h-4 text-muted-foreground" />}
-      <span className="text-xs font-medium">{isUploading ? "Processing..." : "Upload Logo File"}</span>
-      <input type="file" accept="image/*" onChange={onLogoUpload} className="hidden" disabled={isUploading} />
-    </label>
+          <div className="flex flex-col gap-3">
+            <label className={cn(
+              "flex flex-col items-center justify-center gap-2 cursor-pointer border-2 border-dashed rounded-xl py-6 transition-all",
+              isUploading ? "bg-muted/10 opacity-50 cursor-not-allowed" : "bg-muted/20 hover:bg-muted/40 hover:border-muted-foreground/40"
+            )}>
+              {isUploading ? <Loader2 className="w-5 h-5 animate-spin text-primary" /> : <Upload className="w-4 h-4 text-muted-foreground" />}
+              <span className="text-xs font-medium">{isUploading ? "Processing..." : "Upload Logo File"}</span>
+              <input type="file" accept="image/*" onChange={onLogoUpload} className="hidden" disabled={isUploading} />
+            </label>
 
-    <Input
-      disabled={isUploading}
-      value={restaurant.logo_url?.startsWith("data:") ? "" : restaurant.logo_url || ""}
-      onChange={(e) => onUpdate({ ...restaurant, logo_url: e.target.value })}
-      className="bg-muted/30 text-xs h-9"
-      placeholder="Or paste logo image URL..."
-    />
-  </div>
-</div>
+            <Input
+              disabled={isUploading}
+              value={restaurant.logo_url?.startsWith("data:") ? "" : restaurant.logo_url || ""}
+              onChange={(e) => onUpdate({ ...restaurant, logo_url: e.target.value })}
+              className="bg-muted/30 text-xs h-9"
+              placeholder="Or paste logo image URL..."
+            />
+          </div>
         </div>
-      </div>
+      </div> {/* Correctly closing Branding Section */}
 
       {/* Experience Section */}
       <div className="pt-6 border-t border-border/50 mt-2">
