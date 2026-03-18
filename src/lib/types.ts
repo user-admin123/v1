@@ -2,6 +2,7 @@ export interface Category {
   id: string;
   name: string;
   order_index: number;
+  restaurant_id: string; 
   created_at: string;
 }
 
@@ -15,13 +16,14 @@ export interface MenuItem {
   available: boolean;
   image_url: string;
   category_id: string;
+  restaurant_id: string; 
   item_type: ItemType;
   created_at: string;
   updated_at: string;
 }
 
 export interface RestaurantInfo {
-  id?: string;
+  id: string;
   name: string;
   tagline: string;
   logo_url: string;
