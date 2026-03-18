@@ -183,35 +183,46 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
   }, []);
 
   // --- Image handling ---
+const [isUploading, setIsUploading] = useState(false); // New: Track compression state
+
+// Generic helper to handle the compression logic
+const processImage = useCallback(async (file: File): Promise<string | null> => {
+  const options = {
+    maxSizeMB: 0.2,
+    maxWidthOrHeight: 1024,
+    useWebWorker: true,
+    fileType: 'image/webp'
+  };
+
+  try {
+    setIsUploading(true);
+    toast({ title: "Optimizing image...", description: "Please wait while we shrink the file." });
+
+    const compressedFile = await imageCompression(file, options);
+    
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(compressedFile);
+    });
+  } catch (error) {
+    toast({ title: "Compression failed", variant: "destructive" });
+    return null;
+  } finally {
+    setIsUploading(false);
+  }
+}, []);
+
+// --- Updated Menu Item Upload ---
 const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
   const file = e.target.files?.[0];
   if (!file) return;
 
-  // Configuration for "High Quality, Low Weight"
-  const options = {
-    maxSizeMB: 0.2,          // Target 200KB
-    maxWidthOrHeight: 1024,  // Perfect for mobile/web menus
-    useWebWorker: true,
-    fileType: 'image/webp'   // WebP is much smaller than JPEG/PNG
-  };
-
-  try {
-    // Show the user we are working
-    toast({ title: "Optimizing image...", description: "Shrinking for fast loading." });
-    
-    const compressedFile = await imageCompression(file, options);
-    
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setItemForm((prev) => ({ ...prev, image_url: reader.result as string }));
-    };
-    reader.readAsDataURL(compressedFile);
-  } catch (error) {
-    toast({ title: "Compression failed", variant: "destructive" });
+  const base64 = await processImage(file);
+  if (base64) {
+    setItemForm((prev) => ({ ...prev, image_url: base64 }));
   }
-}, []);
-
-// Apply the same logic to handleLogoUpload
+}, [processImage]);
 
   const handleImageUrlApply = useCallback(() => {
     if (imageUrlInput.trim()) {
@@ -219,19 +230,16 @@ const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputEleme
     }
   }, [imageUrlInput]);
 
-  const handleLogoUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      toast({ title: "Image too large", description: "Max 2MB allowed.", variant: "destructive" });
-      return;
-    }
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setDraftRestaurant((prev) => ({ ...prev, logo_url: reader.result as string }));
-    };
-    reader.readAsDataURL(file);
-  }, []);
+  // --- Updated Logo Upload (Now using compression!) ---
+const handleLogoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  const base64 = await processImage(file);
+  if (base64) {
+    setDraftRestaurant((prev) => ({ ...prev, logo_url: base64 }));
+  }
+}, [processImage]);
 
   // --- Save all ---
   const [saving, setSaving] = useState(false);
