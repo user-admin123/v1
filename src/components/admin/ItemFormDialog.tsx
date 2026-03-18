@@ -31,6 +31,7 @@ interface Props {
   imageUrlInput: string;
   setImageUrlInput: (url: string) => void;
   onSave: () => void;
+  isUploading: boolean;
   onImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onImageUrlApply: () => void;
 }
@@ -120,65 +121,67 @@ const ItemFormDialog = ({
         </div>
 
         {/* Image Section */}
-        <div className="space-y-2">
-          <Label>Image</Label>
-          {itemForm.image_url && (
-            <div className="relative w-full h-40 rounded-xl overflow-hidden bg-muted border border-border/30">
-              <img src={itemForm.image_url} alt="Preview" className="w-full h-full object-cover" />
-              <button
-                type="button"
-                onClick={() => { setItemForm({ ...itemForm, image_url: "" }); setImageUrlInput(""); }}
-                className="absolute top-2 right-2 rounded-full bg-card/80 p-1.5 text-muted-foreground hover:text-foreground"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </div>
-          )}
-          <div className="flex gap-1 bg-muted/50 rounded-lg p-1">
-            <button
-              type="button"
-              onClick={() => setImageInputMode("upload")}
-              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                imageInputMode === "upload"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Upload className="w-3 h-3" /> Upload
-            </button>
-            <button
-              type="button"
-              onClick={() => setImageInputMode("url")}
-              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                imageInputMode === "url"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Link className="w-3 h-3" /> URL
-            </button>
-          </div>
-          {imageInputMode === "upload" ? (
-            <label className="flex items-center gap-2 cursor-pointer bg-muted/50 border border-input rounded-md px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
-              <Upload className="w-4 h-4" />
-              <span>{itemForm.image_url ? "Change image" : "Choose image file"}</span>
-              <input type="file" accept="image/*" onChange={onImageUpload} className="hidden" />
-            </label>
-          ) : (
-            <div className="flex gap-2">
-              <Input
-                value={imageUrlInput}
-                onChange={(e) => setImageUrlInput(e.target.value)}
-                className="bg-muted/50 flex-1 min-w-0"
-                placeholder="https://..."
-              />
-              <Button size="sm" onClick={onImageUrlApply} disabled={!imageUrlInput.trim()} className="shrink-0">
-                Preview
-              </Button>
-            </div>
-          )}
-          <p className="text-xs text-muted-foreground">Upload max 2MB or paste an image URL</p>
-        </div>
+<div className="space-y-2">
+  <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/70">Item Image</Label>
+  
+  {itemForm.image_url && (
+    <div className="relative w-full h-40 rounded-xl overflow-hidden bg-muted border border-border/30">
+      <img src={itemForm.image_url} alt="Preview" className="w-full h-full object-cover" />
+      <button
+        type="button"
+        onClick={() => { setItemForm({ ...itemForm, image_url: "" }); setImageUrlInput(""); }}
+        className="absolute top-2 right-2 rounded-full bg-black/60 backdrop-blur-md p-1.5 text-white hover:bg-black/80 transition-colors"
+      >
+        <X className="w-3 h-3" />
+      </button>
+    </div>
+  )}
+
+  <div className="flex gap-1 bg-muted/50 rounded-lg p-1">
+    <button
+      type="button"
+      onClick={() => setImageInputMode("upload")}
+      className={cn(
+        "flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+        imageInputMode === "upload" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"
+      )}
+    >
+      <Upload className="w-3 h-3" /> Upload
+    </button>
+    <button
+      type="button"
+      onClick={() => setImageInputMode("url")}
+      className={cn(
+        "flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+        imageInputMode === "url" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"
+      )}
+    >
+      <Link className="w-3 h-3" /> URL
+    </button>
+  </div>
+
+  {imageInputMode === "upload" ? (
+    <label className={cn(
+      "flex items-center justify-center gap-2 cursor-pointer bg-muted/30 border border-dashed rounded-md px-3 py-4 text-sm transition-all",
+      isUploading ? "opacity-50 cursor-not-allowed" : "hover:bg-muted/50"
+    )}>
+      {isUploading ? <Loader2 className="w-4 h-4 animate-spin text-primary" /> : <Upload className="w-4 h-4 text-muted-foreground" />}
+      <span className="font-medium">{isUploading ? "Optimizing..." : "Choose Image File"}</span>
+      <input type="file" accept="image/*" onChange={onImageUpload} className="hidden" disabled={isUploading} />
+    </label>
+  ) : (
+    <Input
+      value={imageUrlInput}
+      onChange={(e) => {
+        setImageUrlInput(e.target.value);
+        setItemForm({ ...itemForm, image_url: e.target.value }); // Instant sync
+      }}
+      className="bg-muted/50 h-10"
+      placeholder="Paste image link here (https://...)"
+      disabled={isUploading}
+    />
+  )}
+</div>
 
         <div className="flex items-center justify-between">
           <Label>Available</Label>
