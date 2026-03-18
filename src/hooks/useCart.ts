@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { MenuItem } from "@/lib/types";
 
 export interface CartItem {
@@ -14,92 +14,66 @@ const CART_KEY = "qrmenu_cart";
 function getStoredCart(): Record<string, CartItem> {
   try {
     const stored = localStorage.getItem(CART_KEY);
-    if (stored) return JSON.parse(stored);
-  } catch {
-    return {};
-  }
-  return {};
-}
-
-function saveCart(cart: Record<string, CartItem>) {
-  localStorage.setItem(CART_KEY, JSON.stringify(cart));
+    return stored ? JSON.parse(stored) : {};
+  } catch { return {}; }
 }
 
 export function useCart(availableItems: MenuItem[] = []) {
   const [cart, setCart] = useState<Record<string, CartItem>>(getStoredCart);
 
-  // Sync state to localStorage whenever the cart changes
+  // Persistence
   useEffect(() => {
-    saveCart(cart);
+    localStorage.setItem(CART_KEY, JSON.stringify(cart));
   }, [cart]);
 
   /**
-   * VALIDATION LOGIC
-   * This is the "Magic" that fixes your stale data bug.
-   * It filters the raw cart data against the actual items currently in the database.
+   * OPTIMIZED VALIDATION
+   * Uses a Map for O(1) lookup and useMemo to prevent lag
    */
-  const cartItems = Object.values(cart).filter((cartItem) => {
-    // 1. If we are still loading or have no menu data yet, show everything from storage
-    if (availableItems.length === 0) return true;
+  const { cartItems, totalItems, totalPrice } = useMemo(() => {
+    // 1. Create a fast lookup map (Run once per menu update)
+    const itemMap = new Map(availableItems.map(i => [i.id, i]));
+    
+    const validated: CartItem[] = [];
+    let tItems = 0;
+    let tPrice = 0;
 
-    // 2. Find the item in the fresh menu data
-    const dbItem = availableItems.find((i) => i.id === cartItem.id);
-
-    // 3. Only keep it if it exists in the DB AND is marked as available
-    // If an Admin hides it or deletes it, it fails this check and disappears from the cart.
-    return dbItem && dbItem.available !== false;
-  });
-
-  // Calculate totals based ONLY on the validated/filtered items above
-  const totalItems = cartItems.reduce((sum, i) => sum + i.quantity, 0);
-  const totalPrice = cartItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
-
-  const addItem = useCallback((item: { id: string; name: string; price: number; image_url?: string }) => {
-    setCart((prev) => {
-      const existing = prev[item.id];
-      return {
-        ...prev,
-        [item.id]: {
-          id: item.id,
-          name: item.name,
-          price: item.price,
-          image_url: item.image_url,
-          quantity: (existing?.quantity || 0) + 1,
-        },
-      };
+    // 2. Single pass through the cart
+    Object.values(cart).forEach((item) => {
+      const dbItem = itemMap.get(item.id);
+      
+      // Only include if item exists in DB and is available (or admin allows sold out)
+      if (dbItem && (dbItem.available !== false)) {
+        validated.push(item);
+        tItems += item.quantity;
+        tPrice += item.price * item.quantity;
+      }
     });
+
+    return { cartItems: validated, totalItems: tItems, totalPrice: tPrice };
+  }, [cart, availableItems]);
+
+  const addItem = useCallback((item: Omit<CartItem, "quantity">) => {
+    setCart((prev) => ({
+      ...prev,
+      [item.id]: { ...item, quantity: (prev[item.id]?.quantity || 0) + 1 },
+    }));
   }, []);
 
   const removeItem = useCallback((id: string) => {
     setCart((prev) => {
       const existing = prev[id];
       if (!existing) return prev;
-      
       if (existing.quantity <= 1) {
         const { [id]: _, ...rest } = prev;
         return rest;
       }
-      return { 
-        ...prev, 
-        [id]: { ...existing, quantity: existing.quantity - 1 } 
-      };
+      return { ...prev, [id]: { ...existing, quantity: existing.quantity - 1 } };
     });
   }, []);
 
   const getQuantity = useCallback((id: string) => cart[id]?.quantity || 0, [cart]);
+  const clearCart = useCallback(() => setCart({}), []);
 
-  const clearCart = useCallback(() => {
-    setCart({});
-  }, []);
-
-  return { 
-    cart, 
-    cartItems, 
-    totalItems, 
-    totalPrice, 
-    addItem, 
-    removeItem, 
-    getQuantity, 
-    clearCart 
-  };
+  return { cart, cartItems, totalItems, totalPrice, addItem, removeItem, getQuantity, clearCart };
 }
