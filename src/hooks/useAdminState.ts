@@ -67,11 +67,12 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
       id: crypto.randomUUID(),
       name: catName.trim(),
       order_index: draftCategories.length,
+      restaurant_id: draftRestaurant.id,
       created_at: new Date().toISOString(),
     };
     setDraftCategories((prev) => [...prev, newCat]);
     setCatName("");
-  }, [catName, draftCategories.length]);
+  }, [catName, draftCategories.length, draftRestaurant.id]);
 
   const deleteCategory = useCallback((id: string) => {
     setDeletedItemIds((prev) => [
@@ -159,13 +160,13 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
       setDraftItems((prev) => prev.map((i) => (i.id === editingItem.id ? updated : i)));
     } else {
       const newItem: MenuItem = {
-        id: crypto.randomUUID(), ...itemForm, price,
+        id: crypto.randomUUID(), ...itemForm, restaurant_id: draftRestaurant.id, price,
         created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
       };
       setDraftItems((prev) => [...prev, newItem]);
     }
     setItemFormOpen(false);
-  }, [itemForm, editingItem]);
+  }, [itemForm, editingItem, draftRestaurant.id]);
 
   const deleteItem = useCallback((id: string) => {
     setDeletedItemIds((prev) => [...prev, id]);
