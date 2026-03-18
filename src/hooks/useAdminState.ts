@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Category, MenuItem, ItemType, RestaurantInfo } from "@/lib/types";
 import { toast } from "@/hooks/use-toast";
+import imageCompression from 'browser-image-compression';
 
 interface UseAdminStateProps {
   categories: Category[];
@@ -182,19 +183,35 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
   }, []);
 
   // --- Image handling ---
-  const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      toast({ title: "Image too large", description: "Max 2MB allowed.", variant: "destructive" });
-      return;
-    }
+const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  // Configuration for "High Quality, Low Weight"
+  const options = {
+    maxSizeMB: 0.2,          // Target 200KB
+    maxWidthOrHeight: 1024,  // Perfect for mobile/web menus
+    useWebWorker: true,
+    fileType: 'image/webp'   // WebP is much smaller than JPEG/PNG
+  };
+
+  try {
+    // Show the user we are working
+    toast({ title: "Optimizing image...", description: "Shrinking for fast loading." });
+    
+    const compressedFile = await imageCompression(file, options);
+    
     const reader = new FileReader();
     reader.onloadend = () => {
       setItemForm((prev) => ({ ...prev, image_url: reader.result as string }));
     };
-    reader.readAsDataURL(file);
-  }, []);
+    reader.readAsDataURL(compressedFile);
+  } catch (error) {
+    toast({ title: "Compression failed", variant: "destructive" });
+  }
+}, []);
+
+// Apply the same logic to handleLogoUpload
 
   const handleImageUrlApply = useCallback(() => {
     if (imageUrlInput.trim()) {
