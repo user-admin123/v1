@@ -9,59 +9,77 @@ import { logger } from "./logger";
 
 // ---------- Fetch helpers (Supabase primary, localStorage cache) ----------
 
-export async function fetchCategories(): Promise<Category[]> {
-  logger.db("SELECT", "categories", "fetching all ordered by order_index");
+/**
+ * FETCH FULL MENU (Categories + Items Joined)
+ * Optimized for Egress and Disk I/O by selecting specific columns
+ * and filtering by restaurant_id.
+ */
+export async function fetchFullMenu(restaurantId: string): Promise<{ categories: Category[], items: MenuItem[] }> {
+  logger.db("SELECT", "categories + menu_items", `Fetching joined data for ${restaurantId}`);
+
   const { data, error } = await supabase
     .from("categories")
-    .select("*")
+    .select(`
+      id, 
+      name, 
+      order_index, 
+      restaurant_id,
+      menu_items (
+        id, 
+        name, 
+        price, 
+        description, 
+        available, 
+        image_url, 
+        item_type, 
+        category_id,
+        restaurant_id
+      )
+    `)
+    .eq("restaurant_id", restaurantId)
     .order("order_index", { ascending: true });
 
   if (error) {
-    logger.error("fetchCategories failed:", error.message, error);
+    logger.error("fetchFullMenu failed:", error.message, error);
     throw error;
   }
-  const cats = (data || []) as Category[];
-  logger.db("SELECT", "categories", `got ${cats.length} rows`);
-  saveLocalCategories(cats);
-  return cats;
-}
 
-export async function fetchMenuItems(): Promise<MenuItem[]> {
-  logger.db("SELECT", "menu_items", "fetching all");
-  const { data, error } = await supabase.from("menu_items").select("*");
+  // 1. Extract Categories (Remove the nested menu_items array for the category state)
+  const categories = (data || []).map(({ menu_items, ...cat }) => cat) as Category[];
+  
+  // 2. Extract Items (Flatten all menu_items from all categories into one list)
+  const items = (data || []).flatMap(cat => cat.menu_items || []) as MenuItem[];
 
-  if (error) {
-    logger.error("fetchMenuItems failed:", error.message, error);
-    throw error;
-  }
-  const items = (data || []) as MenuItem[];
-  logger.db("SELECT", "menu_items", `got ${items.length} rows`);
+  logger.db("SELECT", "full_menu", `Got ${categories.length} cats and ${items.length} items`);
+
+  // 3. Save to Local Storage (Keep your offline-first logic)
+  saveLocalCategories(categories);
   saveLocalItems(items);
-  return items;
+
+  return { categories, items };
 }
 
+/**
+ * FETCH RESTAURANT INFO
+ * Uses .single() and specific columns to reduce payload.
+ */
 export async function fetchRestaurant(): Promise<RestaurantInfo> {
-  logger.db("SELECT", "restaurant", "fetching first row with .limit(1)");
+  logger.db("SELECT", "restaurant", "fetching single info");
   
   const { data, error } = await supabase
     .from("restaurant")
-    .select("*")
-    .limit(1);
+    .select("id, name, tagline, logo_url, show_veg_filter, show_sold_out, show_search, show_qr_logo")
+    .limit(1)
+    .single();
 
   if (error) {
     logger.error("fetchRestaurant failed:", error.message, error);
     throw error;
   }
 
-  if (data && data.length > 0) {
-    const rest = data[0] as RestaurantInfo;
-    logger.db("SELECT", "restaurant", `got row: ${rest.name} (ID: ${rest.id})`);
-    saveLocalRestaurant(rest);
-    return rest;
-  }
-
-  logger.warn("No restaurant row found, returning blank");
-  return { name: "", tagline: "", logo_url: "" };
+  const rest = data as RestaurantInfo;
+  saveLocalRestaurant(rest);
+  return rest;
 }
 
 export async function fetchAdminUsage(restaurantId: string): Promise<any> {
