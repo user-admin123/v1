@@ -55,15 +55,19 @@ const UsageInsights = ({ restaurantId }: Props) => {
             const dayLabel = date.toLocaleDateString('en-US', { weekday: 'short' });
             const count = usage?.weekly_data_obj?.[dayLabel] ?? 0;
             const isToday = i === 6;
-            const barHeight = Math.min((count / 50) * 100, 100);
+            
+            // Add this right before the return statement
+            const counts = usage?.weekly_data_obj ? Object.values(usage.weekly_data_obj).map(Number) : [0];
+            const maxCount = Math.max(...counts, 10); // Ensures we don't divide by zero
+            const barHeight = (count / maxCount) * 100;
 
             return (
               <div key={dayLabel} className="flex flex-col items-center gap-2 flex-1 group relative">
-                <div className="w-full relative flex items-end justify-center h-full">
+                <div className="w-full relative flex items-end justify-center flex-1">
                   <div 
                     className={cn(
-                      "w-full rounded-t-md transition-all duration-500",
-                      count > 0 ? "bg-primary/80" : "bg-muted-foreground/10",
+                      "w-full rounded-t-sm transition-all duration-500",
+                      count > 0 ? "bg-primary" : "bg-muted/20",
                       isToday && "bg-primary ring-2 ring-primary/20"
                     )} 
                     style={{ height: `${Math.max(barHeight, 5)}%` }}
