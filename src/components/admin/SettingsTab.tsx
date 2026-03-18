@@ -48,20 +48,17 @@ const CharCounter = ({ current, max }: { current: number; max: number }) => {
 const SettingsTab = ({ restaurant, onUpdate, onLogoUpload, markChanged }: Props) => {
   
   const update = (partial: Partial<RestaurantInfo>) => {
-    // 1. Identify what is being changed
-    const field = Object.keys(partial)[0] as keyof RestaurantInfo;
-    const newValue = partial[field];
+  const field = Object.keys(partial)[0] as keyof RestaurantInfo;
+  const newValue = partial[field];
 
-    // 2. Strict Guard: If it's a string and exceeds limit, do nothing.
-    // This stops the "Reset/Erase" loop before it hits the parent state.
-    if (typeof newValue === "string") {
-      if (field === "name" && newValue.length > MAX_LIMITS.NAME) return;
-      if (field === "tagline" && newValue.length > MAX_LIMITS.TAGLINE) return;
-    }
+  // Fix for the text-clearing bug
+  if (typeof newValue === "string") {
+    if (field === "name" && newValue.length > MAX_LIMITS.NAME) return;
+    if (field === "tagline" && newValue.length > MAX_LIMITS.TAGLINE) return;
+  }
 
-    // 3. Update parent state
-    onUpdate({ ...restaurant, ...partial });
-    markChanged();
+  // Just update the data. The hook will see the difference and show the button.
+  onUpdate({ ...restaurant, ...partial });
   };
 
   const isLogoAvailable = !!restaurant.logo_url;
