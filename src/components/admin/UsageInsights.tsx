@@ -49,10 +49,11 @@ const UsageInsights = ({ restaurantId }: Props) => {
           <Label className="text-sm font-bold flex items-center gap-2 text-foreground">
             <Zap className="w-4 h-4 text-amber-500 fill-amber-500" /> Recent Reach
           </Label>
-          <p className="text-[10px] text-muted-foreground">Unique menu views recorded over the last 7 days.</p>
+          <p className="text-[10px] text-muted-foreground">How many people looked at your menu in the last 7 days.</p>
         </div>
 
-        <div className="bg-muted/30 p-4 rounded-xl border border-border/40 flex justify-between items-end h-32 gap-1 shadow-inner relative">
+        <div className="bg-muted/30 p-4 rounded-xl border border-border/40 flex justify-between items-end h-32 gap-1 shadow-inner relative overflow-hidden" 
+          onMouseLeave={() => setSelectedDay(null)}>
           {Array.from({ length: 7 }).map((_, i) => {
             const date = new Date();
             date.setDate(date.getDate() - (6 - i));
@@ -129,10 +130,11 @@ const UsageInsights = ({ restaurantId }: Props) => {
               {storagePct.toFixed(1)}%
             </span>
           </div>
+          <p className="text-[10px] text-muted-foreground mb-3 px-0.5">Space used by your menu items and photos on the cloud.</p>
           <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
             <div className="bg-primary h-full transition-all duration-1000" style={{ width: `${storagePct}%` }} />
           </div>
-          <p className="mt-2 text-[9px] font-medium text-muted-foreground/70">
+          <p className="mt-2 text-[9px] font-medium text-muted-foreground/70 tabular-nums">
             Used: {(usage?.storage_mb || 0).toFixed(1)} MB / 512 MB
           </p>
         </div>
@@ -152,15 +154,16 @@ const UsageInsights = ({ restaurantId }: Props) => {
             <span className="text-xs font-semibold flex items-center gap-2">
               <Globe className="w-4 h-4 text-blue-500" /> Monthly Traffic
             </span>
-            <span className="text-xs font-bold text-blue-500">
+            <span className="text-xs font-bold text-blue-500 tabular-nums">
               {trafficPct.toFixed(1)}%
             </span>
           </div>
+          <p className="text-[10px] text-muted-foreground mb-3 px-0.5">Data used when customers scan and browse your menu.</p>
           <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
             <div className="bg-blue-500 h-full transition-all duration-1000" style={{ width: `${trafficPct}%` }} />
           </div>
           <div className="flex justify-between items-center mt-2">
-            <p className="text-[9px] font-medium text-muted-foreground/70">
+            <p className="text-[9px] font-medium text-muted-foreground/70 tabular-nums">
               Approx: {(usage?.egress_gb || 0).toFixed(2)} GB / 5 GB
             </p>
             <span className="text-[8px] text-muted-foreground/50 italic flex items-center gap-1">
