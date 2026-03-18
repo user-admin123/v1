@@ -58,28 +58,27 @@ export function useMenuData() {
   // Fetch data from Supabase
   useEffect(() => {
     let cancelled = false;
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const [cats, menuItems, rest] = await Promise.all([
-          fetchCategories(),
-          fetchMenuItems(),
-          fetchRestaurant(),
-        ]);
-        if (!cancelled) {
-          setCategories(cats.sort((a, b) => a.order_index - b.order_index));
-          setItems(menuItems);
-          setRestaurant(rest);
-        }
-      } catch (err: any) {
-        if (!cancelled) {
-          setError(err?.message || "Failed to load menu data");
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+    // Inside useMenuData.ts
+async function load() {
+  setLoading(true);
+  try {
+    // 1. Get Restaurant first
+    const rest = await fetchRestaurant();
+    
+    // 2. Get the combined menu data using the Restaurant ID
+    const { categories: cats, items: menuItems } = await fetchFullMenu(rest.id);
+
+    if (!cancelled) {
+      setCategories(cats); // Already sorted by order_index in the query
+      setItems(menuItems);
+      setRestaurant(rest);
     }
+  } catch (err: any) {
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+}
     load();
     return () => { cancelled = true; };
   }, []);
