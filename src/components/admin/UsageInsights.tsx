@@ -52,7 +52,7 @@ const UsageInsights = ({ restaurantId }: Props) => {
           <p className="text-[10px] text-muted-foreground">How many people looked at your menu in the last 7 days.</p>
         </div>
 
-        <div className="bg-muted/30 p-4 rounded-xl border border-border/40 flex justify-between items-end h-32 gap-1 shadow-inner relative overflow-hidden" 
+        <div className="bg-muted/30 p-4 rounded-xl border border-border/40 flex justify-between items-end h-32 gap-1 shadow-inner relative" 
           onMouseLeave={() => setSelectedDay(null)}>
           {Array.from({ length: 7 }).map((_, i) => {
             const date = new Date();
