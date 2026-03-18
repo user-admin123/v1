@@ -111,6 +111,7 @@ const AdminPanel = ({ categories, items, restaurant, onUpdateCategories, onUpdat
                 onUpdate={admin.setDraftRestaurant}
                 onLogoUpload={admin.handleLogoUpload}
                 markChanged={admin.markChanged}
+                isUploading={admin.isUploading}
               />
             </TabsContent>
 
@@ -142,6 +143,7 @@ const AdminPanel = ({ categories, items, restaurant, onUpdateCategories, onUpdat
         imageUrlInput={admin.imageUrlInput}
         setImageUrlInput={admin.setImageUrlInput}
         uploadingImage={admin.uploadingImage}
+        isUploading={admin.isUploading}
         onSave={admin.saveItem}
         onImageUpload={admin.handleImageUpload}
         onImageUrlApply={admin.handleImageUrlApply}
