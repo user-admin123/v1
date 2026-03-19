@@ -1,4 +1,4 @@
-name: "MenuSnap: Cleanup & Update"
+name: "MenuSnap: Cleanup & Maintenance"
 
 on:
   workflow_dispatch:
@@ -22,24 +22,25 @@ jobs:
       - name: Remove unwanted packages
         run: |
           npm uninstall lovable-tagger html-to-image
-          echo "Uninstalled lovable-tagger and html-to-image"
+          echo "Successfully removed legacy/unwanted packages"
 
-      - name: Update all dependencies to latest
+      - name: Safe Update (Minor & Patch only)
         run: |
-          # npx allows us to use npm-check-updates without installing it permanently
-          npx npm-check-updates -u
-          npm install
-          echo "All packages bumped to latest and lockfile updated"
+          # 'npm update' respects your package.json version ranges.
+          # It won't jump from React 18 to 19 or Vite 5 to 8.
+          npm update
+          # Use --legacy-peer-deps only as a fallback for strict plugin checks
+          npm install --legacy-peer-deps
+          echo "Dependencies refreshed to latest stable versions (no major jumps)"
 
       - name: Commit and Push changes
         run: |
           git config --local user.name "github-actions[bot]"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           
-          # Check if there are changes to commit
           if [[ -n "$(git status --porcelain)" ]]; then
             git add package.json package-lock.json
-            git commit -m "chore(deps): rename to MenuSnap, remove legacy tags, and update all packages"
+            git commit -m "chore: cleanup unwanted packages and sync lockfile"
             git push
           else
             echo "No changes detected"
