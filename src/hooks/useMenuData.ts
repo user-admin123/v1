@@ -13,94 +13,120 @@ import {
 import { supabase } from "@/lib/supabase";
 
 export function useMenuData() {
+  // --- State ---
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
-  const [restaurant, setRestaurant] = useState<RestaurantInfo>({ name: "", tagline: "", logo_url: "" });
+  const [restaurant, setRestaurant] = useState<RestaurantInfo>({
+    name: "",
+    tagline: "",
+    logo_url: "",
+  });
   const [authed, setAuthed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
- // --- PRODUCTION DOORBELL LOGIC ---
+  // --- Analytics Logic ---
+
+  /**
+   * PRODUCTION DOORBELL LOGIC
+   * Logs a customer view via Supabase RPC if the user is not an admin.
+   */
   useEffect(() => {
     const ringDoorbell = async () => {
       const restId = restaurant?.id;
       const sessionKey = `doorbell_rung_${restId}`;
-      // NEW GUARD: If user is authenticated (Admin), do not ring the doorbell
+
+      // Skip if Admin or if already rung in this session
       if (authed) {
         if (import.meta.env.DEV) console.log("Admin detected: Skipping view count.");
         return;
       }
-      // Guard clauses
+
       if (!restId || sessionStorage.getItem(sessionKey)) return;
-      const { error: rpcError } = await supabase.rpc('log_customer_view', { 
-        target_rest_id: restId 
+
+      const { error: rpcError } = await supabase.rpc("log_customer_view", {
+        target_rest_id: restId,
       });
+
       if (rpcError) {
-        // Vite-specific dev logging
         if (import.meta.env.DEV) console.error("Doorbell Error:", rpcError);
-        return; 
+        return;
       }
-      sessionStorage.setItem(sessionKey, 'true');
+
+      sessionStorage.setItem(sessionKey, "true");
     };
+
     ringDoorbell();
   }, [restaurant?.id, authed]);
 
-  // Check auth on mount + listen for changes
+  // --- Auth Management ---
+
   useEffect(() => {
     isAuthenticated().then(setAuthed);
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setAuthed(!!session);
     });
+
     return () => subscription.unsubscribe();
   }, []);
 
-  // Fetch data from Supabase
+  // --- Data Loading ---
+
+  /**
+   * INITIAL LOAD
+   * Fetches restaurant info first, then uses the ID to fetch the full menu.
+   */
   useEffect(() => {
     let cancelled = false;
-async function load() {
-  setLoading(true);
-  setError(null);
-  try {
-    // 1. Get Restaurant first to get the ID
-    const rest = await fetchRestaurant();
-    
-    // 2. Use that ID to get Categories and Items in one shot
-    const { categories: cats, items: menuItems } = await fetchFullMenu(rest.id);
 
-    if (!cancelled) {
-      // Sort categories by index (though the DB now does this, double-check is fine)
-      setCategories(cats.sort((a, b) => a.order_index - b.order_index));
-      setItems(menuItems);
-      setRestaurant(rest);
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const rest = await fetchRestaurant();
+        const { categories: cats, items: menuItems } = await fetchFullMenu(rest.id);
+
+        if (!cancelled) {
+          setCategories([...cats].sort((a, b) => a.order_index - b.order_index));
+          setItems(menuItems);
+          setRestaurant(rest);
+        }
+      } catch (err: any) {
+        if (!cancelled) {
+          setError(err?.message || "Failed to load menu data");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
-  } catch (err: any) {
-    if (!cancelled) {
-      setError(err?.message || "Failed to load menu data");
-    }
-  } finally {
-    if (!cancelled) setLoading(false);
-  }
-}
+
     load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
+  // --- Handlers ---
+
   const refresh = useCallback(async () => {
-  setLoading(true);
-  try {
-    const rest = await fetchRestaurant();
-    const { categories: cats, items: menuItems } = await fetchFullMenu(rest.id);
-    
-    setCategories(cats.sort((a, b) => a.order_index - b.order_index));
-    setItems(menuItems);
-    setRestaurant(rest);
-    setError(null);
-  } catch (err: any) {
-    setError(err?.message || "Failed to refresh");
-  } finally {
-    setLoading(false);
-  }
-}, []);
+    setLoading(true);
+    try {
+      const rest = await fetchRestaurant();
+      const { categories: cats, items: menuItems } = await fetchFullMenu(rest.id);
+
+      setCategories([...cats].sort((a, b) => a.order_index - b.order_index));
+      setItems(menuItems);
+      setRestaurant(rest);
+      setError(null);
+    } catch (err: any) {
+      setError(err?.message || "Failed to refresh");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const updateCategories = useCallback((cats: Category[]) => {
     setCategories([...cats].sort((a, b) => a.order_index - b.order_index));
@@ -114,19 +140,27 @@ async function load() {
     setRestaurant(info);
   }, []);
 
-  const saveAll = useCallback(async (cats: Category[], menuItems: MenuItem[], rest: RestaurantInfo, deletedCatIds: string[] = [], deletedItemIds: string[] = []) => {
-    const success = await dbSaveAll(cats, menuItems, rest, deletedCatIds, deletedItemIds);
-    if (success) {
-      setCategories([...cats].sort((a, b) => a.order_index - b.order_index));
-      setItems(menuItems);
-      setRestaurant(rest);
-    }
-    return success;
-  }, []);
+  const saveAll = useCallback(
+    async (
+      cats: Category[],
+      menuItems: MenuItem[],
+      rest: RestaurantInfo,
+      deletedCatIds: string[] = [],
+      deletedItemIds: string[] = []
+    ) => {
+      const success = await dbSaveAll(cats, menuItems, rest, deletedCatIds, deletedItemIds);
+      if (success) {
+        setCategories([...cats].sort((a, b) => a.order_index - b.order_index));
+        setItems(menuItems);
+        setRestaurant(rest);
+      }
+      return success;
+    },
+    []
+  );
 
   const login = useCallback(async (email: string, password: string) => {
-    const ok = await doLogin(email, password);
-    return ok;
+    return await doLogin(email, password);
   }, []);
 
   const logout = useCallback(async () => {
@@ -134,9 +168,20 @@ async function load() {
   }, []);
 
   return {
-    categories, items, restaurant, authed, loading, error,
-    login, logout,
-    updateCategories, updateItems, updateRestaurant,
-    saveAll, refresh,
+    // State
+    categories,
+    items,
+    restaurant,
+    authed,
+    loading,
+    error,
+    // Methods
+    login,
+    logout,
+    updateCategories,
+    updateItems,
+    updateRestaurant,
+    saveAll,
+    refresh,
   };
 }
