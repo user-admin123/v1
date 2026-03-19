@@ -7,14 +7,16 @@ import {
 } from "./store";
 import { logger } from "./logger";
 
-// ---------- Fetch helpers (Supabase primary, localStorage cache) ----------
+// -----------------------------------------------------------------------------
+// FETCH HELPERS (Supabase Primary, localStorage Cache)
+// -----------------------------------------------------------------------------
 
 /**
- * FETCH FULL MENU (Categories + Items Joined)
+ * FETCH FULL MENU
  * Optimized for Egress and Disk I/O by selecting specific columns
  * and filtering by restaurant_id.
  */
-export async function fetchFullMenu(restaurantId: string): Promise<{ categories: Category[], items: MenuItem[] }> {
+export async function fetchFullMenu(restaurantId: string): Promise<{ categories: Category[]; items: MenuItem[] }> {
   logger.db("SELECT", "categories + menu_items", `Fetching joined data for ${restaurantId}`);
 
   const { data, error } = await supabase
@@ -44,15 +46,15 @@ export async function fetchFullMenu(restaurantId: string): Promise<{ categories:
     throw error;
   }
 
-  // 1. Extract Categories (Remove the nested menu_items array for the category state)
+  // 1. Extract Categories (Remove nested menu_items array for the category state)
   const categories = (data || []).map(({ menu_items, ...cat }) => cat) as Category[];
-  
+
   // 2. Extract Items (Flatten all menu_items from all categories into one list)
-  const items = (data || []).flatMap(cat => cat.menu_items || []) as MenuItem[];
+  const items = (data || []).flatMap((cat) => cat.menu_items || []) as MenuItem[];
 
   logger.db("SELECT", "full_menu", `Got ${categories.length} cats and ${items.length} items`);
 
-  // 3. Save to Local Storage (Keep your offline-first logic)
+  // 3. Save to Local Storage (Offline-first logic)
   saveLocalCategories(categories);
   saveLocalItems(items);
 
@@ -65,7 +67,7 @@ export async function fetchFullMenu(restaurantId: string): Promise<{ categories:
  */
 export async function fetchRestaurant(): Promise<RestaurantInfo> {
   logger.db("SELECT", "restaurant", "fetching single info");
-  
+
   const { data, error } = await supabase
     .from("restaurant")
     .select("id, name, tagline, logo_url, show_veg_filter, show_sold_out, show_search, show_qr_logo")
@@ -82,9 +84,13 @@ export async function fetchRestaurant(): Promise<RestaurantInfo> {
   return rest;
 }
 
+/**
+ * FETCH ADMIN USAGE
+ * Fetches dashboard stats for a specific restaurant.
+ */
 export async function fetchAdminUsage(restaurantId: string): Promise<any> {
   logger.db("SELECT", "admin_usage_dashboard", `fetching stats for id=${restaurantId}`);
-  
+
   const { data, error } = await supabase
     .from("admin_usage_dashboard")
     .select("*")
@@ -93,14 +99,16 @@ export async function fetchAdminUsage(restaurantId: string): Promise<any> {
 
   if (error) {
     logger.error("fetchAdminUsage failed:", error.message, error);
-    throw error; 
+    throw error;
   }
 
   logger.db("SELECT", "admin_usage_dashboard", "got usage stats successfully");
   return data;
 }
 
-// ---------- Save helpers ----------
+// -----------------------------------------------------------------------------
+// SAVE HELPERS
+// -----------------------------------------------------------------------------
 
 export async function saveCategories(cats: Category[]): Promise<void> {
   logger.db("UPSERT", "categories", `saving ${cats.length} rows`);
@@ -135,7 +143,9 @@ export async function saveRestaurant(info: RestaurantInfo): Promise<void> {
   logger.db("UPSERT", "restaurant", "success");
 }
 
-// ---------- Delete helpers ----------
+// -----------------------------------------------------------------------------
+// DELETE HELPERS
+// -----------------------------------------------------------------------------
 
 export async function deleteCategory(id: string): Promise<void> {
   logger.db("DELETE", "menu_items", `cascade for category_id=${id}`);
@@ -149,7 +159,9 @@ export async function deleteMenuItem(id: string): Promise<void> {
   await supabase.from("menu_items").delete().eq("id", id);
 }
 
-// ---------- Batch save ----------
+// -----------------------------------------------------------------------------
+// BATCH SAVE
+// -----------------------------------------------------------------------------
 
 export async function saveAllChanges(
   categories: Category[],
@@ -158,13 +170,19 @@ export async function saveAllChanges(
   deletedCategoryIds: string[] = [],
   deletedItemIds: string[] = []
 ): Promise<boolean> {
-  logger.db("BATCH SAVE", "all tables", `cats=${categories.length}, items=${items.length}, delCats=${deletedCategoryIds.length}, delItems=${deletedItemIds.length}`);
+  logger.db(
+    "BATCH SAVE",
+    "all tables",
+    `cats=${categories.length}, items=${items.length}, delCats=${deletedCategoryIds.length}, delItems=${deletedItemIds.length}`
+  );
+
+  // Sync local cache first
   saveLocalCategories(categories);
   saveLocalItems(items);
   saveLocalRestaurant(restaurant);
 
   try {
-    // 1. Delete items first (including items from deleted categories)
+    // 1. Delete items first (maintains integrity before potential category deletion)
     const allDeletedItemIds = [...new Set(deletedItemIds)];
     if (allDeletedItemIds.length > 0) {
       logger.db("DELETE", "menu_items", `ids=${allDeletedItemIds.join(",")}`);
@@ -185,24 +203,26 @@ export async function saveAllChanges(
       }
     }
 
-    // 3. Upsert remaining data
-    // 3. Upsert remaining data
-// Ensure every item being sent has the restaurant_id attached
-const [catRes, itemRes, restRes] = await Promise.all([
-  categories.length > 0
-    ? supabase.from("categories").upsert(
-        categories.map(c => ({ ...c, restaurant_id: restaurant.id })), // Safety injection
-        { onConflict: "id" }
-      )
-    : { error: null },
-  items.length > 0
-    ? supabase.from("menu_items").upsert(
-        items.map(i => ({ ...i, restaurant_id: restaurant.id })), // Safety injection
-        { onConflict: "id" }
-      )
-    : { error: null },
-  supabase.from("restaurant").upsert(restaurant, { onConflict: "id" }),
-]);
+    // 3. Upsert remaining data with restaurant_id safety injection
+    const [catRes, itemRes, restRes] = await Promise.all([
+      categories.length > 0
+        ? supabase
+            .from("categories")
+            .upsert(
+              categories.map((c) => ({ ...c, restaurant_id: restaurant.id })),
+              { onConflict: "id" }
+            )
+        : { error: null },
+      items.length > 0
+        ? supabase
+            .from("menu_items")
+            .upsert(
+              items.map((i) => ({ ...i, restaurant_id: restaurant.id })),
+              { onConflict: "id" }
+            )
+        : { error: null },
+      supabase.from("restaurant").upsert(restaurant, { onConflict: "id" }),
+    ]);
 
     if (catRes.error || itemRes.error || restRes.error) {
       logger.error("Batch save errors:", {
@@ -212,6 +232,7 @@ const [catRes, itemRes, restRes] = await Promise.all([
       });
       return false;
     }
+
     logger.db("BATCH SAVE", "all tables", "success");
     return true;
   } catch (err: any) {
