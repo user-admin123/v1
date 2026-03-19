@@ -142,7 +142,6 @@ const AdminPanel = ({ categories, items, restaurant, onUpdateCategories, onUpdat
         setImageInputMode={admin.setImageInputMode}
         imageUrlInput={admin.imageUrlInput}
         setImageUrlInput={admin.setImageUrlInput}
-        uploadingImage={admin.uploadingImage}
         isUploading={admin.isUploading}
         onSave={admin.saveItem}
         onImageUpload={admin.handleImageUpload}
