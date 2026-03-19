@@ -17,6 +17,7 @@ interface UseAdminStateProps {
 }
 
 export function useAdminState({ categories, items, restaurant, onSaveAll }: UseAdminStateProps) {
+  // --- Core State Management ---
   const [draftCategories, setDraftCategories] = useState<Category[]>(categories);
   const [draftItems, setDraftItems] = useState<MenuItem[]>(items);
   const [draftRestaurant, setDraftRestaurant] = useState<RestaurantInfo>(restaurant);
@@ -24,7 +25,12 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
   const [deletedCategoryIds, setDeletedCategoryIds] = useState<string[]>([]);
   const [deletedItemIds, setDeletedItemIds] = useState<string[]>([]);
 
-  // 1. SMART COMPARISON: Automatically detect if anything actually differs from original props
+  // --- Effects & Sync Logic ---
+
+  /**
+   * SMART COMPARISON
+   * Detects if draft state differs from original props or if items were deleted.
+   */
   useEffect(() => {
     const isRestaurantChanged = JSON.stringify(draftRestaurant) !== JSON.stringify(restaurant);
     const isCategoriesChanged = JSON.stringify(draftCategories) !== JSON.stringify(categories);
@@ -34,19 +40,25 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
     setHasChanges(isRestaurantChanged || isCategoriesChanged || isItemsChanged || hasDeletions);
   }, [draftRestaurant, draftCategories, draftItems, restaurant, categories, items, deletedCategoryIds, deletedItemIds]);
 
-  // 2. BROWSER SAFETY: Prevent accidental tab close if changes exist
+  /**
+   * BROWSER SAFETY
+   * Prevents accidental tab closure if unsaved changes exist.
+   */
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (hasChanges) {
         e.preventDefault();
-        e.returnValue = ""; 
+        e.returnValue = "";
       }
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [hasChanges]);
 
-  // Sync drafts when props change (after a successful save)
+  /**
+   * PROP SYNC
+   * Resets drafts when props update (usually after a successful save).
+   */
   useEffect(() => {
     setDraftCategories(categories);
     setDraftItems(items);
@@ -55,10 +67,10 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
     setDeletedItemIds([]);
   }, [categories, items, restaurant]);
 
-  // Replacement for markChanged (no longer strictly needed but kept for compatibility if called)
+  // Compatibility placeholder
   const markChanged = useCallback(() => {}, []);
 
-  // --- Category CRUD ---
+  // --- Category CRUD Logic ---
   const [catName, setCatName] = useState("");
   const [editingCat, setEditingCat] = useState<Category | null>(null);
 
@@ -93,7 +105,7 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
     setEditingCat(null);
   }, [editingCat]);
 
-  // Drag & drop
+  // --- Drag & Drop (Categories) ---
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
 
@@ -111,7 +123,7 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
     setDraftCategories(reindexed);
   };
 
-  // --- Item CRUD ---
+  // --- Menu Item CRUD Logic ---
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [itemFormOpen, setItemFormOpen] = useState(false);
   const [itemForm, setItemForm] = useState({
@@ -182,45 +194,46 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
     );
   }, []);
 
-  // --- Image handling ---
-const [isUploading, setIsUploading] = useState(false); // New: Track compression state
+  // --- Image Processing & Uploads ---
+  const [isUploading, setIsUploading] = useState(false);
 
-// Generic helper to handle the compression logic
-const processImage = useCallback(async (file: File): Promise<string | null> => {
-  const options = {
-    maxSizeMB: 0.4, // Good balance of quality/speed
-    maxWidthOrHeight: 1024,
-    useWebWorker: true,
-    fileType: 'image/webp'
-  };
+  /**
+   * PROCESS IMAGE
+   * Compresses file to WebP and returns Base64.
+   */
+  const processImage = useCallback(async (file: File): Promise<string | null> => {
+    const options = {
+      maxSizeMB: 0.3,
+      maxWidthOrHeight: 1024,
+      useWebWorker: true,
+      fileType: 'image/webp'
+    };
 
-  try {
-    setIsUploading(true);
-    const compressedFile = await imageCompression(file, options);
-    
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.readAsDataURL(compressedFile);
-    });
-  } catch (error) {
-    toast({ title: "Upload failed", variant: "destructive" });
-    return null;
-  } finally {
-    setIsUploading(false); // Stop spinner
-  }
-}, []);
+    try {
+      setIsUploading(true);
+      const compressedFile = await imageCompression(file, options);
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(compressedFile);
+      });
+    } catch (error) {
+      toast({ title: "Upload failed", variant: "destructive" });
+      return null;
+    } finally {
+      setIsUploading(false);
+    }
+  }, []);
 
-// --- Updated Menu Item Upload ---
-const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
+  const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  const base64 = await processImage(file);
-  if (base64) {
-    setItemForm((prev) => ({ ...prev, image_url: base64 }));
-  }
-}, [processImage]);
+    const base64 = await processImage(file);
+    if (base64) {
+      setItemForm((prev) => ({ ...prev, image_url: base64 }));
+    }
+  }, [processImage]);
 
   const handleImageUrlApply = useCallback(() => {
     if (imageUrlInput.trim()) {
@@ -228,18 +241,17 @@ const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputEleme
     }
   }, [imageUrlInput]);
 
-  // --- Updated Logo Upload (Now using compression!) ---
-const handleLogoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
+  const handleLogoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  const base64 = await processImage(file);
-  if (base64) {
-    setDraftRestaurant((prev) => ({ ...prev, logo_url: base64 }));
-  }
-}, [processImage]);
+    const base64 = await processImage(file);
+    if (base64) {
+      setDraftRestaurant((prev) => ({ ...prev, logo_url: base64 }));
+    }
+  }, [processImage]);
 
-  // --- Save all ---
+  // --- Save Operations ---
   const [saving, setSaving] = useState(false);
 
   const saveAllChanges = useCallback(async () => {
@@ -255,7 +267,7 @@ const handleLogoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElemen
     }
   }, [draftCategories, draftItems, draftRestaurant, deletedCategoryIds, deletedItemIds, onSaveAll]);
 
-  // --- Delete confirmation ---
+  // --- Delete Confirmation State ---
   const [deleteConfirm, setDeleteConfirm] = useState<{
     type: "category" | "item"; id: string; name: string;
   } | null>(null);
@@ -268,17 +280,20 @@ const handleLogoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElemen
   }, [deleteConfirm, deleteCategory, deleteItem]);
 
   return {
+    // State
     draftCategories, draftItems, draftRestaurant,
     setDraftRestaurant, hasChanges, markChanged,
     catName, setCatName, editingCat, setEditingCat,
+    editingItem, itemFormOpen, setItemFormOpen, itemForm, setItemForm,
+    imageInputMode, setImageInputMode, imageUrlInput, setImageUrlInput, isUploading,
+    saving, deleteConfirm, setDeleteConfirm,
+
+    // Handlers
     addCategory, saveEditCat,
     handleDragStart, handleDragEnter, handleDragEnd,
-    editingItem, itemFormOpen, setItemFormOpen, itemForm, setItemForm,
-    imageInputMode, setImageInputMode, imageUrlInput, setImageUrlInput, isUploading, 
     openNewItem, openEditItem, saveItem, toggleAvailability,
     handleImageUpload, handleImageUrlApply,
     handleLogoUpload,
-    saving, saveAllChanges,
-    deleteConfirm, setDeleteConfirm, handleConfirmDelete,
+    saveAllChanges, handleConfirmDelete,
   };
 }
