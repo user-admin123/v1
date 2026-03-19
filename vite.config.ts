@@ -17,4 +17,18 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    // 1. Increases the warning threshold to 1000kb
+    chunkSizeWarningLimit: 1000, 
+    rollupOptions: {
+      output: {
+        // 2. Splits large node_modules into a separate 'vendor' file
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            return 'vendor';
+          }
+        },
+      },
+    },
+  },
 });
