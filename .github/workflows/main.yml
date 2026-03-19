@@ -1,3 +1,5 @@
+name: "MenuSnap: Cleanup & Update"
+
 on:
   workflow_dispatch:
 
@@ -5,41 +7,40 @@ permissions:
   contents: write
 
 jobs:
-  update_packages:
+  maintenance:
     runs-on: ubuntu-latest
-
     steps:
-      # Checkout the repository
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
-      # Setup Node.js environment
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
 
-      # Install project dependencies
-      - name: Install dependencies
-        run: npm install
-
-      # Install Supabase client (ensure it's installed)
-      - name: Install supabase
-        run: npm install browser-image-compression
-      # Commit changes if any
-      - name: Commit changes
+      - name: Remove unwanted packages
         run: |
-          # Configure Git user
+          npm uninstall lovable-tagger html-to-image
+          echo "Uninstalled lovable-tagger and html-to-image"
+
+      - name: Update all dependencies to latest
+        run: |
+          # npx allows us to use npm-check-updates without installing it permanently
+          npx npm-check-updates -u
+          npm install
+          echo "All packages bumped to latest and lockfile updated"
+
+      - name: Commit and Push changes
+        run: |
           git config --local user.name "github-actions[bot]"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           
-          # Add changes to git
-          git add package.json package-lock.json
-          
-          # Commit changes (if any)
-          git commit -m "Update browser-image-compression and package-lock.json" || echo "No changes to commit"
-          
-          # Push the changes to the repository
-          git push
+          # Check if there are changes to commit
+          if [[ -n "$(git status --porcelain)" ]]; then
+            git add package.json package-lock.json
+            git commit -m "chore(deps): rename to MenuSnap, remove legacy tags, and update all packages"
+            git push
+          else
+            echo "No changes detected"
+          fi
