@@ -109,6 +109,7 @@ const AdminPanel = ({ categories, items, restaurant, onUpdateCategories, onUpdat
               <SettingsTab
                 restaurant={admin.draftRestaurant}
                 onUpdate={admin.setDraftRestaurant}
+                onRemoveLogo={admin.removeLogo}
                 onLogoUpload={admin.handleLogoUpload}
                 markChanged={admin.markChanged}
                 isUploading={admin.isUploading}
