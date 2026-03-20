@@ -48,14 +48,18 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
   }, [hasChanges]);
 
   useEffect(() => {
+  // ONLY reset the draft if we don't have unsaved changes.
+  // This stops the app from overwriting your new logo with the old one.
+  if (!hasChanges) {
     setDraftCategories(categories);
     setDraftItems(items);
     setDraftRestaurant(restaurant);
     setDeletedCategoryIds([]);
     setDeletedItemIds([]);
-    setPendingDeleteUrls([]); // Reset deletions on sync
-  }, [categories, items, restaurant]);
-
+    setPendingDeleteUrls([]);
+  }
+}, [categories, items, restaurant, hasChanges]); // Added hasChanges here
+  
   const markChanged = useCallback(() => {}, []);
 
   // --- Category CRUD Logic ---
