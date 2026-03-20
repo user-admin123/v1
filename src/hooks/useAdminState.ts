@@ -210,6 +210,7 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
     if (url) {
       setItemForm((prev) => ({ ...prev, image_url: url }));
     }
+    e.target.value = "";
   }, [itemForm.image_url, uploadToBucket]);
 
   const handleImageUrlApply = useCallback(() => {
@@ -234,39 +235,50 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
     if (url) {
       setDraftRestaurant((prev) => ({ ...prev, logo_url: url }));
     }
+    e.target.value = "";
   }, [draftRestaurant.logo_url, uploadToBucket]);
 
   // --- Save Operations with Cleanup ---
   const [saving, setSaving] = useState(false);
 
   const saveAllChanges = useCallback(async () => {
-    setSaving(true);
-    try {
-      const success = await onSaveAll(draftCategories, draftItems, draftRestaurant, deletedCategoryIds, deletedItemIds);
-      
-      if (success) {
-        // Find images of items that were deleted permanently
-        const deletedItemImages = items
-          .filter(i => deletedItemIds.includes(i.id))
-          .map(i => i.image_url);
+  setSaving(true);
+  try {
+    const success = await onSaveAll(draftCategories, draftItems, draftRestaurant, deletedCategoryIds, deletedItemIds);
+    
+    if (success) {
+      // 1. Get images from deleted items
+      const deletedItemImages = items
+        .filter(i => deletedItemIds.includes(i.id))
+        .map(i => i.image_url);
 
-        const toClear = [...pendingDeleteUrls, ...deletedItemImages].filter(u => u?.includes('restaurant-assets'));
-        
-        if (toClear.length > 0) {
-          const paths = toClear.map(u => u.split('restaurant-assets/')[1]);
+      // 2. Combine with pending deletes (which includes replaced logos/item images)
+      // 3. Filter only those stored in our supabase bucket
+      const toClear = [...pendingDeleteUrls, ...deletedItemImages]
+        .filter(u => u && u.includes('supabase.co') && u.includes('restaurant-assets'));
+      
+      if (toClear.length > 0) {
+        // Extract the path after the bucket name
+        const paths = toClear.map(u => {
+          const parts = u.split('restaurant-assets/');
+          return parts.length > 1 ? parts[1] : null;
+        }).filter(Boolean) as string[];
+
+        if (paths.length > 0) {
           await supabase.storage.from('restaurant-assets').remove(paths);
         }
-
-        setPendingDeleteUrls([]);
-        toast({ title: "All changes saved & storage cleaned!", variant: "default" });
       }
-    } catch (err) {
-      toast({ title: "Save failed", variant: "destructive" });
-    } finally {
-      setSaving(false);
-    }
-  }, [draftCategories, draftItems, draftRestaurant, deletedCategoryIds, deletedItemIds, items, pendingDeleteUrls, onSaveAll]);
 
+      setPendingDeleteUrls([]);
+      toast({ title: "Changes saved and storage synced" });
+    }
+  } catch (err) {
+    console.error(err);
+    toast({ title: "Save failed", variant: "destructive" });
+  } finally {
+    setSaving(false);
+  }
+}, [draftCategories, draftItems, draftRestaurant, deletedCategoryIds, deletedItemIds, items, pendingDeleteUrls, onSaveAll]);
   // --- Delete Confirmation State ---
   const [deleteConfirm, setDeleteConfirm] = useState<{
     type: "category" | "item"; id: string; name: string;
