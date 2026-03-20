@@ -11,6 +11,7 @@ interface Props {
   isUploading: boolean; // This is correct
   onUpdate: (info: RestaurantInfo) => void;
   onLogoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onRemoveLogo: () => void;
   markChanged: () => void;
 }
 
@@ -121,7 +122,7 @@ const SettingsTab = ({ restaurant, isUploading, onUpdate, onLogoUpload, markChan
                   size="sm"
                   variant="ghost"
                   className="h-7 px-2 text-[11px] text-destructive hover:bg-destructive/10 -ml-2"
-                  onClick={() => onUpdate({ ...restaurant, logo_url: "", show_qr_logo: false })}
+                  onClick={onRemoveLogo}
                   disabled={isUploading}
                 >
                   <X className="w-3 h-3 mr-1" /> Remove
