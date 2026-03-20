@@ -91,12 +91,7 @@ export function useMenuData() {
       
       // Step 2: Run Menu Fetch and Analytics at the SAME TIME
       // This saves 1-2 seconds of network waiting
-      const [{ categories: cats, items: menuItems }] = await Promise.all([
-        fetchFullMenu(rest.id),
-        // Trigger the doorbell without waiting for it to finish 
-        // if you don't need its result to show the UI
-        supabase.rpc("log_customer_view", { target_rest_id: rest.id })
-      ]);
+      const { categories: cats, items: menuItems } = await fetchFullMenu(rest.id);
 
       if (!cancelled) {
         setCategories([...cats].sort((a, b) => a.order_index - b.order_index));
