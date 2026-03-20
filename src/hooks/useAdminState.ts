@@ -223,6 +223,14 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
     }
   }, [imageUrlInput, itemForm.image_url]);
 
+  // 1. Add this function to handle explicit logo removal
+const removeLogo = useCallback(() => {
+  if (draftRestaurant.logo_url?.includes('supabase.co')) {
+    setPendingDeleteUrls(prev => [...prev, draftRestaurant.logo_url!]);
+  }
+  setDraftRestaurant(prev => ({ ...prev, logo_url: "", show_qr_logo: false }));
+}, [draftRestaurant.logo_url]);
+
   const handleLogoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -302,6 +310,7 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
     handleDragStart, handleDragEnter, handleDragEnd,
     openNewItem, openEditItem, saveItem, toggleAvailability,
     handleImageUpload, handleImageUrlApply,
+    removeLogo,
     handleLogoUpload,
     saveAllChanges, handleConfirmDelete,
   };
