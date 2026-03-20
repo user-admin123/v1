@@ -64,7 +64,7 @@ const AdminPanel = ({ categories, items, restaurant, onUpdateCategories, onUpdat
           </DialogHeader>
 
           {admin.hasChanges && (
-            <Button onClick={admin.saveAllChanges} disabled={admin.saving} className="w-full bg-green-600 hover:bg-green-700 text-white disabled:opacity-70 shadow-lg">
+            <Button onClick={admin.saveAllChanges} disabled={admin.saving || admin.isUploading} className="w-full bg-green-600 hover:bg-green-700 text-white disabled:opacity-70 shadow-lg">
               {admin.saving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</> : <><Save className="w-4 h-4 mr-2" /> Update Changes</>}
             </Button>
           )}
