@@ -204,7 +204,7 @@ const ItemFormDialog = ({
           disabled={isUploading || !itemForm.name || !itemForm.price}
         >
           {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-          {editingItem ? "Update Item" : "Add Item"}
+          {isUploading ? "Processing..." : (editingItem ? "Update Item" : "Add Item")}
         </Button>
       </div>
     </DialogContent>
