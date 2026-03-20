@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { Category, MenuItem, ItemType, RestaurantInfo } from "@/lib/types";
 import { toast } from "@/hooks/use-toast";
 import imageCompression from 'browser-image-compression';
+import { supabase } from "@/lib/supabase"; // Ensure this is imported
 
 interface UseAdminStateProps {
   categories: Category[];
@@ -25,49 +26,36 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
   const [deletedCategoryIds, setDeletedCategoryIds] = useState<string[]>([]);
   const [deletedItemIds, setDeletedItemIds] = useState<string[]>([]);
 
-  // --- Effects & Sync Logic ---
+  // NEW: Tracking for Bucket Cleanup
+  const [isUploading, setIsUploading] = useState(false);
+  const [pendingDeleteUrls, setPendingDeleteUrls] = useState<string[]>([]);
 
-  /**
-   * SMART COMPARISON
-   * Detects if draft state differs from original props or if items were deleted.
-   */
+  // --- Effects & Sync Logic ---
   useEffect(() => {
     const isRestaurantChanged = JSON.stringify(draftRestaurant) !== JSON.stringify(restaurant);
     const isCategoriesChanged = JSON.stringify(draftCategories) !== JSON.stringify(categories);
     const isItemsChanged = JSON.stringify(draftItems) !== JSON.stringify(items);
     const hasDeletions = deletedCategoryIds.length > 0 || deletedItemIds.length > 0;
-
     setHasChanges(isRestaurantChanged || isCategoriesChanged || isItemsChanged || hasDeletions);
   }, [draftRestaurant, draftCategories, draftItems, restaurant, categories, items, deletedCategoryIds, deletedItemIds]);
 
-  /**
-   * BROWSER SAFETY
-   * Prevents accidental tab closure if unsaved changes exist.
-   */
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (hasChanges) {
-        e.preventDefault();
-        e.returnValue = "";
-      }
+      if (hasChanges) { e.preventDefault(); e.returnValue = ""; }
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [hasChanges]);
 
-  /**
-   * PROP SYNC
-   * Resets drafts when props update (usually after a successful save).
-   */
   useEffect(() => {
     setDraftCategories(categories);
     setDraftItems(items);
     setDraftRestaurant(restaurant);
     setDeletedCategoryIds([]);
     setDeletedItemIds([]);
+    setPendingDeleteUrls([]); // Reset deletions on sync
   }, [categories, items, restaurant]);
 
-  // Compatibility placeholder
   const markChanged = useCallback(() => {}, []);
 
   // --- Category CRUD Logic ---
@@ -99,16 +87,13 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
 
   const saveEditCat = useCallback(() => {
     if (!editingCat) return;
-    setDraftCategories((prev) =>
-      prev.map((c) => (c.id === editingCat.id ? editingCat : c))
-    );
+    setDraftCategories((prev) => prev.map((c) => (c.id === editingCat.id ? editingCat : c)));
     setEditingCat(null);
   }, [editingCat]);
 
-  // --- Drag & Drop (Categories) ---
+  // --- Drag & Drop ---
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
-
   const handleDragStart = (index: number) => { dragItem.current = index; };
   const handleDragEnter = (index: number) => { dragOverItem.current = index; };
   const handleDragEnd = () => {
@@ -118,8 +103,7 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
     updated.splice(dragItem.current, 1);
     updated.splice(dragOverItem.current, 0, dragged);
     const reindexed = updated.map((c, i) => ({ ...c, order_index: i }));
-    dragItem.current = null;
-    dragOverItem.current = null;
+    dragItem.current = null; dragOverItem.current = null;
     setDraftCategories(reindexed);
   };
 
@@ -157,8 +141,8 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
       image_url: item.image_url, available: item.available,
       item_type: item.item_type || "veg",
     });
-    setImageInputMode(item.image_url && !item.image_url.startsWith("data:") ? "url" : "upload");
-    setImageUrlInput(item.image_url && !item.image_url.startsWith("data:") ? item.image_url : "");
+    setImageInputMode(item.image_url && !item.image_url.includes("supabase.co") && item.image_url.startsWith("http") ? "url" : "upload");
+    setImageUrlInput(item.image_url && !item.image_url.includes("supabase.co") ? item.image_url : "");
     setItemFormOpen(true);
   }, []);
 
@@ -188,36 +172,24 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
 
   const toggleAvailability = useCallback((id: string) => {
     setDraftItems((prev) =>
-      prev.map((i) =>
-        i.id === id ? { ...i, available: !i.available, updated_at: new Date().toISOString() } : i
-      )
+      prev.map((i) => i.id === id ? { ...i, available: !i.available, updated_at: new Date().toISOString() } : i)
     );
   }, []);
 
-  // --- Image Processing & Uploads ---
-  const [isUploading, setIsUploading] = useState(false);
+  // --- REPLACED: Image Processing & Uploads ---
 
-  /**
-   * PROCESS IMAGE
-   * Compresses file to WebP and returns Base64.
-   */
-  const processImage = useCallback(async (file: File): Promise<string | null> => {
-    const options = {
-      maxSizeMB: 0.3,
-      maxWidthOrHeight: 1024,
-      useWebWorker: true,
-      fileType: 'image/webp'
-    };
-
+  const uploadToBucket = useCallback(async (file: File, folder: string): Promise<string | null> => {
+    setIsUploading(true);
     try {
-      setIsUploading(true);
-      const compressedFile = await imageCompression(file, options);
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(compressedFile);
-      });
-    } catch (error) {
+      const options = { maxSizeMB: 0.2, maxWidthOrHeight: 800, useWebWorker: true, fileType: 'image/webp' };
+      const compressedBlob = await imageCompression(file, options);
+      
+      const fileName = `${folder}/${crypto.randomUUID()}.webp`;
+      const { error } = await supabase.storage.from('restaurant-assets').upload(fileName, compressedBlob);
+      if (error) throw error;
+
+      return supabase.storage.from('restaurant-assets').getPublicUrl(fileName).data.publicUrl;
+    } catch (err) {
       toast({ title: "Upload failed", variant: "destructive" });
       return null;
     } finally {
@@ -229,43 +201,71 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const base64 = await processImage(file);
-    if (base64) {
-      setItemForm((prev) => ({ ...prev, image_url: base64 }));
+    // Track old image for deletion if it was a bucket image
+    if (itemForm.image_url.includes('supabase.co')) {
+      setPendingDeleteUrls(prev => [...prev, itemForm.image_url]);
     }
-  }, [processImage]);
+
+    const url = await uploadToBucket(file, 'menu-items');
+    if (url) {
+      setItemForm((prev) => ({ ...prev, image_url: url }));
+    }
+  }, [itemForm.image_url, uploadToBucket]);
 
   const handleImageUrlApply = useCallback(() => {
     if (imageUrlInput.trim()) {
+      // If we switch to a URL, the previous bucket image (if any) should be marked for deletion
+      if (itemForm.image_url.includes('supabase.co')) {
+        setPendingDeleteUrls(prev => [...prev, itemForm.image_url]);
+      }
       setItemForm((prev) => ({ ...prev, image_url: imageUrlInput.trim() }));
     }
-  }, [imageUrlInput]);
+  }, [imageUrlInput, itemForm.image_url]);
 
   const handleLogoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const base64 = await processImage(file);
-    if (base64) {
-      setDraftRestaurant((prev) => ({ ...prev, logo_url: base64 }));
+    if (draftRestaurant.logo_url?.includes('supabase.co')) {
+      setPendingDeleteUrls(prev => [...prev, draftRestaurant.logo_url!]);
     }
-  }, [processImage]);
 
-  // --- Save Operations ---
+    const url = await uploadToBucket(file, 'logos');
+    if (url) {
+      setDraftRestaurant((prev) => ({ ...prev, logo_url: url }));
+    }
+  }, [draftRestaurant.logo_url, uploadToBucket]);
+
+  // --- Save Operations with Cleanup ---
   const [saving, setSaving] = useState(false);
 
   const saveAllChanges = useCallback(async () => {
     setSaving(true);
     try {
       const success = await onSaveAll(draftCategories, draftItems, draftRestaurant, deletedCategoryIds, deletedItemIds);
-      toast({
-        title: "All changes saved!",
-        description: success ? "Synced to database." : "Saved locally (database unavailable).",
-      });
+      
+      if (success) {
+        // Find images of items that were deleted permanently
+        const deletedItemImages = items
+          .filter(i => deletedItemIds.includes(i.id))
+          .map(i => i.image_url);
+
+        const toClear = [...pendingDeleteUrls, ...deletedItemImages].filter(u => u?.includes('restaurant-assets'));
+        
+        if (toClear.length > 0) {
+          const paths = toClear.map(u => u.split('restaurant-assets/')[1]);
+          await supabase.storage.from('restaurant-assets').remove(paths);
+        }
+
+        setPendingDeleteUrls([]);
+        toast({ title: "All changes saved & storage cleaned!", variant: "default" });
+      }
+    } catch (err) {
+      toast({ title: "Save failed", variant: "destructive" });
     } finally {
       setSaving(false);
     }
-  }, [draftCategories, draftItems, draftRestaurant, deletedCategoryIds, deletedItemIds, onSaveAll]);
+  }, [draftCategories, draftItems, draftRestaurant, deletedCategoryIds, deletedItemIds, items, pendingDeleteUrls, onSaveAll]);
 
   // --- Delete Confirmation State ---
   const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -280,15 +280,12 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
   }, [deleteConfirm, deleteCategory, deleteItem]);
 
   return {
-    // State
     draftCategories, draftItems, draftRestaurant,
     setDraftRestaurant, hasChanges, markChanged,
     catName, setCatName, editingCat, setEditingCat,
     editingItem, itemFormOpen, setItemFormOpen, itemForm, setItemForm,
     imageInputMode, setImageInputMode, imageUrlInput, setImageUrlInput, isUploading,
     saving, deleteConfirm, setDeleteConfirm,
-
-    // Handlers
     addCategory, saveEditCat,
     handleDragStart, handleDragEnter, handleDragEnd,
     openNewItem, openEditItem, saveItem, toggleAvailability,
