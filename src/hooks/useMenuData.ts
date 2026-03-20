@@ -80,34 +80,39 @@ export function useMenuData() {
    * Fetches restaurant info first, then uses the ID to fetch the full menu.
    */
   useEffect(() => {
-    let cancelled = false;
+  let cancelled = false;
 
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const rest = await fetchRestaurant();
-        const { categories: cats, items: menuItems } = await fetchFullMenu(rest.id);
+  async function load() {
+    setLoading(true);
+    setError(null);
+    try {
+      // Step 1: Get the Restaurant Info first (Fast)
+      const rest = await fetchRestaurant();
+      
+      // Step 2: Run Menu Fetch and Analytics at the SAME TIME
+      // This saves 1-2 seconds of network waiting
+      const [{ categories: cats, items: menuItems }] = await Promise.all([
+        fetchFullMenu(rest.id),
+        // Trigger the doorbell without waiting for it to finish 
+        // if you don't need its result to show the UI
+        supabase.rpc("log_customer_view", { target_rest_id: rest.id })
+      ]);
 
-        if (!cancelled) {
-          setCategories([...cats].sort((a, b) => a.order_index - b.order_index));
-          setItems(menuItems);
-          setRestaurant(rest);
-        }
-      } catch (err: any) {
-        if (!cancelled) {
-          setError(err?.message || "Failed to load menu data");
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
+      if (!cancelled) {
+        setCategories([...cats].sort((a, b) => a.order_index - b.order_index));
+        setItems(menuItems);
+        setRestaurant(rest);
       }
+    } catch (err: any) {
+      if (!cancelled) setError(err?.message || "Failed to load menu data");
+    } finally {
+      if (!cancelled) setLoading(false);
     }
+  }
 
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  load();
+  return () => { cancelled = true; };
+}, []);
 
   // --- Handlers ---
 
