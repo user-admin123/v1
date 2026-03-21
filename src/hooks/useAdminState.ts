@@ -245,12 +245,31 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
 
   // --- Save All & Final Cleanup ---
   const saveAllChanges = useCallback(async () => {
+    // 1. Start loading state
     setSaving(true);
+    
     try {
-      const success = await onSaveAll(draftCategories, draftItems, draftRestaurant, deletedCategoryIds, deletedItemIds);
+      // 2. Execute the save via the parent prop
+      const success = await onSaveAll(
+        draftCategories, 
+        draftItems, 
+        draftRestaurant, 
+        deletedCategoryIds, 
+        deletedItemIds
+      );
       
       if (success) {
-        const deletedItemImages = items.filter(i => deletedItemIds.includes(i.id)).map(i => i.image_url);
+        // --- KEY FIX: Manually reset change tracking to hide the "Update" button ---
+        setHasChanges(false);
+        setDeletedCategoryIds([]);
+        setDeletedItemIds([]);
+        // --------------------------------------------------------------------------
+
+        // 3. Clear old images from Supabase Storage
+        const deletedItemImages = items
+          .filter(i => deletedItemIds.includes(i.id))
+          .map(i => i.image_url);
+          
         const logoChanged = restaurant.logo_url !== draftRestaurant.logo_url;
         const originalLogo = (logoChanged && restaurant.logo_url) ? [restaurant.logo_url] : [];
 
@@ -268,20 +287,46 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
           }
         }
 
+        // 4. Final state cleanup
         setPendingDeleteUrls([]);
-        toast({ title: "All changes saved successfully" });
+
+        // 5. Clear Success Toast
+        toast({
+          title: "Changes Published",
+          description: "Your menu and settings have been synced with the database.",
+          variant: "default", // or "success" if your shadcn theme supports it
+        });
+      } else {
+        // If the function returned false (validation error in parent)
+        toast({
+          title: "Sync Interrupted",
+          description: "We couldn't save your changes. Please check your connection.",
+          variant: "destructive",
+        });
       }
     } catch (err) {
-      console.error(err);
-      toast({ title: "Save failed", variant: "destructive" });
+      console.error("Save all error:", err);
+      toast({
+        title: "Critical Error",
+        description: "An unexpected error occurred while saving. Please try again.",
+        variant: "destructive",
+      });
     } finally {
+      // 6. Stop loading state
       setSaving(false);
     }
   }, [
-    draftCategories, draftItems, draftRestaurant, deletedCategoryIds, 
-    deletedItemIds, items, restaurant.logo_url, pendingDeleteUrls, onSaveAll
+    draftCategories, 
+    draftItems, 
+    draftRestaurant, 
+    deletedCategoryIds, 
+    deletedItemIds, 
+    items, 
+    restaurant, 
+    pendingDeleteUrls, 
+    onSaveAll
   ]);
-
+  
   // --- Delete Modal State ---
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: "category" | "item"; id: string; name: string; } | null>(null);
   const handleConfirmDelete = useCallback(() => {
