@@ -51,16 +51,18 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
   }, [hasChanges]);
 
   // Sync draft with server data when server data updates (only if not currently editing/uploading)
-  useEffect(() => {
-    if (!hasChanges && !isUploading) {
-      setDraftCategories(categories);
-      setDraftItems(items);
-      setDraftRestaurant(restaurant);
-      setDeletedCategoryIds([]);
-      setDeletedItemIds([]);
-      setPendingDeleteUrls([]);
-    }
-  }, [categories, items, restaurant, hasChanges, isUploading]);
+  // FIX: Remove !hasChanges so that once the DB save is done, 
+// the hook accepts the fresh data from the server.
+useEffect(() => {
+  if (!saving && !isUploading) {
+    setDraftCategories(categories);
+    setDraftItems(items);
+    setDraftRestaurant(restaurant);
+    setDeletedCategoryIds([]);
+    setDeletedItemIds([]);
+    setPendingDeleteUrls([]);
+  }
+}, [categories, items, restaurant, saving, isUploading]);
   
   const markChanged = useCallback(() => setHasChanges(true), []);
 
@@ -260,9 +262,9 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
       
       if (success) {
         // --- KEY FIX: Manually reset change tracking to hide the "Update" button ---
-        setHasChanges(false);
         setDeletedCategoryIds([]);
         setDeletedItemIds([]);
+        setHasChanges(false);
         // --------------------------------------------------------------------------
 
         // 3. Clear old images from Supabase Storage
