@@ -3,6 +3,7 @@ import { Category, MenuItem, ItemType, RestaurantInfo } from "@/lib/types";
 import { toast } from "@/hooks/use-toast";
 import imageCompression from 'browser-image-compression';
 import { supabase } from "@/lib/supabase";
+import { deleteStorageFiles } from "@/lib/database";
 
 interface UseAdminStateProps {
   categories: Category[];
@@ -247,87 +248,48 @@ useEffect(() => {
 
   // --- Save All & Final Cleanup ---
   const saveAllChanges = useCallback(async () => {
-    // 1. Start loading state
-    setSaving(true);
-    
-    try {
-      // 2. Execute the save via the parent prop
-      const success = await onSaveAll(
-        draftCategories, 
-        draftItems, 
-        draftRestaurant, 
-        deletedCategoryIds, 
-        deletedItemIds
-      );
-      
-      if (success) {
-        // --- KEY FIX: Manually reset change tracking to hide the "Update" button ---
-        setDeletedCategoryIds([]);
-        setDeletedItemIds([]);
-        setHasChanges(false);
-        // --------------------------------------------------------------------------
+  setSaving(true);
+  try {
+    // Capture images of items marked for deletion BEFORE calling the DB
+    const itemImagesToDelete = items
+      .filter(i => deletedItemIds.includes(i.id))
+      .map(i => i.image_url);
 
-        // 3. Clear old images from Supabase Storage
-        const deletedItemImages = items
-          .filter(i => deletedItemIds.includes(i.id))
-          .map(i => i.image_url);
-          
-        const logoChanged = restaurant.logo_url !== draftRestaurant.logo_url;
-        const originalLogo = (logoChanged && restaurant.logo_url) ? [restaurant.logo_url] : [];
+    // Call the middleman's onSaveAll prop
+    const success = await onSaveAll(
+      draftCategories, 
+      draftItems, 
+      draftRestaurant, 
+      deletedCategoryIds, 
+      deletedItemIds
+    );
 
-        const toClear = [...pendingDeleteUrls, ...deletedItemImages, ...originalLogo]
-          .filter(u => u && u.includes('supabase.co') && u.includes('restaurant-assets'));
-        
-        if (toClear.length > 0) {
-          const paths = toClear.map(u => {
-            const parts = u.split('restaurant-assets/');
-            return parts.length > 1 ? parts[1] : null;
-          }).filter(Boolean) as string[];
+    if (success) {
+      // 1. Physically delete files from bucket (Logos + Deleted Items)
+      const totalCleanupList = [...pendingDeleteUrls, ...itemImagesToDelete];
+      await deleteStorageFiles(totalCleanupList);
 
-          if (paths.length > 0) {
-            await supabase.storage.from('restaurant-assets').remove(paths);
-          }
-        }
+      // 2. Reset tracking states (This hides the "Update" button)
+      setHasChanges(false);
+      setDeletedCategoryIds([]);
+      setDeletedItemIds([]);
+      setPendingDeleteUrls([]);
 
-        // 4. Final state cleanup
-        setPendingDeleteUrls([]);
-
-        // 5. Clear Success Toast
-        toast({
-          title: "Changes Published",
-          description: "Your menu and settings have been synced with the database.",
-          variant: "default", // or "success" if your shadcn theme supports it
-        });
-      } else {
-        // If the function returned false (validation error in parent)
-        toast({
-          title: "Sync Interrupted",
-          description: "We couldn't save your changes. Please check your connection.",
-          variant: "destructive",
-        });
-      }
-    } catch (err) {
-      console.error("Save all error:", err);
-      toast({
-        title: "Critical Error",
-        description: "An unexpected error occurred while saving. Please try again.",
-        variant: "destructive",
+      // 3. Success Toast
+      toast({ 
+        title: "Changes Published", 
+        description: "Menu and images updated successfully." 
       });
-    } finally {
-      // 6. Stop loading state
-      setSaving(false);
+    } else {
+      // If DB function returned false
+      toast({ title: "Sync Interrupted", variant: "destructive" });
     }
-  }, [
-    draftCategories, 
-    draftItems, 
-    draftRestaurant, 
-    deletedCategoryIds, 
-    deletedItemIds, 
-    items, 
-    restaurant, 
-    pendingDeleteUrls, 
-    onSaveAll
-  ]);
+  } catch (err) {
+    toast({ title: "Critical Error", description: "Check your connection", variant: "destructive" });
+  } finally {
+    setSaving(false);
+  }
+}, [draftCategories, draftItems, draftRestaurant, deletedCategoryIds, deletedItemIds, items, pendingDeleteUrls, onSaveAll]);
   
   // --- Delete Modal State ---
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: "category" | "item"; id: string; name: string; } | null>(null);
