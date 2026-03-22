@@ -163,6 +163,22 @@ export async function deleteMenuItem(id: string): Promise<void> {
 // BATCH SAVE
 // -----------------------------------------------------------------------------
 
+// --- ADD THIS AT THE TOP OR BOTTOM OF db.ts ---
+export async function deleteStorageFiles(urls: string[]) {
+  // Filters out empty strings, external URLs, and keeps only Supabase paths
+  const paths = urls
+    .filter(u => u && u.includes('supabase.co') && u.includes('restaurant-assets'))
+    .map(u => u.split('restaurant-assets/')[1])
+    .filter(Boolean);
+
+  if (paths.length > 0) {
+    const { error } = await supabase.storage.from('restaurant-assets').remove(paths);
+    if (error) logger.error("Bucket Cleanup Error:", error.message);
+    else logger.db("STORAGE", "cleanup", `Deleted ${paths.length} files`);
+  }
+}
+
+// --- UPDATE YOUR saveAllChanges FUNCTION IN db.ts ---
 export async function saveAllChanges(
   categories: Category[],
   items: MenuItem[],
@@ -170,73 +186,28 @@ export async function saveAllChanges(
   deletedCategoryIds: string[] = [],
   deletedItemIds: string[] = []
 ): Promise<boolean> {
-  logger.db(
-    "BATCH SAVE",
-    "all tables",
-    `cats=${categories.length}, items=${items.length}, delCats=${deletedCategoryIds.length}, delItems=${deletedItemIds.length}`
-  );
-
-  // Sync local cache first
-  saveLocalCategories(categories);
-  saveLocalItems(items);
-  saveLocalRestaurant(restaurant);
-
   try {
-    // 1. Delete items first (maintains integrity before potential category deletion)
-    const allDeletedItemIds = [...new Set(deletedItemIds)];
-    if (allDeletedItemIds.length > 0) {
-      logger.db("DELETE", "menu_items", `ids=${allDeletedItemIds.join(",")}`);
-      const { error } = await supabase.from("menu_items").delete().in("id", allDeletedItemIds);
-      if (error) {
-        logger.error("Delete menu_items failed:", error.message);
-        return false;
-      }
+    // 1. Delete Items & Categories first to maintain integrity
+    if (deletedItemIds.length > 0) {
+      await supabase.from("menu_items").delete().in("id", deletedItemIds);
     }
-
-    // 2. Delete categories
     if (deletedCategoryIds.length > 0) {
-      logger.db("DELETE", "categories", `ids=${deletedCategoryIds.join(",")}`);
-      const { error } = await supabase.from("categories").delete().in("id", deletedCategoryIds);
-      if (error) {
-        logger.error("Delete categories failed:", error.message);
-        return false;
-      }
+      await supabase.from("categories").delete().in("id", deletedCategoryIds);
     }
 
-    // 3. Upsert remaining data with restaurant_id safety injection
-    const [catRes, itemRes, restRes] = await Promise.all([
-      categories.length > 0
-        ? supabase
-            .from("categories")
-            .upsert(
-              categories.map((c) => ({ ...c, restaurant_id: restaurant.id })),
-              { onConflict: "id" }
-            )
-        : { error: null },
-      items.length > 0
-        ? supabase
-            .from("menu_items")
-            .upsert(
-              items.map((i) => ({ ...i, restaurant_id: restaurant.id })),
-              { onConflict: "id" }
-            )
-        : { error: null },
-      supabase.from("restaurant").upsert(restaurant, { onConflict: "id" }),
+    // 2. Batch Upsert everything else
+    const results = await Promise.all([
+      supabase.from("restaurant").upsert(restaurant),
+      categories.length > 0 ? supabase.from("categories").upsert(categories.map(c => ({...c, restaurant_id: restaurant.id}))) : { error: null },
+      items.length > 0 ? supabase.from("menu_items").upsert(items.map(i => ({...i, restaurant_id: restaurant.id}))) : { error: null }
     ]);
 
-    if (catRes.error || itemRes.error || restRes.error) {
-      logger.error("Batch save errors:", {
-        categories: catRes.error?.message,
-        menu_items: itemRes.error?.message,
-        restaurant: restRes.error?.message,
-      });
-      return false;
-    }
+    // Check if any part failed
+    if (results.some(r => r.error)) throw new Error("Database Upsert Failed");
 
-    logger.db("BATCH SAVE", "all tables", "success");
-    return true;
-  } catch (err: any) {
-    logger.error("Batch save exception:", err.message);
-    return false;
+    return true; // Triggers the SUCCESS toast
+  } catch (err) {
+    logger.error("Batch save failed", err);
+    return false; // Triggers the ERROR toast
   }
 }
