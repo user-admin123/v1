@@ -240,30 +240,32 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
   // --- Save Operations ---
 
   const saveAllChanges = useCallback(async () => {
-    setSaving(true);
-    try {
-      // Consolidate all orphaned URLs (replacements + deleted items + deleted categories)
-      // We filter unique values to avoid multiple deletion attempts on the same path
-      const finalCleanupList = [...new Set(pendingDeleteUrls)];
+  setSaving(true);
+  try {
+    const finalCleanupList = [...new Set(pendingDeleteUrls)];
 
-      const success = await onSaveAll(
-        draftCategories, 
-        draftItems, 
-        draftRestaurant, 
-        deletedCategoryIds, 
-        deletedItemIds,
-        finalCleanupList
-      );
+    const success = await onSaveAll(
+      draftCategories, 
+      draftItems, 
+      draftRestaurant, 
+      deletedCategoryIds, 
+      deletedItemIds,
+      finalCleanupList
+    );
 
-      if (success) {
-        toast({ title: "Success", description: "All changes and images synced." });
-        setPendingDeleteUrls([]);
-      }
-    } finally {
-      setSaving(false);
+    if (success) {
+      // CRITICAL: Reset everything locally immediately
+      setDeletedCategoryIds([]);
+      setDeletedItemIds([]);
+      setPendingDeleteUrls([]);
+      setHasChanges(false); // Force the button to hide immediately
+      toast({ title: "Success", description: "Changes synced." });
     }
-  }, [draftCategories, draftItems, draftRestaurant, deletedCategoryIds, deletedItemIds, pendingDeleteUrls, onSaveAll]);
-
+  } finally {
+    setSaving(false);
+  }
+}, [draftCategories, draftItems, draftRestaurant, deletedCategoryIds, deletedItemIds, pendingDeleteUrls, onSaveAll]);
+  
   const [deleteConfirm, setDeleteConfirm] = useState<{
     type: "category" | "item"; id: string; name: string;
   } | null>(null);
