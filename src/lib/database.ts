@@ -149,27 +149,28 @@ export async function deleteMenuItem(id: string): Promise<void> {
 // Add this helper at the top or within the file
 const getInternalPath = (url: string | null | undefined): string | null => {
   if (!url) return null;
-  
-  // Validation: Must be your Supabase project and the correct bucket
-  const isSupabase = url.includes('bvavdhratcsflzsrclpe.supabase.co');
-  const hasBucket = url.includes('restaurant-assets/');
 
-  if (!isSupabase || !hasBucket) {
-    logger.db("CLEANUP", "Skipping URL (External or Wrong Bucket)", url);
+  // 1. Check if it's actually a Supabase URL for your project
+  const projectUrl = 'bvavdhratcsflzsrclpe.supabase.co';
+  const bucketName = 'restaurant-assets';
+
+  if (!url.includes(projectUrl) || !url.includes(bucketName)) {
     return null;
   }
 
   try {
-    // We need everything AFTER 'restaurant-assets/'
-    // Example: .../restaurant-assets/images/item/test-3.webp -> images/item/test-3.webp
-    const parts = url.split('restaurant-assets/');
+    // 2. Logic: Everything AFTER "/public/restaurant-assets/" is the internal path
+    // Split by the bucket name + the 'public' indicator
+    const separator = `${bucketName}/`;
+    const parts = url.split(separator);
+    
     if (parts.length < 2) return null;
 
-    // Remove any URL parameters (like ?t=12345) and decode special characters
-    const pathWithParams = parts[1];
-    const cleanPath = decodeURIComponent(pathWithParams.split('?')[0]);
+    // 3. Remove URL parameters (like ?t=123) and decode %20 etc.
+    const cleanPath = decodeURIComponent(parts[1].split('?')[0]);
     
-    logger.db("CLEANUP", "Extracted Internal Path", cleanPath);
+    logger.db("CLEANUP", "Extracted Path:", cleanPath); 
+    // This should log: "images/item/tedr-1774255801494.webp"
     return cleanPath;
   } catch (err) {
     logger.error("Path extraction failed", err);
