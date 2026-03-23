@@ -148,12 +148,33 @@ export async function deleteMenuItem(id: string): Promise<void> {
 
 // Add this helper at the top or within the file
 const getInternalPath = (url: string | null | undefined): string | null => {
-  if (!url || !url.includes('supabase.co') || !url.includes('restaurant-assets/')) return null;
+  if (!url) return null;
+  
+  // Validation: Must be your Supabase project and the correct bucket
+  const isSupabase = url.includes('bvavdhratcsflzsrclpe.supabase.co');
+  const hasBucket = url.includes('restaurant-assets/');
+
+  if (!isSupabase || !hasBucket) {
+    logger.db("CLEANUP", "Skipping URL (External or Wrong Bucket)", url);
+    return null;
+  }
+
   try {
+    // We need everything AFTER 'restaurant-assets/'
+    // Example: .../restaurant-assets/images/item/test-3.webp -> images/item/test-3.webp
     const parts = url.split('restaurant-assets/');
-    // Returns 'images/item-123.webp' instead of the full URL
-    return parts.length > 1 ? decodeURIComponent(parts[1].split('?')[0]) : null;
-  } catch { return null; }
+    if (parts.length < 2) return null;
+
+    // Remove any URL parameters (like ?t=12345) and decode special characters
+    const pathWithParams = parts[1];
+    const cleanPath = decodeURIComponent(pathWithParams.split('?')[0]);
+    
+    logger.db("CLEANUP", "Extracted Internal Path", cleanPath);
+    return cleanPath;
+  } catch (err) {
+    logger.error("Path extraction failed", err);
+    return null;
+  }
 };
 
 // ... (fetch helpers remain the same)
@@ -213,15 +234,21 @@ export async function saveAllChanges(
 
     // 5. QUEUE STORAGE CLEANUP: Only if DB sync was successful
     if (internalPaths.length > 0) {
-      const { error: qError } = await supabase
-        .from("storage_cleanup_queue")
-        .insert(internalPaths.map(path => ({
-          file_path: path,
-          restaurant_id: restaurant.id
-        })));
-      
-      if (qError) logger.error("Non-fatal: Cleanup queue insert failed", qError.message);
-    }
+  const { error: qError } = await supabase
+    .from("storage_cleanup_queue")
+    .insert(
+      internalPaths.map(path => ({
+        file_path: path,         // Matches your DB column 'file_path'
+        restaurant_id: restaurant.id // Matches your DB column 'restaurant_id'
+      }))
+    );
+  
+  if (qError) {
+    logger.error("Cleanup Queue DB Error", qError.message);
+  } else {
+    logger.db("CLEANUP", "Successfully queued files", internalPaths.length);
+  }
+}
 
     logger.db("BATCH SAVE", "success");
     return true;
