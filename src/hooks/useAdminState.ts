@@ -129,18 +129,22 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
   }, [catName, draftCategories.length, draftRestaurant.id]);
 
   const deleteCategory = useCallback((id: string) => {
-    // Collect images of all items being deleted via this category cascade
-    const itemsInCat = draftItems.filter((i) => i.category_id === id);
-    const imagesToDelete = itemsInCat
-      .map(i => i.image_url)
-      .filter(url => url?.includes('supabase.co')) as string[];
+  // 1. Identify all items belonging to this category
+  const itemsInCat = draftItems.filter((i) => i.category_id === id);
+  
+  // 2. Extract all URLs from those items
+  const imagesToDelete = itemsInCat
+    .map(i => i.image_url)
+    .filter(Boolean) as string[];
 
-    setPendingDeleteUrls(prev => [...prev, ...imagesToDelete]);
-    setDeletedItemIds((prev) => [...prev, ...itemsInCat.map((i) => i.id)]);
-    setDeletedCategoryIds((prev) => [...prev, id]);
-    setDraftCategories((prev) => prev.filter((c) => c.id !== id));
-    setDraftItems((prev) => prev.filter((i) => i.category_id !== id));
-  }, [draftItems]);
+  // 3. Queue them for cleanup and remove the items/category from state
+  setPendingDeleteUrls(prev => [...prev, ...imagesToDelete]);
+  setDeletedItemIds((prev) => [...prev, ...itemsInCat.map((i) => i.id)]);
+  setDeletedCategoryIds((prev) => [...prev, id]);
+  
+  setDraftCategories((prev) => prev.filter((c) => c.id !== id));
+  setDraftItems((prev) => prev.filter((i) => i.category_id !== id));
+}, [draftItems]);
 
   const saveEditCat = useCallback(() => {
     if (!editingCat) return;
@@ -221,13 +225,15 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
   }, [itemForm, editingItem, draftRestaurant.id]);
 
   const deleteItem = useCallback((id: string) => {
-    const item = draftItems.find(i => i.id === id);
-    if (item?.image_url?.includes('supabase.co')) {
-      setPendingDeleteUrls(prev => [...prev, item.image_url as string]);
-    }
-    setDeletedItemIds((prev) => [...prev, id]);
-    setDraftItems((prev) => prev.filter((i) => i.id !== id));
-  }, [draftItems]);
+  const item = draftItems.find(i => i.id === id);
+  
+  if (item?.image_url) {
+    setPendingDeleteUrls(prev => [...prev, item.image_url]);
+  }
+  
+  setDeletedItemIds((prev) => [...prev, id]);
+  setDraftItems((prev) => prev.filter((i) => i.id !== id));
+}, [draftItems]);
 
   const toggleAvailability = useCallback((id: string) => {
     setDraftItems((prev) =>
