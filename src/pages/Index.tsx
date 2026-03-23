@@ -118,16 +118,20 @@ const Index = () => {
 
       <div className="relative z-10 max-w-lg mx-auto pb-24">
         {authed ? (
-          <AdminPanel
-            categories={categories}
-            items={items}
-            restaurant={restaurant}
-            onUpdateCategories={updateCategories}
-            onUpdateItems={updateItems}
-            onUpdateRestaurant={updateRestaurant}
-            onSaveAll={saveAll}
-            onLogout={() => { logout(); setShowLogin(false); }}
-          />
+          {/* Search for this in your Index.tsx return statement */}
+<AdminPanel
+  categories={categories}
+  items={items}
+  restaurant={restaurant}
+  onUpdateCategories={updateCategories}
+  onUpdateItems={updateItems}
+  onUpdateRestaurant={updateRestaurant}
+  // Change the line below from: onSaveAll={saveAll} to:
+  onSaveAll={(cats, items, rest, dCats, dItems, urls) => 
+    saveAll(cats, items, rest, dCats, dItems, urls)
+  }
+  onLogout={() => { logout(); setShowLogin(false); }}
+/>
         ) : (
           <LoginModal onLogin={login} visible={showLogin} />
         )}
