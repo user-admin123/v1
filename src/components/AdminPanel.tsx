@@ -22,11 +22,25 @@ interface Props {
   onUpdateCategories: (cats: Category[]) => void;
   onUpdateItems: (items: MenuItem[]) => void;
   onUpdateRestaurant: (info: RestaurantInfo) => void;
-  onSaveAll: (cats: Category[], items: MenuItem[], rest: RestaurantInfo, deletedCatIds: string[], deletedItemIds: string[]) => Promise<boolean>;
+  // Note: Ensure your hook/parent supports the 6th argument for pendingDeleteUrls
+  onSaveAll: (
+    cats: Category[], 
+    items: MenuItem[], 
+    rest: RestaurantInfo, 
+    deletedCatIds: string[], 
+    deletedItemIds: string[],
+    pendingDeleteUrls: string[]
+  ) => Promise<boolean>;
   onLogout: () => void;
 }
 
-const AdminPanel = ({ categories, items, restaurant, onUpdateCategories, onUpdateItems, onUpdateRestaurant, onSaveAll, onLogout }: Props) => {
+const AdminPanel = ({ 
+  categories, 
+  items, 
+  restaurant, 
+  onSaveAll, 
+  onLogout 
+}: Props) => {
   const [open, setOpen] = useState(false);
   const [qrFullscreen, setQrFullscreen] = useState(false);
   const menuUrl = window.location.origin;
@@ -64,8 +78,16 @@ const AdminPanel = ({ categories, items, restaurant, onUpdateCategories, onUpdat
           </DialogHeader>
 
           {admin.hasChanges && (
-            <Button onClick={admin.saveAllChanges} disabled={admin.saving || admin.isUploading} className="w-full bg-green-600 hover:bg-green-700 text-white disabled:opacity-70 shadow-lg">
-              {admin.saving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</> : <><Save className="w-4 h-4 mr-2" /> Update Changes</>}
+            <Button 
+              onClick={admin.saveAllChanges} 
+              disabled={admin.saving || admin.isUploading} 
+              className="w-full bg-green-600 hover:bg-green-700 text-white disabled:opacity-70 shadow-lg"
+            >
+              {admin.saving ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
+              ) : (
+                <><Save className="w-4 h-4 mr-2" /> Update Changes</>
+              )}
             </Button>
           )}
 
@@ -109,14 +131,14 @@ const AdminPanel = ({ categories, items, restaurant, onUpdateCategories, onUpdat
               <SettingsTab
                 restaurant={admin.draftRestaurant}
                 onUpdate={admin.setDraftRestaurant}
-                onRemoveLogo={admin.removeLogo}
-                onLogoUpload={admin.handleLogoUpload}
-                markChanged={admin.markChanged}
                 isUploading={admin.isUploading}
+                markChanged={admin.markChanged}
+                // New Unified Props
+                onFileSelect={admin.onFileSelect}
+                setPendingDeleteUrls={admin.setPendingDeleteUrls}
               />
             </TabsContent>
 
-            {/* NEW INSIGHTS TAB */}
             <TabsContent value="insights">
               <UsageInsights restaurantId={restaurant.id} />
             </TabsContent>
@@ -139,14 +161,11 @@ const AdminPanel = ({ categories, items, restaurant, onUpdateCategories, onUpdat
         categories={admin.draftCategories}
         itemForm={admin.itemForm}
         setItemForm={admin.setItemForm}
-        imageInputMode={admin.imageInputMode}
-        setImageInputMode={admin.setImageInputMode}
-        imageUrlInput={admin.imageUrlInput}
-        setImageUrlInput={admin.setImageUrlInput}
         isUploading={admin.isUploading}
         onSave={admin.saveItem}
-        onImageUpload={admin.handleImageUpload}
-        onImageUrlApply={admin.handleImageUrlApply}
+        // New Unified Props
+        onFileSelect={admin.onFileSelect}
+        setPendingDeleteUrls={admin.setPendingDeleteUrls}
       />
     </>
   );
