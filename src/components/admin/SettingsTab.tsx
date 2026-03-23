@@ -1,18 +1,18 @@
 import { useState } from "react";
 import { RestaurantInfo } from "@/lib/types";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Upload, X, Loader2, Link as LinkIcon, Image as ImageIcon } from "lucide-react"; 
 import { cn } from "@/lib/utils";
+import { ImageUploader } from "./ImageUploader";
 
 interface Props {
   restaurant: RestaurantInfo;
   isUploading: boolean;
   onUpdate: (info: RestaurantInfo) => void;
-  onLogoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onRemoveLogo: () => void;
+  // New unified handlers from useAdminState
+  onFileSelect: (file: File, type: 'logo' | 'item', currentUrl: string, name: string, setter: (url: string) => void) => void;
+  setPendingDeleteUrls: React.Dispatch<React.SetStateAction<string[]>>;
   markChanged: () => void;
 }
 
@@ -37,28 +37,22 @@ const SettingsTab = ({
   restaurant, 
   isUploading, 
   onUpdate, 
-  onLogoUpload, 
-  onRemoveLogo, 
+  onFileSelect,
+  setPendingDeleteUrls,
   markChanged 
 }: Props) => {
-  const [tabMode, setTabMode] = useState<"upload" | "url">("upload");
-  const [urlInput, setUrlInput] = useState(restaurant.logo_url || "");
 
   const update = (partial: Partial<RestaurantInfo>) => {
     const field = Object.keys(partial)[0] as keyof RestaurantInfo;
     const newValue = partial[field];
+    
     if (typeof newValue === "string") {
       if (field === "name" && newValue.length > MAX_LIMITS.NAME) return;
       if (field === "tagline" && newValue.length > MAX_LIMITS.TAGLINE) return;
     }
+    
     onUpdate({ ...restaurant, ...partial });
     markChanged();
-  };
-
-  const handleUrlApply = () => {
-    if (urlInput.trim()) {
-      update({ logo_url: urlInput.trim() });
-    }
   };
 
   const isLogoAvailable = !!restaurant.logo_url;
@@ -93,103 +87,28 @@ const SettingsTab = ({
             disabled={isUploading}
           />
         </div>
-      </div>
 
-      {/* Professional Image Handling Section (Matched to ItemForm UI) */}
-      <div className="space-y-3 pt-2 border-t border-border/40">
-        <Label className="text-[11px] font-bold uppercase tracking-widest text-primary/70 px-0.5">Restaurant Branding</Label>
-        
-        {restaurant.logo_url ? (
-          <div className="relative aspect-video rounded-2xl overflow-hidden bg-muted border-2 border-background shadow-lg group">
-            <img 
-              src={restaurant.logo_url} 
-              alt="Logo Preview" 
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
-            />
-            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-[2px]">
-              <Button 
-                type="button" 
-                variant="destructive" 
-                size="sm" 
-                className="h-9 shadow-xl rounded-full px-4"
-                onClick={() => { onRemoveLogo(); setUrlInput(""); }}
-                disabled={isUploading}
-              >
-                <X className="w-4 h-4 mr-2" /> Replace Logo
-              </Button>
-            </div>
-            {isUploading && (
-              <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center gap-3">
-                <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                <span className="text-[10px] font-bold uppercase tracking-[0.2em] animate-pulse">Processing Image</span>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="flex flex-col gap-3 p-1 bg-muted/30 rounded-2xl border border-border/40">
-            {/* Tab Mode Toggles */}
-            <div className="flex p-1 bg-muted/60 rounded-xl">
-              <button
-                type="button"
-                onClick={() => setTabMode("upload")}
-                className={cn(
-                  "flex-1 flex items-center justify-center gap-2 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all",
-                  tabMode === "upload" ? "bg-background shadow-sm text-primary" : "text-muted-foreground"
-                )}
-              >
-                <Upload className="w-3.5 h-3.5" /> Upload File
-              </button>
-              <button
-                type="button"
-                onClick={() => setTabMode("url")}
-                className={cn(
-                  "flex-1 flex items-center justify-center gap-2 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all",
-                  tabMode === "url" ? "bg-background shadow-sm text-primary" : "text-muted-foreground"
-                )}
-              >
-                <LinkIcon className="w-3.5 h-3.5" /> Image URL
-              </button>
-            </div>
-
-            {/* Tab Content */}
-            <div className="px-1 pb-1">
-              {tabMode === "upload" ? (
-                <label className={cn(
-                  "flex flex-col items-center justify-center gap-3 cursor-pointer border-2 border-dashed rounded-xl py-10 transition-all",
-                  isUploading ? "opacity-50 cursor-not-allowed" : "hover:bg-muted/40 hover:border-primary/30"
-                )}>
-                  {isUploading ? <Loader2 className="w-6 h-6 animate-spin text-primary" /> : <ImageIcon className="w-6 h-6 text-muted-foreground/60" />}
-                  <div className="text-center">
-                    <span className="text-xs font-semibold block">Choose branding asset</span>
-                    <span className="text-[10px] text-muted-foreground">PNG, JPG or WebP supported</span>
-                  </div>
-                  <input type="file" accept="image/*" onChange={onLogoUpload} className="hidden" disabled={isUploading} />
-                </label>
-              ) : (
-                <div className="flex flex-col gap-2 p-1">
-                  <div className="flex gap-2">
-                    <Input 
-                      value={urlInput} 
-                      onChange={(e) => setUrlInput(e.target.value)} 
-                      placeholder="Paste image address (https://...)" 
-                      className="text-xs h-10 bg-muted/40 border-muted pl-4"
-                      disabled={isUploading}
-                    />
-                    <Button 
-                      size="sm" 
-                      onClick={handleUrlApply} 
-                      disabled={!urlInput.trim() || isUploading}
-                      className="h-10 px-4"
-                    >
-                      Apply
-                    </Button>
-                  </div>
-                  <p className="text-[9px] text-muted-foreground/60 px-1 italic">* Ensure the link is public and direct to an image file.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+        {/* Branding Section using the Unified ImageUploader */}
+        <ImageUploader 
+          label="Restaurant Branding (Logo)"
+          value={restaurant.logo_url || ""}
+          isUploading={isUploading}
+          aspect="square"
+          onFileSelect={(file) => onFileSelect(
+            file, 
+            'logo', 
+            restaurant.logo_url || "", 
+            restaurant.name || "restaurant", 
+            (url) => update({ logo_url: url })
+          )}
+          onUrlChange={(url) => {
+            // Track old Supabase URL for deletion if it exists
+            if (restaurant.logo_url?.includes('supabase.co')) {
+              setPendingDeleteUrls(prev => [...prev, restaurant.logo_url!]);
+            }
+            update({ logo_url: url });
+          }}
+        />
       </div>
 
       {/* Experience Section */}
