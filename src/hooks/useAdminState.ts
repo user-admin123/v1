@@ -155,9 +155,9 @@ const onFileSelect = useCallback(async (
   
   // 2. Extract all URLs from those items
   const imagesToDelete = itemsInCat
-    .map(i => i.image_url)
-    .filter(Boolean) as string[];
-
+  .map(i => i.image_url)
+  .filter(url => url && url.includes('supabase.co')) as string[]; // Add the supabase filter
+    
   // 3. Queue them for cleanup and remove the items/category from state
   setPendingDeleteUrls(prev => [...prev, ...imagesToDelete]);
   setDeletedItemIds((prev) => [...prev, ...itemsInCat.map((i) => i.id)]);
@@ -248,9 +248,9 @@ const onFileSelect = useCallback(async (
   const deleteItem = useCallback((id: string) => {
   const item = draftItems.find(i => i.id === id);
   
-  if (item?.image_url) {
-    setPendingDeleteUrls(prev => [...prev, item.image_url]);
-  }
+  if (item?.image_url && item.image_url.includes('supabase.co')) { // Add the supabase filter
+  setPendingDeleteUrls(prev => [...prev, item.image_url]);
+}
   
   setDeletedItemIds((prev) => [...prev, id]);
   setDraftItems((prev) => prev.filter((i) => i.id !== id));
