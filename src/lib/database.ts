@@ -170,73 +170,64 @@ export async function saveAllChanges(
   deletedItemIds: string[] = [],
   pendingDeleteUrls: string[] = []
 ): Promise<boolean> {
-  logger.db(
-    "BATCH SAVE",
-    "all tables",
-    `cats=${categories.length}, items=${items.length}, delCats=${deletedCategoryIds.length}, delItems=${deletedItemIds.length}, pendingDeletes=${pendingDeleteUrls.length}`
-  );
-
-  // Sync local cache
-  saveLocalCategories(categories);
-  saveLocalItems(items);
-  saveLocalRestaurant(restaurant);
+  logger.db("BATCH SAVE", "initiating", { 
+    items: items.length, 
+    deletes: deletedItemIds.length, 
+    cleanup: pendingDeleteUrls.length 
+  });
 
   try {
-    // 1. Prepare Cleanup Queue Data
+    // 1. SANITIZE: Remove items/categories that were just deleted to prevent re-insertion
+    const activeCategories = categories.filter(c => !deletedCategoryIds.includes(c.id));
+    const activeItems = items.filter(i => !deletedItemIds.includes(i.id));
+
+    // 2. PREPARE CLEANUP: Extract internal paths for the queue
     const internalPaths = [...new Set(pendingDeleteUrls)]
       .map(url => getInternalPath(url))
       .filter((path): path is string => !!path);
 
-    // 2. Perform Deletions
+    // 3. EXECUTE DELETIONS
     if (deletedItemIds.length > 0) {
       const { error } = await supabase.from("menu_items").delete().in("id", deletedItemIds);
-      if (error) throw new Error(`Delete items: ${error.message}`);
+      if (error) throw new Error(`Items delete failed: ${error.message}`);
     }
-
     if (deletedCategoryIds.length > 0) {
       const { error } = await supabase.from("categories").delete().in("id", deletedCategoryIds);
-      if (error) throw new Error(`Delete categories: ${error.message}`);
+      if (error) throw new Error(`Categories delete failed: ${error.message}`);
     }
 
-    // 3. Upsert Remaining Data
-    const [catRes, itemRes, restRes] = await Promise.all([
-      categories.length > 0
-        ? supabase.from("categories").upsert(
-            categories.map((c) => ({ ...c, restaurant_id: restaurant.id })),
-            { onConflict: "id" }
-          )
-        : { error: null },
-      items.length > 0
-        ? supabase.from("menu_items").upsert(
-            items.map((i) => ({ ...i, restaurant_id: restaurant.id })),
-            { onConflict: "id" }
-          )
-        : { error: null },
-      supabase.from("restaurant").upsert(restaurant, { onConflict: "id" }),
+    // 4. EXECUTE UPSERTS (Data Updates)
+    const [resRest, resCats, resItems] = await Promise.all([
+      supabase.from("restaurant").upsert(restaurant, { onConflict: 'id' }),
+      activeCategories.length > 0 
+        ? supabase.from("categories").upsert(activeCategories, { onConflict: 'id' }) 
+        : Promise.resolve({ error: null }),
+      activeItems.length > 0 
+        ? supabase.from("menu_items").upsert(activeItems, { onConflict: 'id' }) 
+        : Promise.resolve({ error: null }),
     ]);
 
-    if (catRes.error || itemRes.error || restRes.error) {
-      throw new Error("Upsert failed");
-    }
+    // Check for any failures in the parallel upsert
+    const upsertError = resRest.error || resCats.error || resItems.error;
+    if (upsertError) throw new Error(`Upsert failed: ${upsertError.message}`);
 
-    // 4. Log files to Cleanup Queue instead of deleting physically
+    // 5. QUEUE STORAGE CLEANUP: Only if DB sync was successful
     if (internalPaths.length > 0) {
-      const queueEntries = internalPaths.map(path => ({
-        file_path: path,
-        restaurant_id: restaurant.id // Tied to restaurant for RLS
-      }));
-
-      const { error: queueError } = await supabase
+      const { error: qError } = await supabase
         .from("storage_cleanup_queue")
-        .insert(queueEntries);
+        .insert(internalPaths.map(path => ({
+          file_path: path,
+          restaurant_id: restaurant.id
+        })));
       
-      if (queueError) logger.error("Failed to queue storage cleanup:", queueError.message);
+      if (qError) logger.error("Non-fatal: Cleanup queue insert failed", qError.message);
     }
 
     logger.db("BATCH SAVE", "success");
     return true;
+
   } catch (err: any) {
-    logger.error("Batch save failed:", err.message);
+    logger.error("Batch Save Error", err.message || err);
     return false;
   }
 }
