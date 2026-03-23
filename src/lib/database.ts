@@ -191,13 +191,16 @@ export async function saveAllChanges(
   restaurant: RestaurantInfo,
   deletedCategoryIds: string[] = [],
   deletedItemIds: string[] = [],
-  pendingDeleteUrls: string[] = []
+  pendingDeleteUrls: string[] = [] // Ensure this is the 6th argument
 ): Promise<boolean> {
   logger.db("BATCH SAVE", "--- STARTING SEQUENTIAL SAVE ---", { 
     items: items.length, 
     deletes: deletedItemIds.length, 
-    cleanup: pendingDeleteUrls.length 
+    cleanupCount: pendingDeleteUrls.length 
   });
+
+  // LOG 1: Verify data arrival
+  console.log("📥 DB RECEIVING CLEANUP QUEUE:", pendingDeleteUrls);
 
   try {
     // 1. SANITIZE
@@ -205,45 +208,43 @@ export async function saveAllChanges(
     const activeItems = items.filter(i => !deletedItemIds.includes(i.id));
 
     // 2. PREPARE CLEANUP PATHS
-    logger.db("BATCH SAVE", "Processing cleanup URLs...");
     const internalPaths = [...new Set(pendingDeleteUrls)]
-      .map(url => getInternalPath(url))
+      .map(url => {
+        const path = getInternalPath(url);
+        // LOG 2: Verify Path Extraction
+        console.log("🛠️ PATH EXTRACTOR CALLED FOR:", url, "RESULT:", path);
+        return path;
+      })
       .filter((path): path is string => !!path);
 
-    // 3. EXECUTE DELETIONS (Items first to avoid FK constraints)
+    // 3. EXECUTE DELETIONS
     if (deletedItemIds.length > 0) {
-      logger.db("BATCH SAVE", `Deleting ${deletedItemIds.length} items...`);
       const { error } = await supabase.from("menu_items").delete().in("id", deletedItemIds);
       if (error) throw new Error(`Items delete failed: ${error.message}`);
     }
     
     if (deletedCategoryIds.length > 0) {
-      logger.db("BATCH SAVE", `Deleting ${deletedCategoryIds.length} categories...`);
       const { error } = await supabase.from("categories").delete().in("id", deletedCategoryIds);
       if (error) throw new Error(`Categories delete failed: ${error.message}`);
     }
 
-    // 4. EXECUTE UPSERTS (Strictly Sequential to prevent Deadlocks)
-    
-    logger.db("BATCH SAVE", "Updating Restaurant info...");
+    // 4. EXECUTE UPSERTS
     const { error: restError } = await supabase.from("restaurant").upsert(restaurant, { onConflict: 'id' });
     if (restError) throw new Error(`Restaurant upsert failed: ${restError.message}`);
 
     if (activeCategories.length > 0) {
-      logger.db("BATCH SAVE", `Upserting ${activeCategories.length} categories...`);
       const { error: catError } = await supabase.from("categories").upsert(activeCategories, { onConflict: 'id' });
       if (catError) throw new Error(`Categories upsert failed: ${catError.message}`);
     }
 
     if (activeItems.length > 0) {
-      logger.db("BATCH SAVE", `Upserting ${activeItems.length} items...`);
       const { error: itemError } = await supabase.from("menu_items").upsert(activeItems, { onConflict: 'id' });
       if (itemError) throw new Error(`Items upsert failed: ${itemError.message}`);
     }
 
     // 5. QUEUE STORAGE CLEANUP
     if (internalPaths.length > 0) {
-      logger.db("BATCH SAVE", `Queuing ${internalPaths.length} files for storage deletion...`);
+      console.log("📝 INSERTING INTO QUEUE TABLE:", internalPaths);
       const { error: qError } = await supabase
         .from("storage_cleanup_queue")
         .insert(
@@ -253,7 +254,11 @@ export async function saveAllChanges(
           }))
         );
       
-      if (qError) logger.error("Cleanup Queue DB Error", qError.message);
+      if (qError) {
+        console.error("❌ Cleanup Queue DB Error", qError.message);
+      } else {
+        console.log("✅ Successfully queued for cleanup");
+      }
     }
 
     logger.db("BATCH SAVE", "--- SUCCESS: ALL DATA PERSISTED ---");
