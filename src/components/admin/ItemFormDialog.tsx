@@ -29,15 +29,15 @@ interface Props {
   setItemForm: (form: ItemForm) => void;
   onSave: () => void;
   isUploading: boolean;
-  // New unified handler from hook
+  // Unified handlers from useAdminState hook
   onFileSelect: (file: File, type: 'logo' | 'item', currentUrl: string, name: string, setter: (url: string) => void) => void;
-  setPendingDeleteUrls: React.Dispatch<React.SetStateAction<string[]>>;
+  onUrlChange: (newUrl: string, currentUrl: string, setter: (url: string) => void) => void;
 }
 
 const ItemFormDialog = ({
   open, onOpenChange, editingItem, categories,
   itemForm, setItemForm, onSave, isUploading,
-  onFileSelect, setPendingDeleteUrls
+  onFileSelect, onUrlChange
 }: Props) => (
   <Dialog open={open} onOpenChange={onOpenChange}>
     <DialogContent className="glass-card border-border/30 sm:max-w-md max-h-[90vh] overflow-y-auto outline-none">
@@ -142,12 +142,11 @@ const ItemFormDialog = ({
             itemForm.name, 
             (url) => setItemForm({ ...itemForm, image_url: url })
           )}
-          onUrlChange={(url) => {
-            if (itemForm.image_url?.includes('supabase.co')) {
-              setPendingDeleteUrls(prev => [...prev, itemForm.image_url]);
-            }
-            setItemForm({ ...itemForm, image_url: url });
-          }}
+          onUrlChange={(newUrl) => onUrlChange(
+            newUrl, 
+            itemForm.image_url, 
+            (url) => setItemForm({ ...itemForm, image_url: url })
+          )}
         />
 
         {/* Availability Toggle */}
