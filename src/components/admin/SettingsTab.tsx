@@ -10,9 +10,9 @@ interface Props {
   restaurant: RestaurantInfo;
   isUploading: boolean;
   onUpdate: (info: RestaurantInfo) => void;
-  // New unified handlers from useAdminState
+  // Unified handlers from useAdminState
   onFileSelect: (file: File, type: 'logo' | 'item', currentUrl: string, name: string, setter: (url: string) => void) => void;
-  setPendingDeleteUrls: React.Dispatch<React.SetStateAction<string[]>>;
+  onUrlChange: (newUrl: string, currentUrl: string, setter: (url: string) => void) => void;
   markChanged: () => void;
 }
 
@@ -38,7 +38,7 @@ const SettingsTab = ({
   isUploading, 
   onUpdate, 
   onFileSelect,
-  setPendingDeleteUrls,
+  onUrlChange,
   markChanged 
 }: Props) => {
 
@@ -101,13 +101,11 @@ const SettingsTab = ({
             restaurant.name || "restaurant", 
             (url) => update({ logo_url: url })
           )}
-          onUrlChange={(url) => {
-            // Track old Supabase URL for deletion if it exists
-            if (restaurant.logo_url?.includes('supabase.co')) {
-              setPendingDeleteUrls(prev => [...prev, restaurant.logo_url!]);
-            }
-            update({ logo_url: url });
-          }}
+          onUrlChange={(newUrl) => onUrlChange(
+            newUrl,
+            restaurant.logo_url || "",
+            (url) => update({ logo_url: url })
+          )}
         />
       </div>
 
