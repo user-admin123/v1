@@ -66,7 +66,17 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
   }, [categories, items, restaurant]);
 
   // --- Image Handling Logic ---
+const onUrlChange = useCallback((newUrl: string, currentUrl: string, setter: (url: string) => void) => {
+  // 1. If we are replacing/removing a Supabase image, track it for deletion
+  if (currentUrl && currentUrl !== newUrl) {
+    setPendingDeleteUrls(prev => [...prev, currentUrl]);
+  }
 
+  // 2. Update the state (setter will be setDraftRestaurant or setItemForm)
+  setter(newUrl);
+  setHasChanges(true);
+}, []);
+  
   const uploadToBucket = useCallback(async (file: File, type: 'logo' | 'item', name: string): Promise<string | null> => {
     setIsUploading(true);
     try {
@@ -295,7 +305,7 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
     addCategory, saveEditCat,
     handleDragStart, handleDragEnter, handleDragEnd,
     openNewItem, openEditItem, saveItem, toggleAvailability,
-    onFileSelect, markChanged,
+    onFileSelect, onUrlChange, markChanged,
     saveAllChanges, handleConfirmDelete,
     setPendingDeleteUrls 
   };
