@@ -140,25 +140,40 @@ export function useMenuData() {
     setRestaurant(info);
   }, []);
 
-  const saveAll = useCallback(
-    async (
-      cats: Category[],
-      menuItems: MenuItem[],
-      rest: RestaurantInfo,
-      deletedCatIds: string[] = [],
-      deletedItemIds: string[] = []
-    ) => {
-      const success = await dbSaveAll(cats, menuItems, rest, deletedCatIds, deletedItemIds);
-      if (success) {
-        setCategories([...cats].sort((a, b) => a.order_index - b.order_index));
-        setItems(menuItems);
-        setRestaurant(rest);
-      }
-      return success;
-    },
-    []
-  );
+  // Inside @/hooks/useMenuData.ts
 
+const saveAll = useCallback(
+  async (
+    cats: Category[],
+    menuItems: MenuItem[],
+    rest: RestaurantInfo,
+    deletedCatIds: string[] = [],
+    deletedItemIds: string[] = [],
+    pendingDeleteUrls: string[] = [] // <--- ADDED 6TH ARGUMENT
+  ) => {
+    // LOG: Verify the hook actually receives the URLs from the UI
+    console.log("⚓ useMenuData: Received cleanup URLs:", pendingDeleteUrls.length);
+
+    // Pass all 6 arguments to the database function
+    const success = await dbSaveAll(
+      cats, 
+      menuItems, 
+      rest, 
+      deletedCatIds, 
+      deletedItemIds, 
+      pendingDeleteUrls
+    );
+
+    if (success) {
+      setCategories([...cats].sort((a, b) => a.order_index - b.order_index));
+      setItems(menuItems);
+      setRestaurant(rest);
+    }
+    return success;
+  },
+  []
+);
+  
   const login = useCallback(async (email: string, password: string) => {
     return await doLogin(email, password);
   }, []);
