@@ -129,14 +129,26 @@ const AdminPanel = ({
 
             <TabsContent value="settings">
               <SettingsTab
-                restaurant={admin.draftRestaurant}
-                onUpdate={admin.setDraftRestaurant}
-                isUploading={admin.isUploading}
-                markChanged={admin.markChanged}
-                // New Unified Props
-                onFileSelect={admin.onFileSelect}
-                setPendingDeleteUrls={admin.setPendingDeleteUrls}
-              />
+  restaurant={admin.draftRestaurant}
+  onUpdate={admin.setDraftRestaurant}
+  isUploading={admin.isUploading}
+  markChanged={admin.markChanged}
+  // Use the hook's existing onFileSelect
+  onFileSelect={(file) => admin.onFileSelect(
+    file, 
+    'logo', 
+    admin.draftRestaurant.logo_url || "", 
+    admin.draftRestaurant.name, 
+    (url) => admin.setDraftRestaurant(prev => ({ ...prev, logo_url: url }))
+  )}
+  // New: Pass a handler for the "Remove" or "Paste URL" actions
+  onUrlChange={(newUrl) => admin.onUrlChange(
+    newUrl, 
+    admin.draftRestaurant.logo_url || "", 
+    (url) => admin.setDraftRestaurant(prev => ({ ...prev, logo_url: url }))
+  )}
+/>
+
             </TabsContent>
 
             <TabsContent value="insights">
@@ -154,19 +166,33 @@ const AdminPanel = ({
         </DialogContent>
       </Dialog>
 
-      <ItemFormDialog
-        open={admin.itemFormOpen}
-        onOpenChange={admin.setItemFormOpen}
-        editingItem={admin.editingItem}
-        categories={admin.draftCategories}
-        itemForm={admin.itemForm}
-        setItemForm={admin.setItemForm}
-        isUploading={admin.isUploading}
-        onSave={admin.saveItem}
-        // New Unified Props
-        onFileSelect={admin.onFileSelect}
-        setPendingDeleteUrls={admin.setPendingDeleteUrls}
-      />
+      
+
+{/* Inside ItemFormDialog */}
+<ItemFormDialog
+  open={admin.itemFormOpen}
+  onOpenChange={admin.setItemFormOpen}
+  editingItem={admin.editingItem}
+  categories={admin.draftCategories}
+  itemForm={admin.itemForm}
+  setItemForm={admin.setItemForm}
+  isUploading={admin.isUploading}
+  onSave={admin.saveItem}
+  // Correctly wire up the file replacement logic
+  onFileSelect={(file) => admin.onFileSelect(
+    file, 
+    'item', 
+    admin.itemForm.image_url || "", 
+    admin.itemForm.name, 
+    (url) => admin.setItemForm(prev => ({ ...prev, image_url: url }))
+  )}
+  // Correctly wire up the URL/Remove logic
+  onUrlChange={(newUrl) => admin.onUrlChange(
+    newUrl, 
+    admin.itemForm.image_url || "", 
+    (url) => admin.setItemForm(prev => ({ ...prev, image_url: url }))
+  )}
+/>
     </>
   );
 };
