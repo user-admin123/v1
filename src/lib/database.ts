@@ -147,19 +147,34 @@ export async function deleteMenuItem(id: string): Promise<void> {
 // -----------------------------------------------------------------------------
 
 export async function deleteStorageFiles(urls: string[]): Promise<void> {
-  const supabaseUrls = urls.filter(url => url && url.includes('supabase.co') && url.includes('restaurant-assets'));
-  if (supabaseUrls.length === 0) return;
+  // 1. Filter and Clean
+  const paths = urls
+    .filter(url => url?.includes('supabase.co'))
+    .map(url => {
+      try {
+        // This is more reliable: find the part after the bucket name
+        const searchStr = 'restaurant-assets/';
+        if (url.includes(searchStr)) {
+          return url.split(searchStr)[1].split('?')[0]; // Remove query params if any
+        }
+        return null;
+      } catch (e) { return null; }
+    })
+    .filter(Boolean) as string[];
 
-  const paths = supabaseUrls.map(url => {
-    const parts = url.split('restaurant-assets/');
-    return parts[parts.length - 1];
-  });
+  if (paths.length === 0) return;
 
-  logger.db("STORAGE", "delete", `Removing ${paths.length} files from bucket`);
-  const { error } = await supabase.storage.from('restaurant-assets').remove(paths);
+  logger.db("STORAGE", "delete", `Attempting to remove: ${paths.join(', ')}`);
+  
+  // 2. Perform deletion
+  const { data, error } = await supabase.storage
+    .from('restaurant-assets')
+    .remove(paths);
   
   if (error) {
     logger.error("Storage deletion failed:", error.message);
+  } else {
+    logger.db("STORAGE", "delete", `Successfully removed ${data?.length || 0} files`);
   }
 }
 
