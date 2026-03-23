@@ -237,37 +237,37 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
 
   // --- 8. Final Save All ---
   const saveAllChanges = useCallback(async () => {
-    console.log("🚀 STARTING SYNC TO SUPABASE", {
-      categories: draftCategories.length,
-      items: draftItems.length,
-      cleanupCount: pendingDeleteUrls.length
-    });
+  const cleanupQueue = [...new Set(pendingDeleteUrls)];
+  
+  // LOG 3: Verify what the hook is sending
+  console.log("🚀 HOOK TRIGGERING SAVE WITH CLEANUP:", cleanupQueue);
 
-    setSaving(true);
-    try {
-      const success = await onSaveAll(
-        draftCategories, 
-        draftItems, 
-        draftRestaurant, 
-        deletedCategoryIds, 
-        deletedItemIds,
-        [...new Set(pendingDeleteUrls)] // unique cleanup URLs
-      );
+  setSaving(true);
+  try {
+    const success = await onSaveAll(
+      draftCategories, 
+      draftItems, 
+      draftRestaurant, 
+      deletedCategoryIds, 
+      deletedItemIds,
+      cleanupQueue // Passing the 6th argument
+    );
 
-      if (success) {
-        setDeletedCategoryIds([]);
-        setDeletedItemIds([]);
-        setPendingDeleteUrls([]);
-        setHasChanges(false);
-        toast({ title: "Save Complete", description: "Database updated and storage cleanup queued." });
-      }
-    } catch (err) {
-      console.error("❌ Save Transaction Failed", err);
-    } finally {
-      setSaving(false);
+    if (success) {
+      // Reset all tracking states only on success
+      setDeletedCategoryIds([]);
+      setDeletedItemIds([]);
+      setPendingDeleteUrls([]);
+      setHasChanges(false);
+      toast({ title: "Save Complete", description: "Changes persisted and old assets queued for deletion." });
     }
-  }, [draftCategories, draftItems, draftRestaurant, deletedCategoryIds, deletedItemIds, pendingDeleteUrls, onSaveAll]);
-
+  } catch (err) {
+    console.error("❌ Save Transaction Failed", err);
+    toast({ title: "Save Failed", variant: "destructive" });
+  } finally {
+    setSaving(false);
+  }
+}, [draftCategories, draftItems, draftRestaurant, deletedCategoryIds, deletedItemIds, pendingDeleteUrls, onSaveAll]);
   // --- Delete Modal Helpers ---
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: "category" | "item"; id: string; name: string; } | null>(null);
   const handleConfirmDelete = useCallback(() => {
