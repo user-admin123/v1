@@ -55,81 +55,67 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [hasChanges]);
 
-  // Sync internal state when parent props change (e.g., after a successful save)
+  // FIXED: Removed the auto-reset of pendingDeleteUrls from this effect.
+  // This now only syncs when the component is initially loaded or props change significantly.
   useEffect(() => {
     setDraftCategories(categories);
     setDraftItems(items);
     setDraftRestaurant(restaurant);
-    setDeletedCategoryIds([]);
-    setDeletedItemIds([]);
-    setPendingDeleteUrls([]);
+    // We do NOT reset deleted IDs or pending URLs here anymore, 
+    // as it wipes data before the user can click 'Save'.
   }, [categories, items, restaurant]);
 
-  // --- Image Handling Logic ---
-// --- Image & Storage Logic ---
+  // --- Image & Storage Logic ---
 
-const uploadToBucket = useCallback(async (file: File, type: 'logo' | 'item', name: string): Promise<string | null> => {
-  setIsUploading(true);
-  try {
-    const options = { maxSizeMB: 0.2, maxWidthOrHeight: 1024, useWebWorker: true, fileType: 'image/webp' };
-    const compressedFile = await imageCompression(file, options);
-    
-    // Modern Professional Format: images/type/name-timestamp.webp
-    const safeName = (name || 'unnamed').toLowerCase().replace(/[^a-z0-9]/g, '-');
-    const fileName = `images/${type}/${safeName}-${Date.now()}.webp`;
+  const uploadToBucket = useCallback(async (file: File, type: 'logo' | 'item', name: string): Promise<string | null> => {
+    setIsUploading(true);
+    try {
+      const options = { maxSizeMB: 0.2, maxWidthOrHeight: 1024, useWebWorker: true, fileType: 'image/webp' };
+      const compressedFile = await imageCompression(file, options);
+      
+      const safeName = (name || 'unnamed').toLowerCase().replace(/[^a-z0-9]/g, '-');
+      const fileName = `images/${type}/${safeName}-${Date.now()}.webp`;
 
-    const { error } = await supabase.storage.from('restaurant-assets').upload(fileName, compressedFile);
-    if (error) throw error;
+      const { error } = await supabase.storage.from('restaurant-assets').upload(fileName, compressedFile);
+      if (error) throw error;
 
-    const { data } = supabase.storage.from('restaurant-assets').getPublicUrl(fileName);
-    return data.publicUrl;
-  } catch (err) {
-    logger.error("Upload failed", err);
-    toast({ title: "Upload failed", variant: "destructive" });
-    return null;
-  } finally {
-    setIsUploading(false);
-  }
-}, []);
+      const { data } = supabase.storage.from('restaurant-assets').getPublicUrl(fileName);
+      return data.publicUrl;
+    } catch (err) {
+      logger.error("Upload failed", err);
+      toast({ title: "Upload failed", variant: "destructive" });
+      return null;
+    } finally {
+      setIsUploading(false);
+    }
+  }, []);
 
-const onUrlChange = useCallback((newUrl: string, currentUrl: string, setter: (url: string) => void) => {
-  // 1. TRACK FOR CLEANUP: If we are replacing an existing Supabase image
-  if (currentUrl && currentUrl !== newUrl && currentUrl.includes('supabase.co')) {
-    setPendingDeleteUrls(prev => {
-      if (prev.includes(currentUrl)) return prev;
-      return [...prev, currentUrl];
-    });
-  }
-
-  // 2. UPDATE STATE & MARK CHANGES
-  setter(newUrl);
-  setHasChanges(true);
-}, []);
-
-const onFileSelect = useCallback(async (
-  file: File, 
-  type: 'logo' | 'item', 
-  currentUrl: string, 
-  name: string, 
-  setter: (url: string) => void
-) => {
-  // 1. TRACK OLD URL: If replacing a Supabase image
-  if (currentUrl?.includes('supabase.co')) {
-    setPendingDeleteUrls(prev => {
-      if (prev.includes(currentUrl)) return prev;
-      return [...prev, currentUrl];
-    });
-  }
-  
-  // 2. UPLOAD NEW FILE
-  const url = await uploadToBucket(file, type, name);
-  if (url) {
-    setter(url);
+  const onUrlChange = useCallback((newUrl: string, currentUrl: string, setter: (url: string) => void) => {
+    if (currentUrl && currentUrl !== newUrl && currentUrl.includes('supabase.co')) {
+      setPendingDeleteUrls(prev => prev.includes(currentUrl) ? prev : [...prev, currentUrl]);
+    }
+    setter(newUrl);
     setHasChanges(true);
-  }
-}, [uploadToBucket]);
+  }, []);
 
-  // Manual change marker for UI components
+  const onFileSelect = useCallback(async (
+    file: File, 
+    type: 'logo' | 'item', 
+    currentUrl: string, 
+    name: string, 
+    setter: (url: string) => void
+  ) => {
+    const url = await uploadToBucket(file, type, name);
+    if (url) {
+      // If we're replacing an existing Supabase image, track it for deletion
+      if (currentUrl?.includes('supabase.co')) {
+        setPendingDeleteUrls(prev => prev.includes(currentUrl) ? prev : [...prev, currentUrl]);
+      }
+      setter(url);
+      setHasChanges(true);
+    }
+  }, [uploadToBucket]);
+
   const markChanged = useCallback(() => setHasChanges(true), []);
 
   // --- Category CRUD Logic ---
@@ -150,22 +136,20 @@ const onFileSelect = useCallback(async (
   }, [catName, draftCategories.length, draftRestaurant.id]);
 
   const deleteCategory = useCallback((id: string) => {
-  // 1. Identify all items belonging to this category
-  const itemsInCat = draftItems.filter((i) => i.category_id === id);
-  
-  // 2. Extract all URLs from those items
-  const imagesToDelete = itemsInCat
-  .map(i => i.image_url)
-  .filter(url => url && url.includes('supabase.co')) as string[]; // Add the supabase filter
+    const itemsInCat = draftItems.filter((i) => i.category_id === id);
     
-  // 3. Queue them for cleanup and remove the items/category from state
-  setPendingDeleteUrls(prev => [...prev, ...imagesToDelete]);
-  setDeletedItemIds((prev) => [...prev, ...itemsInCat.map((i) => i.id)]);
-  setDeletedCategoryIds((prev) => [...prev, id]);
-  
-  setDraftCategories((prev) => prev.filter((c) => c.id !== id));
-  setDraftItems((prev) => prev.filter((i) => i.category_id !== id));
-}, [draftItems]);
+    // Robust URL detection for images in this category
+    const imagesToDelete = itemsInCat
+      .map(i => i.image_url)
+      .filter(url => url && url.includes('supabase.co')) as string[];
+      
+    setPendingDeleteUrls(prev => [...new Set([...prev, ...imagesToDelete])]);
+    setDeletedItemIds((prev) => [...prev, ...itemsInCat.map((i) => i.id)]);
+    setDeletedCategoryIds((prev) => [...prev, id]);
+    
+    setDraftCategories((prev) => prev.filter((c) => c.id !== id));
+    setDraftItems((prev) => prev.filter((i) => i.category_id !== id));
+  }, [draftItems]);
 
   const saveEditCat = useCallback(() => {
     if (!editingCat) return;
@@ -246,15 +230,13 @@ const onFileSelect = useCallback(async (
   }, [itemForm, editingItem, draftRestaurant.id]);
 
   const deleteItem = useCallback((id: string) => {
-  const item = draftItems.find(i => i.id === id);
-  
-  if (item?.image_url && item.image_url.includes('supabase.co')) { // Add the supabase filter
-  setPendingDeleteUrls(prev => [...prev, item.image_url]);
-}
-  
-  setDeletedItemIds((prev) => [...prev, id]);
-  setDraftItems((prev) => prev.filter((i) => i.id !== id));
-}, [draftItems]);
+    const item = draftItems.find(i => i.id === id);
+    if (item?.image_url && item.image_url.includes('supabase.co')) {
+      setPendingDeleteUrls(prev => prev.includes(item.image_url) ? prev : [...prev, item.image_url]);
+    }
+    setDeletedItemIds((prev) => [...prev, id]);
+    setDraftItems((prev) => prev.filter((i) => i.id !== id));
+  }, [draftItems]);
 
   const toggleAvailability = useCallback((id: string) => {
     setDraftItems((prev) =>
@@ -267,31 +249,33 @@ const onFileSelect = useCallback(async (
   // --- Save Operations ---
 
   const saveAllChanges = useCallback(async () => {
-  setSaving(true);
-  try {
-    const finalCleanupList = [...new Set(pendingDeleteUrls)];
+    setSaving(true);
+    try {
+      const finalCleanupList = [...new Set(pendingDeleteUrls)];
 
-    const success = await onSaveAll(
-      draftCategories, 
-      draftItems, 
-      draftRestaurant, 
-      deletedCategoryIds, 
-      deletedItemIds,
-      finalCleanupList
-    );
+      const success = await onSaveAll(
+        draftCategories, 
+        draftItems, 
+        draftRestaurant, 
+        deletedCategoryIds, 
+        deletedItemIds,
+        finalCleanupList
+      );
 
-    if (success) {
-      // CRITICAL: Reset everything locally immediately
-      setDeletedCategoryIds([]);
-      setDeletedItemIds([]);
-      setPendingDeleteUrls([]);
-      setHasChanges(false); // Force the button to hide immediately
-      toast({ title: "Success", description: "Changes synced." });
+      if (success) {
+        // RESET cleanup trackers only after success
+        setDeletedCategoryIds([]);
+        setDeletedItemIds([]);
+        setPendingDeleteUrls([]);
+        setHasChanges(false);
+        toast({ title: "Success", description: "All changes saved and cleanup queued." });
+      }
+    } catch (err) {
+      logger.error("Save failed in hook", err);
+    } finally {
+      setSaving(false);
     }
-  } finally {
-    setSaving(false);
-  }
-}, [draftCategories, draftItems, draftRestaurant, deletedCategoryIds, deletedItemIds, pendingDeleteUrls, onSaveAll]);
+  }, [draftCategories, draftItems, draftRestaurant, deletedCategoryIds, deletedItemIds, pendingDeleteUrls, onSaveAll]);
   
   const [deleteConfirm, setDeleteConfirm] = useState<{
     type: "category" | "item"; id: string; name: string;
@@ -305,14 +289,11 @@ const onFileSelect = useCallback(async (
   }, [deleteConfirm, deleteCategory, deleteItem]);
 
   return {
-    // State
     draftCategories, draftItems, draftRestaurant,
     setDraftRestaurant, hasChanges,
     catName, setCatName, editingCat, setEditingCat,
     editingItem, itemFormOpen, setItemFormOpen, itemForm, setItemForm,
     isUploading, saving, deleteConfirm, setDeleteConfirm,
-
-    // Handlers
     addCategory, saveEditCat,
     handleDragStart, handleDragEnter, handleDragEnd,
     openNewItem, openEditItem, saveItem, toggleAvailability,
