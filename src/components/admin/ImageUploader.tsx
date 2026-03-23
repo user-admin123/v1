@@ -36,9 +36,16 @@ export const ImageUploader = ({ value, onUrlChange, onFileSelect, isUploading, l
         )}>
           <img src={value} alt="Preview" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
-            <Button variant="destructive" size="sm" className="rounded-full h-9 shadow-xl" onClick={() => onUrlChange("")} disabled={isUploading}>
-              <X className="w-4 h-4 mr-2" /> Remove Image
-            </Button>
+           <Button 
+  type="button" // Add this
+  variant="destructive" 
+  size="sm" 
+  className="rounded-full h-9 shadow-xl" 
+  onClick={() => onUrlChange("")} 
+  disabled={isUploading}
+>
+  <X className="w-4 h-4 mr-2" /> Remove Image
+</Button>
           </div>
           {isUploading && (
             <div className="absolute inset-0 bg-background/60 flex flex-col items-center justify-center gap-2">
