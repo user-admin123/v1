@@ -11,11 +11,6 @@ import { logger } from "./logger";
 // FETCH HELPERS (Supabase Primary, localStorage Cache)
 // -----------------------------------------------------------------------------
 
-/**
- * FETCH FULL MENU
- * Optimized for Egress and Disk I/O by selecting specific columns
- * and filtering by restaurant_id.
- */
 export async function fetchFullMenu(restaurantId: string): Promise<{ categories: Category[]; items: MenuItem[] }> {
   logger.db("SELECT", "categories + menu_items", `Fetching joined data for ${restaurantId}`);
 
@@ -46,25 +41,17 @@ export async function fetchFullMenu(restaurantId: string): Promise<{ categories:
     throw error;
   }
 
-  // 1. Extract Categories (Remove nested menu_items array for the category state)
   const categories = (data || []).map(({ menu_items, ...cat }) => cat) as Category[];
-
-  // 2. Extract Items (Flatten all menu_items from all categories into one list)
   const items = (data || []).flatMap((cat) => cat.menu_items || []) as MenuItem[];
 
   logger.db("SELECT", "full_menu", `Got ${categories.length} cats and ${items.length} items`);
 
-  // 3. Save to Local Storage (Offline-first logic)
   saveLocalCategories(categories);
   saveLocalItems(items);
 
   return { categories, items };
 }
 
-/**
- * FETCH RESTAURANT INFO
- * Uses .single() and specific columns to reduce payload.
- */
 export async function fetchRestaurant(): Promise<RestaurantInfo> {
   logger.db("SELECT", "restaurant", "fetching single info");
 
@@ -84,10 +71,6 @@ export async function fetchRestaurant(): Promise<RestaurantInfo> {
   return rest;
 }
 
-/**
- * FETCH ADMIN USAGE
- * Fetches dashboard stats for a specific restaurant.
- */
 export async function fetchAdminUsage(restaurantId: string): Promise<any> {
   logger.db("SELECT", "admin_usage_dashboard", `fetching stats for id=${restaurantId}`);
 
@@ -160,54 +143,108 @@ export async function deleteMenuItem(id: string): Promise<void> {
 }
 
 // -----------------------------------------------------------------------------
-// BATCH SAVE
+// STORAGE HELPERS
 // -----------------------------------------------------------------------------
 
-// --- ADD THIS AT THE TOP OR BOTTOM OF db.ts ---
-export async function deleteStorageFiles(urls: string[]) {
-  // Filters out empty strings, external URLs, and keeps only Supabase paths
-  const paths = urls
-    .filter(u => u && u.includes('supabase.co') && u.includes('restaurant-assets'))
-    .map(u => u.split('restaurant-assets/')[1])
-    .filter(Boolean);
+export async function deleteStorageFiles(urls: string[]): Promise<void> {
+  const supabaseUrls = urls.filter(url => url && url.includes('supabase.co') && url.includes('restaurant-assets'));
+  if (supabaseUrls.length === 0) return;
 
-  if (paths.length > 0) {
-    const { error } = await supabase.storage.from('restaurant-assets').remove(paths);
-    if (error) logger.error("Bucket Cleanup Error:", error.message);
-    else logger.db("STORAGE", "cleanup", `Deleted ${paths.length} files`);
+  const paths = supabaseUrls.map(url => {
+    const parts = url.split('restaurant-assets/');
+    return parts[parts.length - 1];
+  });
+
+  logger.db("STORAGE", "delete", `Removing ${paths.length} files from bucket`);
+  const { error } = await supabase.storage.from('restaurant-assets').remove(paths);
+  
+  if (error) {
+    logger.error("Storage deletion failed:", error.message);
   }
 }
 
-// --- UPDATE YOUR saveAllChanges FUNCTION IN db.ts ---
+// -----------------------------------------------------------------------------
+// BATCH SAVE
+// -----------------------------------------------------------------------------
+
 export async function saveAllChanges(
   categories: Category[],
   items: MenuItem[],
   restaurant: RestaurantInfo,
   deletedCategoryIds: string[] = [],
-  deletedItemIds: string[] = []
+  deletedItemIds: string[] = [],
+  pendingDeleteUrls: string[] = [] // Added missing parameter
 ): Promise<boolean> {
+  logger.db(
+    "BATCH SAVE",
+    "all tables",
+    `cats=${categories.length}, items=${items.length}, delCats=${deletedCategoryIds.length}, delItems=${deletedItemIds.length}, pendingDeletes=${pendingDeleteUrls.length}`
+  );
+
+  // Sync local cache first
+  saveLocalCategories(categories);
+  saveLocalItems(items);
+  saveLocalRestaurant(restaurant);
+
   try {
-    // 1. Delete Items & Categories first to maintain integrity
-    if (deletedItemIds.length > 0) {
-      await supabase.from("menu_items").delete().in("id", deletedItemIds);
-    }
-    if (deletedCategoryIds.length > 0) {
-      await supabase.from("categories").delete().in("id", deletedCategoryIds);
+    // 1. Delete items first
+    const allDeletedItemIds = [...new Set(deletedItemIds)];
+    if (allDeletedItemIds.length > 0) {
+      const { error } = await supabase.from("menu_items").delete().in("id", allDeletedItemIds);
+      if (error) {
+        logger.error("Delete menu_items failed:", error.message);
+        return false;
+      }
     }
 
-    // 2. Batch Upsert everything else
-    const results = await Promise.all([
-      supabase.from("restaurant").upsert(restaurant),
-      categories.length > 0 ? supabase.from("categories").upsert(categories.map(c => ({...c, restaurant_id: restaurant.id}))) : { error: null },
-      items.length > 0 ? supabase.from("menu_items").upsert(items.map(i => ({...i, restaurant_id: restaurant.id}))) : { error: null }
+    // 2. Delete categories
+    if (deletedCategoryIds.length > 0) {
+      const { error } = await supabase.from("categories").delete().in("id", deletedCategoryIds);
+      if (error) {
+        logger.error("Delete categories failed:", error.message);
+        return false;
+      }
+    }
+
+    // 3. Upsert remaining data
+    const [catRes, itemRes, restRes] = await Promise.all([
+      categories.length > 0
+        ? supabase
+            .from("categories")
+            .upsert(
+              categories.map((c) => ({ ...c, restaurant_id: restaurant.id })),
+              { onConflict: "id" }
+            )
+        : { error: null },
+      items.length > 0
+        ? supabase
+            .from("menu_items")
+            .upsert(
+              items.map((i) => ({ ...i, restaurant_id: restaurant.id })),
+              { onConflict: "id" }
+            )
+        : { error: null },
+      supabase.from("restaurant").upsert(restaurant, { onConflict: "id" }),
     ]);
 
-    // Check if any part failed
-    if (results.some(r => r.error)) throw new Error("Database Upsert Failed");
+    if (catRes.error || itemRes.error || restRes.error) {
+      logger.error("Batch save errors:", {
+        categories: catRes.error?.message,
+        menu_items: itemRes.error?.message,
+        restaurant: restRes.error?.message,
+      });
+      return false;
+    }
 
-    return true; // Triggers the SUCCESS toast
-  } catch (err) {
-    logger.error("Batch save failed", err);
-    return false; // Triggers the ERROR toast
+    // 4. Physical Storage Cleanup (Run only if DB transaction succeeded)
+    if (pendingDeleteUrls.length > 0) {
+      await deleteStorageFiles(pendingDeleteUrls);
+    }
+
+    logger.db("BATCH SAVE", "all tables", "success");
+    return true;
+  } catch (err: any) {
+    logger.error("Batch save exception:", err.message);
+    return false;
   }
 }
