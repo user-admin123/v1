@@ -146,40 +146,20 @@ export async function deleteMenuItem(id: string): Promise<void> {
 // STORAGE HELPERS
 // -----------------------------------------------------------------------------
 
-export async function deleteStorageFiles(urls: string[]): Promise<void> {
-  // 1. Filter and Clean
-  const paths = urls
-    .filter(url => url?.includes('supabase.co'))
-    .map(url => {
-      try {
-        // This is more reliable: find the part after the bucket name
-        const searchStr = 'restaurant-assets/';
-        if (url.includes(searchStr)) {
-          return url.split(searchStr)[1].split('?')[0]; // Remove query params if any
-        }
-        return null;
-      } catch (e) { return null; }
-    })
-    .filter(Boolean) as string[];
+// Add this helper at the top or within the file
+const getInternalPath = (url: string | null | undefined): string | null => {
+  if (!url || !url.includes('supabase.co') || !url.includes('restaurant-assets/')) return null;
+  try {
+    const parts = url.split('restaurant-assets/');
+    // Returns 'images/item-123.webp' instead of the full URL
+    return parts.length > 1 ? decodeURIComponent(parts[1].split('?')[0]) : null;
+  } catch { return null; }
+};
 
-  if (paths.length === 0) return;
-
-  logger.db("STORAGE", "delete", `Attempting to remove: ${paths.join(', ')}`);
-  
-  // 2. Perform deletion
-  const { data, error } = await supabase.storage
-    .from('restaurant-assets')
-    .remove(paths);
-  
-  if (error) {
-    logger.error("Storage deletion failed:", error.message);
-  } else {
-    logger.db("STORAGE", "delete", `Successfully removed ${data?.length || 0} files`);
-  }
-}
+// ... (fetch helpers remain the same)
 
 // -----------------------------------------------------------------------------
-// BATCH SAVE
+// BATCH SAVE (Updated for Cleanup Queue)
 // -----------------------------------------------------------------------------
 
 export async function saveAllChanges(
@@ -188,7 +168,7 @@ export async function saveAllChanges(
   restaurant: RestaurantInfo,
   deletedCategoryIds: string[] = [],
   deletedItemIds: string[] = [],
-  pendingDeleteUrls: string[] = [] // Added missing parameter
+  pendingDeleteUrls: string[] = []
 ): Promise<boolean> {
   logger.db(
     "BATCH SAVE",
@@ -196,70 +176,67 @@ export async function saveAllChanges(
     `cats=${categories.length}, items=${items.length}, delCats=${deletedCategoryIds.length}, delItems=${deletedItemIds.length}, pendingDeletes=${pendingDeleteUrls.length}`
   );
 
-  // Sync local cache first
+  // Sync local cache
   saveLocalCategories(categories);
   saveLocalItems(items);
   saveLocalRestaurant(restaurant);
 
   try {
-    // 1. Delete items first
-    const allDeletedItemIds = [...new Set(deletedItemIds)];
-    if (allDeletedItemIds.length > 0) {
-      const { error } = await supabase.from("menu_items").delete().in("id", allDeletedItemIds);
-      if (error) {
-        logger.error("Delete menu_items failed:", error.message);
-        return false;
-      }
+    // 1. Prepare Cleanup Queue Data
+    const internalPaths = [...new Set(pendingDeleteUrls)]
+      .map(url => getInternalPath(url))
+      .filter((path): path is string => !!path);
+
+    // 2. Perform Deletions
+    if (deletedItemIds.length > 0) {
+      const { error } = await supabase.from("menu_items").delete().in("id", deletedItemIds);
+      if (error) throw new Error(`Delete items: ${error.message}`);
     }
 
-    // 2. Delete categories
     if (deletedCategoryIds.length > 0) {
       const { error } = await supabase.from("categories").delete().in("id", deletedCategoryIds);
-      if (error) {
-        logger.error("Delete categories failed:", error.message);
-        return false;
-      }
+      if (error) throw new Error(`Delete categories: ${error.message}`);
     }
 
-    // 3. Upsert remaining data
+    // 3. Upsert Remaining Data
     const [catRes, itemRes, restRes] = await Promise.all([
       categories.length > 0
-        ? supabase
-            .from("categories")
-            .upsert(
-              categories.map((c) => ({ ...c, restaurant_id: restaurant.id })),
-              { onConflict: "id" }
-            )
+        ? supabase.from("categories").upsert(
+            categories.map((c) => ({ ...c, restaurant_id: restaurant.id })),
+            { onConflict: "id" }
+          )
         : { error: null },
       items.length > 0
-        ? supabase
-            .from("menu_items")
-            .upsert(
-              items.map((i) => ({ ...i, restaurant_id: restaurant.id })),
-              { onConflict: "id" }
-            )
+        ? supabase.from("menu_items").upsert(
+            items.map((i) => ({ ...i, restaurant_id: restaurant.id })),
+            { onConflict: "id" }
+          )
         : { error: null },
       supabase.from("restaurant").upsert(restaurant, { onConflict: "id" }),
     ]);
 
     if (catRes.error || itemRes.error || restRes.error) {
-      logger.error("Batch save errors:", {
-        categories: catRes.error?.message,
-        menu_items: itemRes.error?.message,
-        restaurant: restRes.error?.message,
-      });
-      return false;
+      throw new Error("Upsert failed");
     }
 
-    // 4. Physical Storage Cleanup (Run only if DB transaction succeeded)
-    if (pendingDeleteUrls.length > 0) {
-      await deleteStorageFiles(pendingDeleteUrls);
+    // 4. Log files to Cleanup Queue instead of deleting physically
+    if (internalPaths.length > 0) {
+      const queueEntries = internalPaths.map(path => ({
+        file_path: path,
+        restaurant_id: restaurant.id // Tied to restaurant for RLS
+      }));
+
+      const { error: queueError } = await supabase
+        .from("storage_cleanup_queue")
+        .insert(queueEntries);
+      
+      if (queueError) logger.error("Failed to queue storage cleanup:", queueError.message);
     }
 
-    logger.db("BATCH SAVE", "all tables", "success");
+    logger.db("BATCH SAVE", "success");
     return true;
   } catch (err: any) {
-    logger.error("Batch save exception:", err.message);
+    logger.error("Batch save failed:", err.message);
     return false;
   }
 }
