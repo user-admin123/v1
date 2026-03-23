@@ -33,7 +33,7 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
   const [isUploading, setIsUploading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // --- Effects & Sync Logic ---
+  // --- Change Tracking Logic ---
 
   useEffect(() => {
     const isRestaurantChanged = JSON.stringify(draftRestaurant) !== JSON.stringify(restaurant);
@@ -55,6 +55,7 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [hasChanges]);
 
+  // Sync internal state when parent props change (e.g., after a successful save)
   useEffect(() => {
     setDraftCategories(categories);
     setDraftItems(items);
@@ -101,8 +102,14 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
       setPendingDeleteUrls(prev => [...prev, currentUrl]);
     }
     const url = await uploadToBucket(file, type, name);
-    if (url) setter(url);
+    if (url) {
+      setter(url);
+      setHasChanges(true);
+    }
   }, [uploadToBucket]);
+
+  // Manual change marker for UI components
+  const markChanged = useCallback(() => setHasChanges(true), []);
 
   // --- Category CRUD Logic ---
   const [catName, setCatName] = useState("");
@@ -122,11 +129,11 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
   }, [catName, draftCategories.length, draftRestaurant.id]);
 
   const deleteCategory = useCallback((id: string) => {
-    // Collect images of all items being deleted via this category
+    // Collect images of all items being deleted via this category cascade
     const itemsInCat = draftItems.filter((i) => i.category_id === id);
     const imagesToDelete = itemsInCat
       .map(i => i.image_url)
-      .filter(url => url?.includes('supabase.co'));
+      .filter(url => url?.includes('supabase.co')) as string[];
 
     setPendingDeleteUrls(prev => [...prev, ...imagesToDelete]);
     setDeletedItemIds((prev) => [...prev, ...itemsInCat.map((i) => i.id)]);
@@ -216,7 +223,7 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
   const deleteItem = useCallback((id: string) => {
     const item = draftItems.find(i => i.id === id);
     if (item?.image_url?.includes('supabase.co')) {
-      setPendingDeleteUrls(prev => [...prev, item.image_url]);
+      setPendingDeleteUrls(prev => [...prev, item.image_url as string]);
     }
     setDeletedItemIds((prev) => [...prev, id]);
     setDraftItems((prev) => prev.filter((i) => i.id !== id));
@@ -235,13 +242,9 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
   const saveAllChanges = useCallback(async () => {
     setSaving(true);
     try {
-      // 1. Identify images from items that were deleted explicitly
-      const deletedItemImages = items
-        .filter(i => deletedItemIds.includes(i.id) && i.image_url?.includes('supabase.co'))
-        .map(i => i.image_url);
-
-      // 2. Consolidate all orphaned URLs (replacements + deleted items + deleted categories)
-      const finalCleanupList = [...new Set([...pendingDeleteUrls, ...deletedItemImages])];
+      // Consolidate all orphaned URLs (replacements + deleted items + deleted categories)
+      // We filter unique values to avoid multiple deletion attempts on the same path
+      const finalCleanupList = [...new Set(pendingDeleteUrls)];
 
       const success = await onSaveAll(
         draftCategories, 
@@ -259,7 +262,7 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
     } finally {
       setSaving(false);
     }
-  }, [draftCategories, draftItems, draftRestaurant, deletedCategoryIds, deletedItemIds, pendingDeleteUrls, items, onSaveAll]);
+  }, [draftCategories, draftItems, draftRestaurant, deletedCategoryIds, deletedItemIds, pendingDeleteUrls, onSaveAll]);
 
   const [deleteConfirm, setDeleteConfirm] = useState<{
     type: "category" | "item"; id: string; name: string;
@@ -284,8 +287,8 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
     addCategory, saveEditCat,
     handleDragStart, handleDragEnter, handleDragEnd,
     openNewItem, openEditItem, saveItem, toggleAvailability,
-    onFileSelect,
+    onFileSelect, markChanged,
     saveAllChanges, handleConfirmDelete,
-    setPendingDeleteUrls // Exported so UI components can track manual removals
+    setPendingDeleteUrls 
   };
 }
