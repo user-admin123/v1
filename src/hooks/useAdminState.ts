@@ -66,57 +66,68 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
   }, [categories, items, restaurant]);
 
   // --- Image Handling Logic ---
+// --- Image & Storage Logic ---
+
+const uploadToBucket = useCallback(async (file: File, type: 'logo' | 'item', name: string): Promise<string | null> => {
+  setIsUploading(true);
+  try {
+    const options = { maxSizeMB: 0.2, maxWidthOrHeight: 1024, useWebWorker: true, fileType: 'image/webp' };
+    const compressedFile = await imageCompression(file, options);
+    
+    // Modern Professional Format: images/type/name-timestamp.webp
+    const safeName = (name || 'unnamed').toLowerCase().replace(/[^a-z0-9]/g, '-');
+    const fileName = `images/${type}/${safeName}-${Date.now()}.webp`;
+
+    const { error } = await supabase.storage.from('restaurant-assets').upload(fileName, compressedFile);
+    if (error) throw error;
+
+    const { data } = supabase.storage.from('restaurant-assets').getPublicUrl(fileName);
+    return data.publicUrl;
+  } catch (err) {
+    logger.error("Upload failed", err);
+    toast({ title: "Upload failed", variant: "destructive" });
+    return null;
+  } finally {
+    setIsUploading(false);
+  }
+}, []);
+
 const onUrlChange = useCallback((newUrl: string, currentUrl: string, setter: (url: string) => void) => {
-  // 1. If we are replacing/removing a Supabase image, track it for deletion
-  if (currentUrl && currentUrl !== newUrl) {
-    setPendingDeleteUrls(prev => [...prev, currentUrl]);
+  // 1. TRACK FOR CLEANUP: If we are replacing an existing Supabase image
+  if (currentUrl && currentUrl !== newUrl && currentUrl.includes('supabase.co')) {
+    setPendingDeleteUrls(prev => {
+      if (prev.includes(currentUrl)) return prev;
+      return [...prev, currentUrl];
+    });
   }
 
-  // 2. Update the state (setter will be setDraftRestaurant or setItemForm)
+  // 2. UPDATE STATE & MARK CHANGES
   setter(newUrl);
   setHasChanges(true);
 }, []);
+
+const onFileSelect = useCallback(async (
+  file: File, 
+  type: 'logo' | 'item', 
+  currentUrl: string, 
+  name: string, 
+  setter: (url: string) => void
+) => {
+  // 1. TRACK OLD URL: If replacing a Supabase image
+  if (currentUrl?.includes('supabase.co')) {
+    setPendingDeleteUrls(prev => {
+      if (prev.includes(currentUrl)) return prev;
+      return [...prev, currentUrl];
+    });
+  }
   
-  const uploadToBucket = useCallback(async (file: File, type: 'logo' | 'item', name: string): Promise<string | null> => {
-    setIsUploading(true);
-    try {
-      const options = { maxSizeMB: 0.2, maxWidthOrHeight: 1024, useWebWorker: true, fileType: 'image/webp' };
-      const compressedFile = await imageCompression(file, options);
-      
-      const safeName = (name || 'unnamed').toLowerCase().replace(/[^a-z0-9]/g, '-');
-      const fileName = `images/${type}-${safeName}-${crypto.randomUUID().slice(0, 8)}.webp`;
-
-      const { error } = await supabase.storage.from('restaurant-assets').upload(fileName, compressedFile);
-      if (error) throw error;
-
-      const { data } = supabase.storage.from('restaurant-assets').getPublicUrl(fileName);
-      return data.publicUrl;
-    } catch (err) {
-      logger.error("Upload failed", err);
-      toast({ title: "Upload failed", variant: "destructive" });
-      return null;
-    } finally {
-      setIsUploading(false);
-    }
-  }, []);
-
-  const onFileSelect = useCallback(async (
-    file: File, 
-    type: 'logo' | 'item', 
-    currentUrl: string, 
-    name: string, 
-    setter: (url: string) => void
-  ) => {
-    // If we're replacing an existing Supabase image, track it for deletion
-    if (currentUrl?.includes('supabase.co')) {
-      setPendingDeleteUrls(prev => [...prev, currentUrl]);
-    }
-    const url = await uploadToBucket(file, type, name);
-    if (url) {
-      setter(url);
-      setHasChanges(true);
-    }
-  }, [uploadToBucket]);
+  // 2. UPLOAD NEW FILE
+  const url = await uploadToBucket(file, type, name);
+  if (url) {
+    setter(url);
+    setHasChanges(true);
+  }
+}, [uploadToBucket]);
 
   // Manual change marker for UI components
   const markChanged = useCallback(() => setHasChanges(true), []);
