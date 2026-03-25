@@ -86,7 +86,8 @@ const UsageInsights = ({ restaurantId }: Props) => {
             const date = new Date();
             date.setDate(date.getDate() - (6 - i));
             const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const dayLabel = days[date.getDay()]; // This will always be "Wed", "Tue", etc.   const count = Number(weeklyData[dayLabel] || 0);
+            const dayLabel = days[date.getDay()]; // This will always be "Wed", "Tue", etc.  
+            const count = Number(weeklyData[dayLabel] || 0);
             const isToday = i === 6;
             const isSelected = selectedDay === dayLabel;
             const barHeight = (count / maxCount) * 100;
