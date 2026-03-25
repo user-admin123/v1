@@ -11,7 +11,7 @@ import {
   isAuthenticated,
 } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
-import { logger } from "@/lib/logger"; // Assuming logger is exported from here
+import { logger } from "@/lib/logger";
 
 export function useMenuData() {
   // --- State ---
@@ -121,15 +121,13 @@ export function useMenuData() {
         logger.auth("Login successful.");
         if (restaurant?.id) {
           logger.info("Triggering Silent Eraser for Admin...");
-          supabase.rpc("undo_admin_scan", {
-            target_rest_id: restaurant.id,
-          })
-          .then(() => logger.info("Silent Eraser complete."))
-          .catch(err => logger.error("Silent Eraser failed:", err));
+          supabase.rpc("undo_admin_scan", { target_rest_id: restaurant.id })
+            .then(() => logger.info("Silent Eraser complete."))
+            .catch(err => logger.error("Silent Eraser failed:", err));
         }
 
         setAuthed(true);
-        return true; // Simple boolean return as requested
+        return true;
       }
       
       logger.warn("Login failed: Invalid credentials.");
@@ -151,16 +149,14 @@ export function useMenuData() {
       menuItems: MenuItem[],
       rest: RestaurantInfo,
       deletedCatIds: string[] = [],
-      deletedItemIds: string[] = [],
-      pendingDeleteUrls: string[] = []
+      deletedItemIds: string[] = []
     ) => {
-      logger.db("SAVE_ALL", "multi_table_sync", {
+      logger.db("SAVE_ALL", "Batch sync started", {
         updatedCats: cats.length,
         updatedItems: menuItems.length,
-        deletingImages: pendingDeleteUrls.length
       });
 
-      const success = await dbSaveAll(cats, menuItems, rest, deletedCatIds, deletedItemIds, pendingDeleteUrls);
+      const success = await dbSaveAll(cats, menuItems, rest, deletedCatIds, deletedItemIds);
       
       if (success) {
         logger.info("Database sync successful. Updating local state.");
