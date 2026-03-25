@@ -22,14 +22,12 @@ interface Props {
   onUpdateCategories: (cats: Category[]) => void;
   onUpdateItems: (items: MenuItem[]) => void;
   onUpdateRestaurant: (info: RestaurantInfo) => void;
-  // Note: Ensure your hook/parent supports the 6th argument for pendingDeleteUrls
   onSaveAll: (
     cats: Category[], 
     items: MenuItem[], 
     rest: RestaurantInfo, 
     deletedCatIds: string[], 
-    deletedItemIds: string[],
-    pendingDeleteUrls: string[]
+    deletedItemIds: string[]
   ) => Promise<boolean>;
   onLogout: () => void;
 }
@@ -129,26 +127,21 @@ const AdminPanel = ({
 
             <TabsContent value="settings">
               <SettingsTab
-  restaurant={admin.draftRestaurant}
-  onUpdate={admin.setDraftRestaurant}
-  isUploading={admin.isUploading}
-  markChanged={admin.markChanged}
-  // Use the hook's existing onFileSelect
-  onFileSelect={(file) => admin.onFileSelect(
-    file, 
-    'logo', 
-    admin.draftRestaurant.logo_url || "", 
-    admin.draftRestaurant.name, 
-    (url) => admin.setDraftRestaurant(prev => ({ ...prev, logo_url: url }))
-  )}
-  // New: Pass a handler for the "Remove" or "Paste URL" actions
-  onUrlChange={(newUrl) => admin.onUrlChange(
-    newUrl, 
-    admin.draftRestaurant.logo_url || "", 
-    (url) => admin.setDraftRestaurant(prev => ({ ...prev, logo_url: url }))
-  )}
-/>
-
+                restaurant={admin.draftRestaurant}
+                onUpdate={admin.setDraftRestaurant}
+                isUploading={admin.isUploading}
+                markChanged={admin.markChanged}
+                onFileSelect={(file) => admin.onFileSelect(
+                  file, 
+                  'logo', 
+                  admin.draftRestaurant.name, 
+                  (url) => admin.setDraftRestaurant(prev => ({ ...prev, logo_url: url }))
+                )}
+                onUrlChange={(newUrl) => admin.onUrlChange(
+                  newUrl, 
+                  (url) => admin.setDraftRestaurant(prev => ({ ...prev, logo_url: url }))
+                )}
+              />
             </TabsContent>
 
             <TabsContent value="insights">
@@ -166,33 +159,26 @@ const AdminPanel = ({
         </DialogContent>
       </Dialog>
 
-      
-
-{/* Inside ItemFormDialog */}
-<ItemFormDialog
-  open={admin.itemFormOpen}
-  onOpenChange={admin.setItemFormOpen}
-  editingItem={admin.editingItem}
-  categories={admin.draftCategories}
-  itemForm={admin.itemForm}
-  setItemForm={admin.setItemForm}
-  isUploading={admin.isUploading}
-  onSave={admin.saveItem}
-  // Correctly wire up the file replacement logic
-  onFileSelect={(file) => admin.onFileSelect(
-    file, 
-    'item', 
-    admin.itemForm.image_url || "", 
-    admin.itemForm.name, 
-    (url) => admin.setItemForm(prev => ({ ...prev, image_url: url }))
-  )}
-  // Correctly wire up the URL/Remove logic
-  onUrlChange={(newUrl) => admin.onUrlChange(
-    newUrl, 
-    admin.itemForm.image_url || "", 
-    (url) => admin.setItemForm(prev => ({ ...prev, image_url: url }))
-  )}
-/>
+      <ItemFormDialog
+        open={admin.itemFormOpen}
+        onOpenChange={admin.setItemFormOpen}
+        editingItem={admin.editingItem}
+        categories={admin.draftCategories}
+        itemForm={admin.itemForm}
+        setItemForm={admin.setItemForm}
+        isUploading={admin.isUploading}
+        onSave={admin.saveItem}
+        onFileSelect={(file) => admin.onFileSelect(
+          file, 
+          'item', 
+          admin.itemForm.name, 
+          (url) => admin.setItemForm(prev => ({ ...prev, image_url: url }))
+        )}
+        onUrlChange={(newUrl) => admin.onUrlChange(
+          newUrl, 
+          (url) => admin.setItemForm(prev => ({ ...prev, image_url: url }))
+        )}
+      />
     </>
   );
 };

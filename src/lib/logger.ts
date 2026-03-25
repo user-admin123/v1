@@ -1,19 +1,23 @@
-const isDev = import.meta.env.DEV;
+// src/lib/logger.ts
+
+// SIMPLE TOGGLE: Set to true to see logs on your mobile/Vercel
+// Set to false before sending to a real customer
+const SHOW_DEBUG = true; 
 
 export const logger = {
   info: (...args: any[]) => {
-    if (isDev) console.log("[📗 INFO]", ...args);
+    if (SHOW_DEBUG) console.log("[📗 INFO]", ...args);
   },
   warn: (...args: any[]) => {
-    if (isDev) console.warn("[📙 WARN]", ...args);
+    if (SHOW_DEBUG) console.warn("[📙 WARN]", ...args);
   },
   error: (...args: any[]) => {
-    if (isDev) console.error("[📕 ERROR]", ...args);
+    if (SHOW_DEBUG) console.error("[📕 ERROR]", ...args);
   },
   db: (operation: string, table: string, details?: any) => {
-    if (isDev) console.log(`[🗄️ DB] ${operation} → ${table}`, details ?? "");
+    if (SHOW_DEBUG) console.log(`[🗄️ DB] ${operation} → ${table}`, details ?? "");
   },
   auth: (action: string, details?: any) => {
-    if (isDev) console.log(`[🔑 AUTH] ${action}`, details ?? "");
+    if (SHOW_DEBUG) console.log(`[🔑 AUTH] ${action}`, details ?? "");
   },
 };

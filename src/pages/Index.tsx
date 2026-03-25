@@ -125,8 +125,8 @@ const Index = () => {
             onUpdateCategories={updateCategories}
             onUpdateItems={updateItems}
             onUpdateRestaurant={updateRestaurant}
-            onSaveAll={(cats, itms, rest, dCats, dItems, urls) => 
-              saveAll(cats, itms, rest, dCats, dItems, urls)
+            onSaveAll={(cats, itms, rest, dCats, dItems) => 
+              saveAll(cats, itms, rest, dCats, dItems)
             }
             onLogout={() => { logout(); setShowLogin(false); }}
           />

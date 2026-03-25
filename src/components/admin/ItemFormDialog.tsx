@@ -29,9 +29,9 @@ interface Props {
   setItemForm: (form: ItemForm) => void;
   onSave: () => void;
   isUploading: boolean;
-  // Unified handlers from useAdminState hook
-  onFileSelect: (file: File, type: 'logo' | 'item', currentUrl: string, name: string, setter: (url: string) => void) => void;
-  onUrlChange: (newUrl: string, currentUrl: string, setter: (url: string) => void) => void;
+  // UPDATED: Signatures now match the simplified hook
+  onFileSelect: (file: File, type: 'logo' | 'item', name: string, setter: (url: string) => void) => void;
+  onUrlChange: (newUrl: string, setter: (url: string) => void) => void;
 }
 
 const ItemFormDialog = ({
@@ -129,22 +129,22 @@ const ItemFormDialog = ({
           </div>
         </div>
 
-        {/* Unified Image Section */}
+        {/* Updated Image Section */}
         <ImageUploader 
           label="Visual Asset"
           value={itemForm.image_url}
           isUploading={isUploading}
           aspect="video"
+          // UPDATED: Removed currentUrl (itemForm.image_url) from arguments
           onFileSelect={(file) => onFileSelect(
             file, 
             'item', 
-            itemForm.image_url, 
-            itemForm.name, 
+            itemForm.name || "item", 
             (url) => setItemForm({ ...itemForm, image_url: url })
           )}
+          // UPDATED: Removed currentUrl (itemForm.image_url) from arguments
           onUrlChange={(newUrl) => onUrlChange(
             newUrl, 
-            itemForm.image_url, 
             (url) => setItemForm({ ...itemForm, image_url: url })
           )}
         />

@@ -10,9 +10,9 @@ interface Props {
   restaurant: RestaurantInfo;
   isUploading: boolean;
   onUpdate: (info: RestaurantInfo) => void;
-  // Unified handlers from useAdminState
-  onFileSelect: (file: File, type: 'logo' | 'item', currentUrl: string, name: string, setter: (url: string) => void) => void;
-  onUrlChange: (newUrl: string, currentUrl: string, setter: (url: string) => void) => void;
+  // UPDATED: Removed currentUrl from signatures
+  onFileSelect: (file: File, type: 'logo' | 'item', name: string, setter: (url: string) => void) => void;
+  onUrlChange: (newUrl: string, setter: (url: string) => void) => void;
   markChanged: () => void;
 }
 
@@ -88,22 +88,22 @@ const SettingsTab = ({
           />
         </div>
 
-        {/* Branding Section using the Unified ImageUploader */}
+        {/* Branding Section */}
         <ImageUploader 
           label="Restaurant Branding (Logo)"
           value={restaurant.logo_url || ""}
           isUploading={isUploading}
           aspect="square"
+          // UPDATED: Removed restaurant.logo_url from arguments
           onFileSelect={(file) => onFileSelect(
             file, 
             'logo', 
-            restaurant.logo_url || "", 
             restaurant.name || "restaurant", 
             (url) => update({ logo_url: url })
           )}
+          // UPDATED: Removed restaurant.logo_url from arguments
           onUrlChange={(newUrl) => onUrlChange(
             newUrl,
-            restaurant.logo_url || "",
             (url) => update({ logo_url: url })
           )}
         />

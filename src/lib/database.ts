@@ -8,7 +8,7 @@ import {
 import { logger } from "./logger";
 
 // -----------------------------------------------------------------------------
-// FETCH HELPERS (Supabase Primary, localStorage Cache)
+// FETCH HELPERS
 // -----------------------------------------------------------------------------
 
 export async function fetchFullMenu(restaurantId: string): Promise<{ categories: Category[]; items: MenuItem[] }> {
@@ -90,7 +90,7 @@ export async function fetchAdminUsage(restaurantId: string): Promise<any> {
 }
 
 // -----------------------------------------------------------------------------
-// SAVE HELPERS
+// INDIVIDUAL SAVE HELPERS
 // -----------------------------------------------------------------------------
 
 export async function saveCategories(cats: Category[]): Promise<void> {
@@ -127,7 +127,7 @@ export async function saveRestaurant(info: RestaurantInfo): Promise<void> {
 }
 
 // -----------------------------------------------------------------------------
-// DELETE HELPERS
+// STANDALONE DELETE HELPERS (Restored from Old Code)
 // -----------------------------------------------------------------------------
 
 export async function deleteCategory(id: string): Promise<void> {
@@ -143,46 +143,7 @@ export async function deleteMenuItem(id: string): Promise<void> {
 }
 
 // -----------------------------------------------------------------------------
-// STORAGE HELPERS
-// -----------------------------------------------------------------------------
-
-// Add this helper at the top or within the file
-const getInternalPath = (url: string | null | undefined): string | null => {
-  if (!url) {
-    logger.db("CLEANUP", "Skipping: URL is null or undefined");
-    return null;
-  }
-
-  // Check if it belongs to your bucket
-  if (!url.includes('restaurant-assets')) {
-    logger.db("CLEANUP", `Skipping: URL does not contain 'restaurant-assets'. URL: ${url}`);
-    return null;
-  }
-
-  try {
-    const parts = url.split('restaurant-assets/');
-    
-    if (parts.length < 2) {
-      logger.error("CLEANUP", `Failed to split URL. Separator 'restaurant-assets/' not found correctly in: ${url}`);
-      return null;
-    }
-
-    // parts[1] is the path after the bucket name
-    const rawPath = parts[1].split('?')[0]; // Remove ?t=123123 params
-    const cleanPath = decodeURIComponent(rawPath);
-    
-    logger.db("CLEANUP", `Extracted Internal Path: ${cleanPath}`);
-    return cleanPath;
-  } catch (err) {
-    logger.error("CLEANUP", "Path extraction crashed", err);
-    return null;
-  }
-};
-
-// ... (fetch helpers remain the same)
-
-// -----------------------------------------------------------------------------
-// BATCH SAVE (Updated for Cleanup Queue)
+// BATCH SAVE (Sequential Flow)
 // -----------------------------------------------------------------------------
 
 export async function saveAllChanges(
@@ -190,78 +151,58 @@ export async function saveAllChanges(
   items: MenuItem[],
   restaurant: RestaurantInfo,
   deletedCategoryIds: string[] = [],
-  deletedItemIds: string[] = [],
-  pendingDeleteUrls: string[] = [] // Ensure this is the 6th argument
+  deletedItemIds: string[] = []
 ): Promise<boolean> {
   logger.db("BATCH SAVE", "--- STARTING SEQUENTIAL SAVE ---", { 
     items: items.length, 
-    deletes: deletedItemIds.length, 
-    cleanupCount: pendingDeleteUrls.length 
+    deletes: deletedItemIds.length 
   });
 
-  // LOG 1: Verify data arrival
-  console.log("📥 DB RECEIVING CLEANUP QUEUE:", pendingDeleteUrls);
-
   try {
-    // 1. SANITIZE
     const activeCategories = categories.filter(c => !deletedCategoryIds.includes(c.id));
     const activeItems = items.filter(i => !deletedItemIds.includes(i.id));
 
-    // 2. PREPARE CLEANUP PATHS
-    const internalPaths = [...new Set(pendingDeleteUrls)]
-      .map(url => {
-        const path = getInternalPath(url);
-        // LOG 2: Verify Path Extraction
-        console.log("🛠️ PATH EXTRACTOR CALLED FOR:", url, "RESULT:", path);
-        return path;
-      })
-      .filter((path): path is string => !!path);
-
-    // 3. EXECUTE DELETIONS
+    // 1. Execute Deletions
     if (deletedItemIds.length > 0) {
       const { error } = await supabase.from("menu_items").delete().in("id", deletedItemIds);
-      if (error) throw new Error(`Items delete failed: ${error.message}`);
+      if (error) {
+        logger.error("Batch delete items failed:", error.message, error);
+        throw error;
+      }
     }
     
     if (deletedCategoryIds.length > 0) {
       const { error } = await supabase.from("categories").delete().in("id", deletedCategoryIds);
-      if (error) throw new Error(`Categories delete failed: ${error.message}`);
+      if (error) {
+        logger.error("Batch delete categories failed:", error.message, error);
+        throw error;
+      }
     }
 
-    // 4. EXECUTE UPSERTS
+    // 2. Execute Upserts
     const { error: restError } = await supabase.from("restaurant").upsert(restaurant, { onConflict: 'id' });
-    if (restError) throw new Error(`Restaurant upsert failed: ${restError.message}`);
+    if (restError) {
+        logger.error("Batch upsert restaurant failed:", restError.message, restError);
+        throw restError;
+    }
 
     if (activeCategories.length > 0) {
       const { error: catError } = await supabase.from("categories").upsert(activeCategories, { onConflict: 'id' });
-      if (catError) throw new Error(`Categories upsert failed: ${catError.message}`);
+      if (catError) {
+          logger.error("Batch upsert categories failed:", catError.message, catError);
+          throw catError;
+      }
     }
 
     if (activeItems.length > 0) {
       const { error: itemError } = await supabase.from("menu_items").upsert(activeItems, { onConflict: 'id' });
-      if (itemError) throw new Error(`Items upsert failed: ${itemError.message}`);
-    }
-
-    // 5. QUEUE STORAGE CLEANUP
-    if (internalPaths.length > 0) {
-      console.log("📝 INSERTING INTO QUEUE TABLE:", internalPaths);
-      const { error: qError } = await supabase
-        .from("storage_cleanup_queue")
-        .insert(
-          internalPaths.map(path => ({
-            file_path: path,
-            restaurant_id: restaurant.id
-          }))
-        );
-      
-      if (qError) {
-        console.error("❌ Cleanup Queue DB Error", qError.message);
-      } else {
-        console.log("✅ Successfully queued for cleanup");
+      if (itemError) {
+          logger.error("Batch upsert items failed:", itemError.message, itemError);
+          throw itemError;
       }
     }
 
-    logger.db("BATCH SAVE", "--- SUCCESS: ALL DATA PERSISTED ---");
+    logger.db("BATCH SAVE", "--- SUCCESS: ALL DATA PERSISTED ---", "success");
     return true;
 
   } catch (err: any) {

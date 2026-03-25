@@ -11,6 +11,7 @@ import {
   isAuthenticated,
 } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
+import { logger } from "@/lib/logger";
 
 export function useMenuData() {
   // --- State ---
@@ -25,178 +26,169 @@ export function useMenuData() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // --- Analytics Logic ---
-
-  /**
-   * PRODUCTION DOORBELL LOGIC
-   * Logs a customer view via Supabase RPC if the user is not an admin.
-   */
+  // --- Analytics Logic (The Doorbell) ---
   useEffect(() => {
     const ringDoorbell = async () => {
       const restId = restaurant?.id;
-      const sessionKey = `doorbell_rung_${restId}`;
+      if (!restId) return;
 
-      // Skip if Admin or if already rung in this session
-      if (authed) {
-        if (import.meta.env.DEV) console.log("Admin detected: Skipping view count.");
+      const sessionKey = `doorbell_rung_${restId}`;
+      if (sessionStorage.getItem(sessionKey)) {
+        logger.info("Doorbell already rung for this session. Skipping.");
         return;
       }
 
-      if (!restId || sessionStorage.getItem(sessionKey)) return;
+      const isAuthed = await isAuthenticated();
+      if (isAuthed) {
+        logger.auth("Admin detected during page load. Blocking view count.");
+        sessionStorage.setItem(sessionKey, "true");
+        setAuthed(true);
+        return;
+      }
 
+      logger.info("Ringing doorbell for customer visit...");
       const { error: rpcError } = await supabase.rpc("log_customer_view", {
         target_rest_id: restId,
       });
 
       if (rpcError) {
-        if (import.meta.env.DEV) console.error("Doorbell Error:", rpcError);
-        return;
+        logger.error("Failed to ring doorbell:", rpcError.message);
+      } else {
+        sessionStorage.setItem(sessionKey, "true");
+        logger.info("Doorbell rung successfully.");
       }
-
-      sessionStorage.setItem(sessionKey, "true");
     };
 
     ringDoorbell();
-  }, [restaurant?.id, authed]);
+  }, [restaurant?.id]);
 
   // --- Auth Management ---
-
   useEffect(() => {
-    isAuthenticated().then(setAuthed);
+    isAuthenticated().then((status) => {
+      setAuthed(status);
+      logger.auth("Initial session check", { authenticated: status });
+    });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setAuthed(!!session);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      const isNowAuthed = !!session;
+      setAuthed(isNowAuthed);
+      logger.auth(`Auth state changed: ${event}`, { authenticated: isNowAuthed });
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
   // --- Data Loading ---
-
-  /**
-   * INITIAL LOAD
-   * Fetches restaurant info first, then uses the ID to fetch the full menu.
-   */
   useEffect(() => {
-  let cancelled = false;
+    let cancelled = false;
 
-  async function load() {
-    setLoading(true);
-    setError(null);
-    try {
-      // Step 1: Get the Restaurant Info first (Fast)
-      const rest = await fetchRestaurant();
-      
-      // Step 2: Run Menu Fetch and Analytics at the SAME TIME
-      // This saves 1-2 seconds of network waiting
-      const { categories: cats, items: menuItems } = await fetchFullMenu(rest.id);
+    async function load() {
+      logger.info("Initializing menu data load...");
+      setLoading(true);
+      setError(null);
+      try {
+        const rest = await fetchRestaurant();
+        logger.db("FETCH", "restaurant", { id: rest.id });
 
-      if (!cancelled) {
-        setCategories([...cats].sort((a, b) => a.order_index - b.order_index));
-        setItems(menuItems);
-        setRestaurant(rest);
+        const { categories: cats, items: menuItems } = await fetchFullMenu(rest.id);
+        logger.db("FETCH", "full_menu", { categories: cats.length, items: menuItems.length });
+
+        if (!cancelled) {
+          setCategories([...cats].sort((a, b) => a.order_index - b.order_index));
+          setItems(menuItems);
+          setRestaurant(rest);
+        }
+      } catch (err: any) {
+        logger.error("Menu data load failed:", err.message);
+        if (!cancelled) setError(err?.message || "Failed to load menu data");
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-    } catch (err: any) {
-      if (!cancelled) setError(err?.message || "Failed to load menu data");
-    } finally {
-      if (!cancelled) setLoading(false);
     }
-  }
 
-  load();
-  return () => { cancelled = true; };
-}, []);
+    load();
+    return () => { cancelled = true; };
+  }, []);
 
   // --- Handlers ---
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    try {
-      const rest = await fetchRestaurant();
-      const { categories: cats, items: menuItems } = await fetchFullMenu(rest.id);
-
-      setCategories([...cats].sort((a, b) => a.order_index - b.order_index));
-      setItems(menuItems);
-      setRestaurant(rest);
-      setError(null);
-    } catch (err: any) {
-      setError(err?.message || "Failed to refresh");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const updateCategories = useCallback((cats: Category[]) => {
-    setCategories([...cats].sort((a, b) => a.order_index - b.order_index));
-  }, []);
-
-  const updateItems = useCallback((newItems: MenuItem[]) => {
-    setItems(newItems);
-  }, []);
-
-  const updateRestaurant = useCallback((info: RestaurantInfo) => {
-    setRestaurant(info);
-  }, []);
-
-  // Inside @/hooks/useMenuData.ts
-
-const saveAll = useCallback(
-  async (
-    cats: Category[],
-    menuItems: MenuItem[],
-    rest: RestaurantInfo,
-    deletedCatIds: string[] = [],
-    deletedItemIds: string[] = [],
-    pendingDeleteUrls: string[] = [] // <--- ADDED 6TH ARGUMENT
-  ) => {
-    // LOG: Verify the hook actually receives the URLs from the UI
-    console.log("⚓ useMenuData: Received cleanup URLs:", pendingDeleteUrls.length);
-
-    // Pass all 6 arguments to the database function
-    const success = await dbSaveAll(
-      cats, 
-      menuItems, 
-      rest, 
-      deletedCatIds, 
-      deletedItemIds, 
-      pendingDeleteUrls
-    );
-
-    if (success) {
-      setCategories([...cats].sort((a, b) => a.order_index - b.order_index));
-      setItems(menuItems);
-      setRestaurant(rest);
-    }
-    return success;
-  },
-  []
-);
-  
   const login = useCallback(async (email: string, password: string) => {
-    return await doLogin(email, password);
-  }, []);
+    logger.auth("Attempting login...", { email });
+    try {
+      const success = await doLogin(email, password);
+
+      if (success) {
+        logger.auth("Login successful.");
+        if (restaurant?.id) {
+          logger.info("Triggering Silent Eraser for Admin...");
+          supabase.rpc("undo_admin_scan", { target_rest_id: restaurant.id })
+            .then(() => logger.info("Silent Eraser complete."))
+            .catch(err => logger.error("Silent Eraser failed:", err));
+        }
+
+        setAuthed(true);
+        return true;
+      }
+      
+      logger.warn("Login failed: Invalid credentials.");
+      return false;
+    } catch (err) {
+      logger.error("Unexpected login error:", err);
+      return false;
+    }
+  }, [restaurant?.id]);
 
   const logout = useCallback(async () => {
+    logger.auth("Logging out...");
     await doLogout();
   }, []);
 
+  const saveAll = useCallback(
+    async (
+      cats: Category[],
+      menuItems: MenuItem[],
+      rest: RestaurantInfo,
+      deletedCatIds: string[] = [],
+      deletedItemIds: string[] = []
+    ) => {
+      logger.db("SAVE_ALL", "Batch sync started", {
+        updatedCats: cats.length,
+        updatedItems: menuItems.length,
+      });
+
+      const success = await dbSaveAll(cats, menuItems, rest, deletedCatIds, deletedItemIds);
+      
+      if (success) {
+        logger.info("Database sync successful. Updating local state.");
+        setCategories([...cats].sort((a, b) => a.order_index - b.order_index));
+        setItems(menuItems);
+        setRestaurant(rest);
+      } else {
+        logger.error("Database sync failed.");
+      }
+      return success;
+    }, []
+  );
+
   return {
-    // State
     categories,
     items,
     restaurant,
     authed,
     loading,
     error,
-    // Methods
     login,
     logout,
-    updateCategories,
-    updateItems,
-    updateRestaurant,
+    updateCategories: (cats: Category[]) => {
+      logger.info("Updating local categories order.");
+      setCategories([...cats].sort((a, b) => a.order_index - b.order_index));
+    },
+    updateItems: setItems,
+    updateRestaurant: setRestaurant,
     saveAll,
-    refresh,
+    refresh: () => {
+      logger.info("Manual refresh triggered.");
+      window.location.reload();
+    },
   };
 }
