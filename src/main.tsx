@@ -1,13 +1,19 @@
+// src/main.tsx
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 
-// VConsole for development debugging only
-if (import.meta.env.DEV) {
+// SIMPLE TOGGLE: Set to true to see the vConsole button on your phone
+const SHOW_DEBUG = true;
+
+if (SHOW_DEBUG) {
   import("vconsole").then(({ default: VConsole }) => {
     new VConsole({ theme: "dark" });
-    console.log("[🛠️ DEV] VConsole enabled — use tabs below to inspect logs, network, storage");
+    console.log("[🛠️] vConsole is ON");
   });
 }
 
-createRoot(document.getElementById("root")!).render(<App />);
+const rootElement = document.getElementById("root");
+if (rootElement) {
+  createRoot(rootElement).render(<App />);
+}
