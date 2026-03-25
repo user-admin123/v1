@@ -55,6 +55,7 @@ export async function fetchFullMenu(restaurantId: string): Promise<{ categories:
 export async function fetchRestaurant(): Promise<RestaurantInfo> {
   logger.db("SELECT", "restaurant", "fetching single info");
 
+  // Explicitly selecting only columns that exist in the table
   const { data, error } = await supabase
     .from("restaurant")
     .select("id, name, tagline, logo_url, show_veg_filter, show_sold_out, show_search, show_qr_logo")
@@ -96,7 +97,16 @@ export async function fetchAdminUsage(restaurantId: string): Promise<any> {
 export async function saveCategories(cats: Category[]): Promise<void> {
   logger.db("UPSERT", "categories", `saving ${cats.length} rows`);
   saveLocalCategories(cats);
-  const { error } = await supabase.from("categories").upsert(cats, { onConflict: "id" });
+  
+  // Strip out any UI-only fields if they exist
+  const cleanCats = cats.map(cat => ({
+    id: cat.id,
+    name: cat.name,
+    order_index: cat.order_index,
+    restaurant_id: cat.restaurant_id
+  }));
+
+  const { error } = await supabase.from("categories").upsert(cleanCats, { onConflict: "id" });
   if (error) {
     logger.error("saveCategories failed:", error.message, error);
     throw error;
@@ -107,7 +117,21 @@ export async function saveCategories(cats: Category[]): Promise<void> {
 export async function saveMenuItems(items: MenuItem[]): Promise<void> {
   logger.db("UPSERT", "menu_items", `saving ${items.length} rows`);
   saveLocalItems(items);
-  const { error } = await supabase.from("menu_items").upsert(items, { onConflict: "id" });
+
+  // Strip out any non-DB fields (like calculated quantities)
+  const cleanItems = items.map(item => ({
+    id: item.id,
+    name: item.name,
+    description: item.description,
+    price: item.price,
+    available: item.available,
+    image_url: item.image_url,
+    category_id: item.category_id,
+    restaurant_id: item.restaurant_id,
+    item_type: item.item_type
+  }));
+
+  const { error } = await supabase.from("menu_items").upsert(cleanItems, { onConflict: "id" });
   if (error) {
     logger.error("saveMenuItems failed:", error.message, error);
     throw error;
@@ -116,9 +140,23 @@ export async function saveMenuItems(items: MenuItem[]): Promise<void> {
 }
 
 export async function saveRestaurant(info: RestaurantInfo): Promise<void> {
-  logger.db("UPSERT", "restaurant", info);
+  logger.db("UPSERT", "restaurant", "Cleaning payload for save...");
+  
+  // CRITICAL: Filter out any fields not in the restaurant table
+  const cleanInfo = {
+    id: info.id,
+    name: info.name,
+    tagline: info.tagline || "",
+    logo_url: info.logo_url || "",
+    show_veg_filter: info.show_veg_filter ?? false,
+    show_sold_out: info.show_sold_out ?? true,
+    show_search: info.show_search ?? false,
+    show_qr_logo: info.show_qr_logo ?? false
+  };
+
   saveLocalRestaurant(info);
-  const { error } = await supabase.from("restaurant").upsert(info);
+  const { error } = await supabase.from("restaurant").upsert(cleanInfo, { onConflict: 'id' });
+  
   if (error) {
     logger.error("saveRestaurant failed:", error.message, error);
     throw error;
@@ -127,7 +165,7 @@ export async function saveRestaurant(info: RestaurantInfo): Promise<void> {
 }
 
 // -----------------------------------------------------------------------------
-// STANDALONE DELETE HELPERS (Restored from Old Code)
+// STANDALONE DELETE HELPERS
 // -----------------------------------------------------------------------------
 
 export async function deleteCategory(id: string): Promise<void> {
@@ -165,41 +203,56 @@ export async function saveAllChanges(
     // 1. Execute Deletions
     if (deletedItemIds.length > 0) {
       const { error } = await supabase.from("menu_items").delete().in("id", deletedItemIds);
-      if (error) {
-        logger.error("Batch delete items failed:", error.message, error);
-        throw error;
-      }
+      if (error) throw error;
     }
     
     if (deletedCategoryIds.length > 0) {
       const { error } = await supabase.from("categories").delete().in("id", deletedCategoryIds);
-      if (error) {
-        logger.error("Batch delete categories failed:", error.message, error);
-        throw error;
-      }
+      if (error) throw error;
     }
 
-    // 2. Execute Upserts
-    const { error: restError } = await supabase.from("restaurant").upsert(restaurant, { onConflict: 'id' });
-    if (restError) {
-        logger.error("Batch upsert restaurant failed:", restError.message, restError);
-        throw restError;
-    }
+    // 2. Execute Upsert: Restaurant (CLEAN PAYLOAD)
+    const cleanRestaurant = {
+      id: restaurant.id,
+      name: restaurant.name,
+      tagline: restaurant.tagline || "",
+      logo_url: restaurant.logo_url || "",
+      show_veg_filter: restaurant.show_veg_filter ?? false,
+      show_sold_out: restaurant.show_sold_out ?? true,
+      show_search: restaurant.show_search ?? false,
+      show_qr_logo: restaurant.show_qr_logo ?? false
+    };
 
+    const { error: restError } = await supabase.from("restaurant").upsert(cleanRestaurant, { onConflict: 'id' });
+    if (restError) throw restError;
+
+    // 3. Execute Upsert: Categories
     if (activeCategories.length > 0) {
-      const { error: catError } = await supabase.from("categories").upsert(activeCategories, { onConflict: 'id' });
-      if (catError) {
-          logger.error("Batch upsert categories failed:", catError.message, catError);
-          throw catError;
-      }
+      const cleanCats = activeCategories.map(c => ({
+        id: c.id,
+        name: c.name,
+        order_index: c.order_index,
+        restaurant_id: c.restaurant_id
+      }));
+      const { error: catError } = await supabase.from("categories").upsert(cleanCats, { onConflict: 'id' });
+      if (catError) throw catError;
     }
 
+    // 4. Execute Upsert: Items
     if (activeItems.length > 0) {
-      const { error: itemError } = await supabase.from("menu_items").upsert(activeItems, { onConflict: 'id' });
-      if (itemError) {
-          logger.error("Batch upsert items failed:", itemError.message, itemError);
-          throw itemError;
-      }
+      const cleanItems = activeItems.map(i => ({
+        id: i.id,
+        name: i.name,
+        description: i.description,
+        price: i.price,
+        available: i.available,
+        image_url: i.image_url,
+        category_id: i.category_id,
+        restaurant_id: i.restaurant_id,
+        item_type: i.item_type
+      }));
+      const { error: itemError } = await supabase.from("menu_items").upsert(cleanItems, { onConflict: 'id' });
+      if (itemError) throw itemError;
     }
 
     logger.db("BATCH SAVE", "--- SUCCESS: ALL DATA PERSISTED ---", "success");
