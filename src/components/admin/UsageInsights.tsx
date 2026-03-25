@@ -40,14 +40,23 @@ const UsageInsights = ({ restaurantId }: Props) => {
   // Original Limits & Logic
   const dbLimit = 512; 
   const bucketLimit = 1024; 
-  const dbUsed = usage?.storage_db_mb || 0;
-  const bucketUsed = usage?.storage_bucket_mb || 0;
+  const dbUsed = Number(usage?.storage_db_mb ?? 0.01);
+  const bucketUsed = Number(usage?.storage_bucket_mb ?? 0);
   const dbPct = Math.min((dbUsed / dbLimit) * 100, 100);
   const bucketPct = Math.min((bucketUsed / bucketLimit) * 100, 100);
 
   const weeklyData = usage?.last_7_days_chart || {};
-  const counts = Object.values(weeklyData).map(Number);
-  const maxCount = Math.max(...counts, 10);
+const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+// This ensures your bars always go from [6 Days Ago] -> [Today]
+const counts = Array.from({ length: 7 }).map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    const label = dayNames[d.getDay()];
+    return Number(weeklyData[label] || 0);
+});
+
+const maxCount = Math.max(...counts, 10);
   const showWarning = dbPct > 90 || bucketPct > 90;
 
   return (
