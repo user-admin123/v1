@@ -124,7 +124,7 @@ const UsageInsights = ({ restaurantId }: Props) => {
                <span className={cn("text-xs font-bold tabular-nums", bucketPct > 90 ? "text-destructive" : "text-primary")}>{bucketPct.toFixed(1)}%</span>
             </div>
           </div>
-          <p className="text-[10px] text-muted-foreground mb-3 px-0.5 font-medium italic">Used by your item photos, logo, and banners.</p>
+          <p className="text-[10px] text-muted-foreground mb-3 px-0.5 font-medium italic">Used by your item photos and logo.</p>
           <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
             <div className={cn("h-full transition-all duration-1000", bucketPct > 90 ? "bg-destructive" : "bg-primary")} style={{ width: `${bucketPct}%` }} />
           </div>
