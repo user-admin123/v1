@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"; // Added useEffect for state reset
+import { useState, useEffect } from "react"; 
 import { MenuItem } from "@/lib/types";
 import {
   Drawer,
@@ -10,7 +10,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import VegBadge from "@/components/VegBadge";
 import { formatDescription } from "@/lib/formatDescription";
-import { ImageOff } from "lucide-react";
 
 interface Props {
   item: MenuItem | null;
@@ -20,8 +19,7 @@ interface Props {
 const ItemDetailDrawer = ({ item, onClose }: Props) => {
   const [imgError, setImgError] = useState(false);
 
-  // RESET LOGIC: This ensures that when you switch from a broken image 
-  // to a working one, the "Image not available" state is cleared.
+  // Reset error state when switching items
   useEffect(() => {
     setImgError(false);
   }, [item?.id]);
@@ -31,27 +29,25 @@ const ItemDetailDrawer = ({ item, onClose }: Props) => {
   return (
     <Drawer open={!!item} onOpenChange={(open) => !open && onClose()}>
       <DrawerContent className="glass-card border-t border-border/30 max-h-[85vh]">
-        {/* Image Section */}
-        {item.image_url && !imgError ? (
+        
+        {/* IMPROVED IMAGE LOGIC: 
+            Only show this div if there is a URL AND the image hasn't failed.
+            If the link is broken (imgError), the entire <div> vanishes,
+            matching the "no image" flow perfectly. */}
+        {item.image_url && !imgError && (
           <div className="w-full h-56 md:h-72 overflow-hidden">
             <img
               src={item.image_url}
               alt={item.name}
               className="w-full h-full object-cover"
-              onError={() => setImgError(true)}
+              onError={() => setImgError(true)} 
             />
           </div>
-        ) : item.image_url && imgError ? (
-          <div className="w-full h-40 flex flex-col items-center justify-center bg-muted/30 border-b border-border/50 text-muted-foreground">
-            <ImageOff className="w-8 h-8 mb-2 opacity-20" />
-            <span className="text-xs font-medium opacity-40">Image not available</span>
-          </div>
-        ) : null}
+        )}
 
         {/* Content Section */}
         <div className="overflow-y-auto max-h-[50vh] overscroll-contain">
           <DrawerHeader className="px-6 pt-5 pb-6 text-left">
-            {/* Accessibility Fix: Hidden description for Radix compliance */}
             {!item.description && (
               <DrawerDescription className="sr-only">
                 Details and pricing for {item.name}
@@ -80,7 +76,6 @@ const ItemDetailDrawer = ({ item, onClose }: Props) => {
               ${item.price.toFixed(2)}
             </p>
 
-            {/* Visible Description (if it exists) */}
             {item.description && (
               <DrawerDescription asChild>
                 <div className="mt-3">
