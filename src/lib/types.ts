@@ -3,7 +3,6 @@ export interface Category {
   name: string;
   order_index: number;
   restaurant_id: string; 
-  created_at: string;
 }
 
 export type ItemType = "veg" | "nonveg";
@@ -18,8 +17,6 @@ export interface MenuItem {
   category_id: string;
   restaurant_id: string; 
   item_type: ItemType;
-  created_at: string;
-  updated_at: string;
 }
 
 export interface RestaurantInfo {
