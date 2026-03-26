@@ -14,6 +14,10 @@ const UsageInsights = ({ restaurantId }: Props) => {
   const [loading, setLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
+  // --- TESTING MODE ---
+  // Change to 'true' to see how the warning looks. Change to 'false' for production.
+  const isTestingWarning = false; 
+
   useEffect(() => {
     async function loadStats() {
       try {
@@ -30,6 +34,24 @@ const UsageInsights = ({ restaurantId }: Props) => {
     if (restaurantId) loadStats();
   }, [restaurantId]);
 
+  // Helper: Converts UTC from DB to Owner's local Australian time automatically
+  const formatLastUpdated = (dateString: string) => {
+    if (!dateString) return "Syncing...";
+    try {
+      const date = new Date(dateString);
+      // 'en-AU' automatically handles AM/PM and Aussie date format
+      return date.toLocaleString('en-AU', { 
+        day: 'numeric', 
+        month: 'short', 
+        hour: 'numeric', 
+        minute: '2-digit', 
+        hour12: true 
+      });
+    } catch (e) {
+      return "Recently";
+    }
+  };
+
   if (loading) return (
     <div className="flex flex-col items-center justify-center py-20 bg-muted/5 rounded-xl border border-dashed border-border/40">
       <Loader2 className="w-6 h-6 animate-spin text-primary/40" />
@@ -37,23 +59,20 @@ const UsageInsights = ({ restaurantId }: Props) => {
     </div>
   );
 
-  // --- UPDATED MAPPING FOR NEW SQL SCHEMA ---
   const dbLimit = 512; 
   const bucketLimit = 1024; 
   
-  // Maps to your raw response keys: "db_mb" and "media_mb"
   const dbUsed = Number(usage?.db_mb ?? 0.01);
   const bucketUsed = Number(usage?.media_mb ?? 0);
   
   const dbPct = Math.min((dbUsed / dbLimit) * 100, 100);
   const bucketPct = Math.min((bucketUsed / bucketLimit) * 100, 100);
 
-  // Maps to your raw response key: "weekly_chart"
   const weeklyData = usage?.weekly_chart || {};
   const counts = Object.values(weeklyData).map(v => Number(v || 0));
   const maxCount = Math.max(...counts, 10);
   
-  const showWarning = dbPct > 90 || bucketPct > 90;
+  const showWarning = isTestingWarning || dbPct > 90 || bucketPct > 90;
 
   return (
     <div className="space-y-6 mt-2 pb-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -63,7 +82,7 @@ const UsageInsights = ({ restaurantId }: Props) => {
         <div className="mx-1 flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg animate-pulse">
           <AlertTriangle className="w-4 h-4 text-destructive" />
           <p className="text-[10px] font-bold text-destructive uppercase tracking-tight">
-            Storage almost full. Try removing old menu photos.
+            Storage is almost full. Try removing old menu photos.
           </p>
         </div>
       )}
@@ -75,7 +94,7 @@ const UsageInsights = ({ restaurantId }: Props) => {
             <Label className="text-sm font-bold flex items-center gap-2 text-foreground">
               <Zap className="w-4 h-4 text-amber-500 fill-amber-500" /> Customer Reach
             </Label>
-            <p className="text-[10px] text-muted-foreground font-medium">How many people viewed your menu this week.</p>
+            <p className="text-[10px] text-muted-foreground font-medium">Menu views over the past 7 days, including today.</p>
           </div>
           <div className="flex items-center gap-1 px-2 py-0.5 bg-secondary/50 rounded-md border border-border/40">
              <span className="relative flex h-1.5 w-1.5">
@@ -92,7 +111,6 @@ const UsageInsights = ({ restaurantId }: Props) => {
             const date = new Date();
             date.setDate(date.getDate() - (6 - i));
             
-            // Matches SQL formatting: 'Dy' (Sun, Mon, Tue...)
             const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             const dayLabel = days[date.getDay()]; 
             const count = Number(weeklyData[dayLabel] || 0);
@@ -129,53 +147,55 @@ const UsageInsights = ({ restaurantId }: Props) => {
 
       {/* 3. Resource Metrics */}
       <div className="space-y-4">
-        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">Cloud Resources</Label>
+        <div className="px-1 flex justify-between items-center">
+          <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Cloud Resources</Label>
+          
+          {/* Unified Timestamp: Placed here for a modern, clean look */}
+          <div className="flex items-center gap-1.5 text-muted-foreground/50">
+            <RefreshCcw className="w-2.5 h-2.5" />
+            <span className="text-[9px] font-bold uppercase tabular-nums">
+              Updated: {formatLastUpdated(usage?.updated_at)}
+            </span>
+          </div>
+        </div>
         
-        {/* Photo & Media Storage */}
+        {/* Gallery Storage Card */}
         <div className="group relative p-4 bg-muted/20 rounded-xl border border-border/40 transition-colors hover:bg-muted/30">
           <div className="absolute bottom-full left-0 mb-2 w-full max-w-[240px] scale-0 group-hover:scale-100 transition-all z-30 bg-slate-900 text-white p-3 rounded-lg text-[10px] border border-white/10 shadow-2xl pointer-events-none">
-              <p className="font-bold text-amber-400 mb-1 uppercase flex items-center gap-1"><Sparkles className="w-3 h-3" /> Optimizer Pro-Tip</p>
-              <p className="opacity-90 leading-relaxed font-medium">To free up space, delete old items or seasonal menu categories. Our system cleans up unused photos automatically every night.</p>
+              <p className="font-bold text-amber-400 mb-1 uppercase flex items-center gap-1"><Sparkles className="w-3 h-3" /> System Info</p>
+              <p className="opacity-90 leading-relaxed font-medium">Images are automatically optimized for fast loading. When an item is deleted, the auto-cleaner removes the file at midnight.</p>
           </div>
 
           <div className="flex justify-between items-center mb-1">
-            <span className="text-xs font-bold flex items-center gap-2"><Image className="w-4 h-4 text-primary" /> Photos & Media</span>
-            <div className="flex items-center gap-2">
-               <div className="flex items-center gap-1 px-1.5 py-0.5 bg-primary/5 border border-primary/10 rounded text-[8px] font-bold text-primary/60 uppercase"><RefreshCcw className="w-2.5 h-2.5" /> Updates Midnight</div>
-               <span className={cn("text-xs font-bold tabular-nums", bucketPct > 90 ? "text-destructive" : "text-primary")}>{bucketPct.toFixed(1)}%</span>
-            </div>
+            <span className="text-xs font-bold flex items-center gap-2"><Image className="w-4 h-4 text-primary" /> Gallery Storage</span>
+            <span className={cn("text-xs font-bold tabular-nums", bucketPct > 90 ? "text-destructive" : "text-primary")}>{bucketPct.toFixed(1)}%</span>
           </div>
-          <p className="text-[10px] text-muted-foreground mb-3 px-0.5 font-medium italic">Used by your item photos and logo.</p>
+          <p className="text-[10px] text-muted-foreground mb-3 px-0.5 font-medium italic">Space used by menu images and restaurant branding.</p>
           <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
             <div className={cn("h-full transition-all duration-1000", bucketPct > 90 ? "bg-destructive" : "bg-primary")} style={{ width: `${bucketPct}%` }} />
           </div>
           <div className="flex justify-between items-center mt-2">
-            <p className="text-[9px] font-bold text-muted-foreground/70 tabular-nums uppercase tracking-tighter">{bucketUsed.toFixed(1)} MB / 1,024 MB</p>
-            <span className="text-[8px] text-muted-foreground/50 italic flex items-center gap-1"><Info className="w-2.5 h-2.5" /> Max 1GB Plan</span>
+            <p className="text-[9px] font-bold text-muted-foreground/70 uppercase tracking-tighter tabular-nums">{bucketUsed.toFixed(1)} MB / 1,024 MB</p>
           </div>
         </div>
 
-        {/* Menu Data Storage */}
+        {/* Menu Details Card */}
         <div className="group relative p-4 bg-muted/20 rounded-xl border border-border/40 transition-colors hover:bg-muted/30">
           <div className="absolute bottom-full left-0 mb-2 w-full max-w-[240px] scale-0 group-hover:scale-100 transition-all z-30 bg-slate-900 text-white p-3 rounded-lg text-[10px] border border-white/10 shadow-2xl pointer-events-none">
               <p className="font-bold text-blue-400 mb-1 uppercase flex items-center gap-1"><Lightbulb className="w-3 h-3" /> Data Info</p>
-              <p className="opacity-90 leading-relaxed font-medium">This stores your prices and descriptions. Text is very small—you likely won't ever need to worry about this limit.</p>
+              <p className="opacity-90 leading-relaxed font-medium">Text is incredibly lightweight. Add items and descriptions without worrying about storage limits.</p>
           </div>
 
           <div className="flex justify-between items-center mb-1">
-            <span className="text-xs font-bold flex items-center gap-2"><Database className="w-4 h-4 text-blue-500" /> Menu Content</span>
-            <div className="flex items-center gap-2">
-               <div className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-500/5 border border-blue-500/10 rounded text-[8px] font-bold text-blue-500/60 uppercase"><RefreshCcw className="w-2.5 h-2.5" /> Updates Midnight</div>
-               <span className="text-xs font-bold text-blue-500 tabular-nums">{dbPct.toFixed(1)}%</span>
-            </div>
+            <span className="text-xs font-bold flex items-center gap-2"><Database className="w-4 h-4 text-blue-500" /> Menu Details</span>
+            <span className="text-xs font-bold text-blue-500 tabular-nums">{dbPct.toFixed(1)}%</span>
           </div>
-          <p className="text-[10px] text-muted-foreground mb-3 px-0.5 font-medium italic">Used by your menu text, prices, and settings.</p>
+          <p className="text-[10px] text-muted-foreground mb-3 px-0.5 font-medium italic">Space used by prices, descriptions, and categories.</p>
           <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
             <div className="bg-blue-500 h-full transition-all duration-1000" style={{ width: `${dbPct}%` }} />
           </div>
           <div className="flex justify-between items-center mt-2">
-            <p className="text-[9px] font-bold text-muted-foreground/70 tabular-nums uppercase tracking-tighter">{dbUsed.toFixed(1)} MB / 512 MB</p>
-            <span className="text-[8px] text-muted-foreground/50 italic flex items-center gap-1"><Info className="w-2.5 h-2.5" /> Max 0.5GB Plan</span>
+            <p className="text-[9px] font-bold text-muted-foreground/70 uppercase tracking-tighter tabular-nums">{dbUsed.toFixed(1)} MB / 512 MB</p>
           </div>
         </div>
       </div>
