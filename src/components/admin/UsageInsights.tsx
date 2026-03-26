@@ -155,7 +155,7 @@ const UsageInsights = ({ restaurantId }: Props) => {
           </div>
           <div className="flex justify-between items-center mt-2.5">
             <p className="text-[9px] font-bold text-muted-foreground/70 uppercase tracking-tighter tabular-nums flex items-center gap-1.5">
-              <HardDrive className="w-2.5 h-2.5" /> {bucketUsed.toFixed(1)} MB / 1,024 MB
+              <HardDrive className="w-2.5 h-2.5 text-primary/50" /> {bucketUsed.toFixed(1)} MB / 1,024 MB
             </p>
             {/* Added Info Icon next to Allocation */}
             <div className="flex items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
