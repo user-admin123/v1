@@ -1,4 +1,4 @@
-import { useState } from "react"; // Added for image error handling
+import { useState, useEffect } from "react"; // Added useEffect for state reset
 import { MenuItem } from "@/lib/types";
 import {
   Drawer,
@@ -10,7 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import VegBadge from "@/components/VegBadge";
 import { formatDescription } from "@/lib/formatDescription";
-import { ImageOff } from "lucide-react"; // Added fallback icon
+import { ImageOff } from "lucide-react";
 
 interface Props {
   item: MenuItem | null;
@@ -18,7 +18,13 @@ interface Props {
 }
 
 const ItemDetailDrawer = ({ item, onClose }: Props) => {
-  const [imgError, setImgError] = useState(false); // Track broken links
+  const [imgError, setImgError] = useState(false);
+
+  // RESET LOGIC: This ensures that when you switch from a broken image 
+  // to a working one, the "Image not available" state is cleared.
+  useEffect(() => {
+    setImgError(false);
+  }, [item?.id]);
 
   if (!item) return null;
 
@@ -32,11 +38,10 @@ const ItemDetailDrawer = ({ item, onClose }: Props) => {
               src={item.image_url}
               alt={item.name}
               className="w-full h-full object-cover"
-              onError={() => setImgError(true)} // Handle broken link
+              onError={() => setImgError(true)}
             />
           </div>
         ) : item.image_url && imgError ? (
-          /* Fallback UI for broken links */
           <div className="w-full h-40 flex flex-col items-center justify-center bg-muted/30 border-b border-border/50 text-muted-foreground">
             <ImageOff className="w-8 h-8 mb-2 opacity-20" />
             <span className="text-xs font-medium opacity-40">Image not available</span>
