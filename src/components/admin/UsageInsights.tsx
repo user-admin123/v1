@@ -68,14 +68,13 @@ const UsageInsights = ({ restaurantId }: Props) => {
   const counts = Object.values(weeklyData).map(v => Number(v || 0));
   const maxCount = Math.max(...counts, 10);
 
-  // Set to true for testing UI, false for production
   const isTestingWarning = true; 
   const showWarning = isTestingWarning || dbPct > 90 || bucketPct > 90;
 
   return (
     <div className="space-y-6 mt-2 pb-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
       
-      {/* 1. Global Alert Header - Updated Copy */}
+      {/* 1. Global Alert Header */}
       {showWarning && (
         <div className="mx-1 flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg animate-pulse">
           <AlertTriangle className="w-4 h-4 text-destructive" />
@@ -159,8 +158,11 @@ const UsageInsights = ({ restaurantId }: Props) => {
             <p className="text-[9px] font-bold text-muted-foreground/70 uppercase tracking-tighter tabular-nums flex items-center gap-1.5">
               <HardDrive className="w-2.5 h-2.5" /> {bucketUsed.toFixed(1)} MB / 1,024 MB
             </p>
-            {/* Professional Label Change */}
-            <span className="text-[8px] text-muted-foreground/40 font-bold uppercase tracking-tight">Allocation: 1GB</span>
+            {/* Added Info Icon next to Allocation */}
+            <div className="flex items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
+               <Info className="w-2.5 h-2.5 text-muted-foreground" />
+               <span className="text-[8px] text-muted-foreground font-bold uppercase tracking-tight">Allocation: 1GB</span>
+            </div>
           </div>
         </div>
 
@@ -183,8 +185,11 @@ const UsageInsights = ({ restaurantId }: Props) => {
             <p className="text-[9px] font-bold text-muted-foreground/70 uppercase tracking-tighter tabular-nums flex items-center gap-1.5">
               <HardDrive className="w-2.5 h-2.5 text-blue-500/50" /> {dbUsed.toFixed(1)} MB / 512 MB
             </p>
-            {/* Professional Label Change */}
-            <span className="text-[8px] text-muted-foreground/40 font-bold uppercase tracking-tight">Allocation: 0.5GB</span>
+            {/* Added Info Icon next to Allocation */}
+            <div className="flex items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
+               <Info className="w-2.5 h-2.5 text-muted-foreground" />
+               <span className="text-[8px] text-muted-foreground font-bold uppercase tracking-tight">Allocation: 0.5GB</span>
+            </div>
           </div>
         </div>
       </div>
