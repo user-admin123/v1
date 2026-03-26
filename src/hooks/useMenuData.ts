@@ -48,7 +48,7 @@ export function useMenuData() {
 
       logger.info("Ringing doorbell for customer visit...");
       const { error: rpcError } = await supabase.rpc("log_customer_view", {
-        target_rest_id: restId,
+        target_id: restId,
       });
 
       if (rpcError) {
@@ -121,7 +121,7 @@ export function useMenuData() {
         logger.auth("Login successful.");
         if (restaurant?.id) {
           logger.info("Triggering Silent Eraser for Admin...");
-          supabase.rpc("undo_admin_scan", { target_rest_id: restaurant.id })
+          supabase.rpc("undo_admin_scan", { target_id: restaurant.id })
             .then(() => logger.info("Silent Eraser complete."))
             .catch(err => logger.error("Silent Eraser failed:", err));
         }
