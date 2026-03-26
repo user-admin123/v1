@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"; 
+import { useState, useEffect } from "react";
 import { MenuItem } from "@/lib/types";
 import {
   Drawer,
@@ -19,7 +19,6 @@ interface Props {
 const ItemDetailDrawer = ({ item, onClose }: Props) => {
   const [imgError, setImgError] = useState(false);
 
-  // Reset error state when switching items
   useEffect(() => {
     setImgError(false);
   }, [item?.id]);
@@ -29,24 +28,17 @@ const ItemDetailDrawer = ({ item, onClose }: Props) => {
   return (
     <Drawer open={!!item} onOpenChange={(open) => !open && onClose()}>
       <DrawerContent className="glass-card border-t border-border/30 max-h-[85vh]">
-        
-        {/* IMPROVED IMAGE LOGIC: 
-            Only show this div if there is a URL AND the image hasn't failed.
-            If the link is broken (imgError), the entire <div> vanishes,
-            matching the "no image" flow perfectly. */}
         {item.image_url && !imgError && (
-  <div className="w-full h-56 md:h-72 overflow-hidden bg-transparent"> 
-    <img
-      src={item.image_url}
-      alt={item.name}
-      className="w-full h-full object-cover"
-      style={{ display: imgError ? 'none' : 'block' }}
-      onError={() => setImgError(true)} 
-    />
-  </div>
-)}
+          <div className="w-full h-56 md:h-72 overflow-hidden bg-transparent">
+            <img
+              src={item.image_url}
+              alt={item.name}
+              className="w-full h-full object-cover"
+              onError={() => setImgError(true)}
+            />
+          </div>
+        )}
 
-        {/* Content Section */}
         <div className="overflow-y-auto max-h-[50vh] overscroll-contain">
           <DrawerHeader className="px-6 pt-5 pb-6 text-left">
             {!item.description && (
