@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
-import { Loader2, Database, Zap, Image, Info, Lightbulb, RefreshCcw, AlertTriangle, Sparkles } from "lucide-react";
+import { 
+  Loader2, Database, Zap, Image, Info, Lightbulb, 
+  RefreshCcw, AlertTriangle, Sparkles, Clock, HardDrive 
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fetchAdminUsage } from "@/lib/database";
 import { logger } from "@/lib/logger";
@@ -14,16 +17,12 @@ const UsageInsights = ({ restaurantId }: Props) => {
   const [loading, setLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
-  // --- TESTING MODE ---
-  // Change to 'true' to see how the warning looks. Change to 'false' for production.
-  const isTestingWarning = false; 
-
   useEffect(() => {
     async function loadStats() {
       try {
         setLoading(true);
         const data = await fetchAdminUsage(restaurantId);
-        logger.info("UsageInsights: ANALYSIS Raw Response", data);
+        logger.info("UsageInsights: Raw Response", data);
         setUsage(data);
       } catch (err: any) {
         logger.error("UsageInsights: Load failed", err.message || err);
@@ -34,13 +33,12 @@ const UsageInsights = ({ restaurantId }: Props) => {
     if (restaurantId) loadStats();
   }, [restaurantId]);
 
-  // Helper: Converts UTC from DB to Owner's local Australian time automatically
+  // Helper: Detects User's Local Timezone (India, AUS, etc.) automatically
   const formatLastUpdated = (dateString: string) => {
     if (!dateString) return "Syncing...";
     try {
       const date = new Date(dateString);
-      // 'en-AU' automatically handles AM/PM and Aussie date format
-      return date.toLocaleString('en-AU', { 
+      return date.toLocaleString(undefined, { 
         day: 'numeric', 
         month: 'short', 
         hour: 'numeric', 
@@ -48,7 +46,7 @@ const UsageInsights = ({ restaurantId }: Props) => {
         hour12: true 
       });
     } catch (e) {
-      return "Recently";
+      return "Updated Recently";
     }
   };
 
@@ -61,7 +59,6 @@ const UsageInsights = ({ restaurantId }: Props) => {
 
   const dbLimit = 512; 
   const bucketLimit = 1024; 
-  
   const dbUsed = Number(usage?.db_mb ?? 0.01);
   const bucketUsed = Number(usage?.media_mb ?? 0);
   
@@ -71,7 +68,8 @@ const UsageInsights = ({ restaurantId }: Props) => {
   const weeklyData = usage?.weekly_chart || {};
   const counts = Object.values(weeklyData).map(v => Number(v || 0));
   const maxCount = Math.max(...counts, 10);
-  
+
+  const isTestingWarning = true;
   const showWarning = isTestingWarning || dbPct > 90 || bucketPct > 90;
 
   return (
@@ -82,7 +80,7 @@ const UsageInsights = ({ restaurantId }: Props) => {
         <div className="mx-1 flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg animate-pulse">
           <AlertTriangle className="w-4 h-4 text-destructive" />
           <p className="text-[10px] font-bold text-destructive uppercase tracking-tight">
-            Storage is almost full. Try removing old menu photos.
+            Storage almost full. Try removing old menu photos.
           </p>
         </div>
       )}
@@ -101,7 +99,7 @@ const UsageInsights = ({ restaurantId }: Props) => {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span>
              </span>
-             <span className="text-[8px] font-bold text-muted-foreground uppercase">Live</span>
+             <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider">Live</span>
           </div>
         </div>
 
@@ -110,32 +108,19 @@ const UsageInsights = ({ restaurantId }: Props) => {
           {Array.from({ length: 7 }).map((_, i) => {
             const date = new Date();
             date.setDate(date.getDate() - (6 - i));
-            
             const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             const dayLabel = days[date.getDay()]; 
             const count = Number(weeklyData[dayLabel] || 0);
-            
             const isToday = i === 6;
             const isSelected = selectedDay === dayLabel;
-
             const barHeight = count > 0 ? Math.max((count / maxCount) * 100, 12) : 4;
 
             return (
               <div key={dayLabel} className="flex flex-col items-center gap-2 flex-1 h-full cursor-pointer group" onClick={() => setSelectedDay(isSelected ? null : dayLabel)}>
                 <div className="relative w-full flex-1 flex items-end justify-center">
-                  <div 
-                    className={cn(
-                        "w-full max-w-[16px] sm:max-w-[24px] transition-all duration-500 rounded-t-sm", 
-                        count > 0 ? "bg-primary/80" : "bg-muted-foreground/10", 
-                        isToday && count > 0 && "bg-primary", 
-                        isSelected && "bg-primary brightness-125 scale-x-110"
-                    )} 
-                    style={{ height: `${barHeight}%` }} 
-                  />
+                  <div className={cn("w-full max-w-[16px] sm:max-w-[24px] transition-all duration-500 rounded-t-sm", count > 0 ? "bg-primary/80" : "bg-muted-foreground/10", isToday && count > 0 && "bg-primary", isSelected && "bg-primary brightness-125 scale-x-110")} style={{ height: `${barHeight}%` }} />
                   <div className={cn("absolute -top-8 transition-all z-20 pointer-events-none", (isSelected || "group-hover:scale-100 scale-0"), isSelected && "scale-100")}>
-                    <div className="bg-slate-900 text-white text-[9px] font-bold px-2 py-1 rounded shadow-2xl">
-                        {count.toLocaleString()} views
-                    </div>
+                    <div className="bg-slate-900 text-white text-[9px] font-bold px-2 py-1 rounded shadow-2xl">{count.toLocaleString()} views</div>
                   </div>
                 </div>
                 <span className={cn("text-[9px] font-bold uppercase", isToday ? "text-primary" : "text-muted-foreground/40")}>{dayLabel}</span>
@@ -147,23 +132,20 @@ const UsageInsights = ({ restaurantId }: Props) => {
 
       {/* 3. Resource Metrics */}
       <div className="space-y-4">
+        {/* Modern Header for Section */}
         <div className="px-1 flex justify-between items-center">
           <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Cloud Resources</Label>
-          
-          {/* Unified Timestamp: Placed here for a modern, clean look */}
-          <div className="flex items-center gap-1.5 text-muted-foreground/50">
-            <RefreshCcw className="w-2.5 h-2.5" />
-            <span className="text-[9px] font-bold uppercase tabular-nums">
-              Updated: {formatLastUpdated(usage?.updated_at)}
-            </span>
+          <div className="flex items-center gap-1.5 text-muted-foreground/40 select-none">
+            <Clock className="w-2.5 h-2.5" />
+            <span className="text-[9px] font-bold uppercase tabular-nums">Updated: {formatLastUpdated(usage?.updated_at)}</span>
           </div>
         </div>
         
-        {/* Gallery Storage Card */}
+        {/* Gallery Storage */}
         <div className="group relative p-4 bg-muted/20 rounded-xl border border-border/40 transition-colors hover:bg-muted/30">
           <div className="absolute bottom-full left-0 mb-2 w-full max-w-[240px] scale-0 group-hover:scale-100 transition-all z-30 bg-slate-900 text-white p-3 rounded-lg text-[10px] border border-white/10 shadow-2xl pointer-events-none">
               <p className="font-bold text-amber-400 mb-1 uppercase flex items-center gap-1"><Sparkles className="w-3 h-3" /> System Info</p>
-              <p className="opacity-90 leading-relaxed font-medium">Images are automatically optimized for fast loading. When an item is deleted, the auto-cleaner removes the file at midnight.</p>
+              <p className="opacity-90 leading-relaxed font-medium">Images are optimized for fast loading. Files are cleared at midnight after item deletion.</p>
           </div>
 
           <div className="flex justify-between items-center mb-1">
@@ -174,16 +156,19 @@ const UsageInsights = ({ restaurantId }: Props) => {
           <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
             <div className={cn("h-full transition-all duration-1000", bucketPct > 90 ? "bg-destructive" : "bg-primary")} style={{ width: `${bucketPct}%` }} />
           </div>
-          <div className="flex justify-between items-center mt-2">
-            <p className="text-[9px] font-bold text-muted-foreground/70 uppercase tracking-tighter tabular-nums">{bucketUsed.toFixed(1)} MB / 1,024 MB</p>
+          <div className="flex justify-between items-center mt-2.5">
+            <p className="text-[9px] font-bold text-muted-foreground/70 uppercase tracking-tighter tabular-nums flex items-center gap-1.5">
+              <HardDrive className="w-2.5 h-2.5" /> {bucketUsed.toFixed(1)} MB / 1,024 MB
+            </p>
+            <span className="text-[8px] text-muted-foreground/40 font-bold uppercase tracking-tight">Max Capacity 1GB</span>
           </div>
         </div>
 
-        {/* Menu Details Card */}
+        {/* Menu Details */}
         <div className="group relative p-4 bg-muted/20 rounded-xl border border-border/40 transition-colors hover:bg-muted/30">
           <div className="absolute bottom-full left-0 mb-2 w-full max-w-[240px] scale-0 group-hover:scale-100 transition-all z-30 bg-slate-900 text-white p-3 rounded-lg text-[10px] border border-white/10 shadow-2xl pointer-events-none">
               <p className="font-bold text-blue-400 mb-1 uppercase flex items-center gap-1"><Lightbulb className="w-3 h-3" /> Data Info</p>
-              <p className="opacity-90 leading-relaxed font-medium">Text is incredibly lightweight. Add items and descriptions without worrying about storage limits.</p>
+              <p className="opacity-90 leading-relaxed font-medium">Text storage is incredibly efficient. You are unlikely to hit this limit even with thousands of items.</p>
           </div>
 
           <div className="flex justify-between items-center mb-1">
@@ -194,8 +179,11 @@ const UsageInsights = ({ restaurantId }: Props) => {
           <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
             <div className="bg-blue-500 h-full transition-all duration-1000" style={{ width: `${dbPct}%` }} />
           </div>
-          <div className="flex justify-between items-center mt-2">
-            <p className="text-[9px] font-bold text-muted-foreground/70 uppercase tracking-tighter tabular-nums">{dbUsed.toFixed(1)} MB / 512 MB</p>
+          <div className="flex justify-between items-center mt-2.5">
+            <p className="text-[9px] font-bold text-muted-foreground/70 uppercase tracking-tighter tabular-nums flex items-center gap-1.5">
+              <HardDrive className="w-2.5 h-2.5 text-blue-500/50" /> {dbUsed.toFixed(1)} MB / 512 MB
+            </p>
+            <span className="text-[8px] text-muted-foreground/40 font-bold uppercase tracking-tight">Max Capacity 0.5GB</span>
           </div>
         </div>
       </div>
