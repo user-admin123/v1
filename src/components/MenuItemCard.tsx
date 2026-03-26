@@ -65,31 +65,35 @@ const MenuItemCard = ({ item, onSelect, quantity, onAdd, onRemove }: Props) => {
             </div>
           </div>
 
-          <div className="flex items-center justify-between mt-2">
-            <p className="text-primary font-bold text-lg font-sans">${item.price.toFixed(2)}</p>
+          <div className="flex items-center justify-between mt-2 gap-2">
+  {/* Added 'truncate' and 'min-w-0' to prevent the price from pushing the buttons */}
+  <p className="text-primary font-bold text-lg font-sans truncate min-w-0">
+    ${item.price.toFixed(2)}
+  </p>
 
-            {item.available && (
-              <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                {quantity > 0 ? (
-                  <>
-                    <button
-                      onClick={onRemove}
-                      className="w-8 h-8 rounded-full flex items-center justify-center bg-muted hover:bg-destructive/20 hover:text-destructive transition-colors"
-                    >
-                      <Minus className="w-4 h-4" />
-                    </button>
-                    <span className="text-sm font-bold w-6 text-center text-foreground">{quantity}</span>
-                  </>
-                ) : null}
-                <button
-                  onClick={onAdd}
-                  className="w-8 h-8 rounded-full flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/80 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-          </div>
+  {item.available && (
+    /* Added 'shrink-0' to ensure the buttons never get smaller or move off-screen */
+    <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+      {quantity > 0 && (
+        <>
+          <button
+            onClick={onRemove}
+            className="w-8 h-8 rounded-full flex items-center justify-center bg-muted hover:bg-destructive/20 hover:text-destructive transition-colors"
+          >
+            <Minus className="w-4 h-4" />
+          </button>
+          <span className="text-sm font-bold w-6 text-center text-foreground">{quantity}</span>
+        </>
+      )}
+      <button
+        onClick={onAdd}
+        className="w-8 h-8 rounded-full flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/80 transition-colors"
+      >
+        <Plus className="w-4 h-4" />
+      </button>
+    </div>
+  )}
+</div>
         </div>
       </div>
     </motion.div>
