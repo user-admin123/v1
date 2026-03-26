@@ -19,7 +19,7 @@ interface UseAdminStateProps {
 }
 
 export function useAdminState({ categories, items, restaurant, onSaveAll }: UseAdminStateProps) {
-  // --- Core State ---
+  // --- 1. CORE STATE ---
   const [draftCategories, setDraftCategories] = useState<Category[]>(categories);
   const [draftItems, setDraftItems] = useState<MenuItem[]>(items);
   const [draftRestaurant, setDraftRestaurant] = useState<RestaurantInfo>(restaurant);
@@ -30,7 +30,7 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
   const [isUploading, setIsUploading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // --- 1. Effect: Global Change Tracker ---
+  // --- 2. TRACKING & SYNC ---
   useEffect(() => {
     const isRestaurantChanged = JSON.stringify(draftRestaurant) !== JSON.stringify(restaurant);
     const isCategoriesChanged = JSON.stringify(draftCategories) !== JSON.stringify(categories);
@@ -40,20 +40,18 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
     setHasChanges(isRestaurantChanged || isCategoriesChanged || isItemsChanged || hasDeletions);
   }, [draftRestaurant, draftCategories, draftItems, restaurant, categories, items, deletedCategoryIds, deletedItemIds]);
 
-  // Sync props to state on load
   useEffect(() => {
     setDraftCategories(categories);
     setDraftItems(items);
     setDraftRestaurant(restaurant);
   }, [categories, items, restaurant]);
 
-  // --- 2. Image Upload Logic ---
+  // --- 3. IMAGE UPLOAD ---
   const uploadToBucket = useCallback(async (file: File, type: 'logo' | 'item', name: string): Promise<string | null> => {
     setIsUploading(true);
     try {
       const options = { maxSizeMB: 0.2, maxWidthOrHeight: 1024, useWebWorker: true, fileType: 'image/webp' };
       const compressedFile = await imageCompression(file, options);
-      
       const safeName = (name || 'unnamed').toLowerCase().replace(/[^a-z0-9]/g, '-');
       const fileName = `images/${safeName}-${Date.now()}.webp`;
 
@@ -64,14 +62,24 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
       return data.publicUrl;
     } catch (err) {
       logger.error("Upload failed", err);
-      toast({ title: "Upload failed", variant: "destructive" });
       return null;
-    } finally {
-      setIsUploading(false);
-    }
+    } finally { setIsUploading(false); }
   }, []);
 
-  // --- 3. Category CRUD (Lean) ---
+  const onFileSelect = useCallback(async (file: File, type: 'logo' | 'item', name: string, setter: (url: string) => void) => {
+    const url = await uploadToBucket(file, type, name);
+    if (url) {
+      setter(url);
+      setHasChanges(true);
+    }
+  }, [uploadToBucket]);
+
+  const onUrlChange = (newUrl: string, setter: (url: string) => void) => {
+    setter(newUrl);
+    setHasChanges(true);
+  };
+
+  // --- 4. CATEGORY CRUD ---
   const [catName, setCatName] = useState("");
   const [editingCat, setEditingCat] = useState<Category | null>(null);
 
@@ -81,8 +89,7 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
       id: crypto.randomUUID(),
       name: catName.trim(),
       order_index: draftCategories.length,
-      restaurant_id: draftRestaurant.id
-      // Date removed
+      restaurant_id: draftRestaurant.id,
     };
     setDraftCategories((prev) => [...prev, newCat]);
     setCatName("");
@@ -102,9 +109,10 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
     setEditingCat(null);
   }, [editingCat]);
 
-  // --- 4. Drag & Drop ---
+  // --- 5. DRAG & DROP (REORDERING) ---
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
+
   const handleDragStart = (index: number) => { dragItem.current = index; };
   const handleDragEnter = (index: number) => { dragOverItem.current = index; };
   const handleDragEnd = () => {
@@ -119,7 +127,7 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
     setDraftCategories(reindexed);
   };
 
-  // --- 5. Menu Item CRUD (Lean) ---
+  // --- 6. MENU ITEM CRUD ---
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [itemFormOpen, setItemFormOpen] = useState(false);
   const [itemForm, setItemForm] = useState({
@@ -136,10 +144,7 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
       setDraftItems((prev) => prev.map((i) => (i.id === editingItem.id ? updated : i)));
     } else {
       const newItem: MenuItem = {
-        id: crypto.randomUUID(), 
-        ...itemForm, 
-        restaurant_id: draftRestaurant.id, 
-        price
+        id: crypto.randomUUID(), ...itemForm, restaurant_id: draftRestaurant.id, price
       };
       setDraftItems((prev) => [...prev, newItem]);
     }
@@ -155,7 +160,17 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
     setDraftItems((prev) => prev.map((i) => i.id === id ? { ...i, available: !i.available } : i));
   }, []);
 
-  // --- 6. Final Save All ---
+  // --- 7. DELETE MODAL HELPERS ---
+  const [deleteConfirm, setDeleteConfirm] = useState<{ type: "category" | "item"; id: string; name: string; } | null>(null);
+  
+  const handleConfirmDelete = useCallback(() => {
+    if (!deleteConfirm) return;
+    if (deleteConfirm.type === "category") deleteCategory(deleteConfirm.id);
+    else deleteItem(deleteConfirm.id);
+    setDeleteConfirm(null);
+  }, [deleteConfirm, deleteCategory, deleteItem]);
+
+  // --- 8. GLOBAL SAVE ---
   const saveAllChanges = useCallback(async () => {
     setSaving(true);
     try {
@@ -166,25 +181,22 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
         deletedCategoryIds, 
         deletedItemIds
       );
-
       if (success) {
         setDeletedCategoryIds([]);
         setDeletedItemIds([]);
         setHasChanges(false);
-        toast({ title: "Save Complete" });
+        toast({ title: "Success", description: "All changes saved." });
       }
     } catch (err) {
-      toast({ title: "Save Failed", variant: "destructive" });
-    } finally {
-      setSaving(false);
-    }
+      toast({ title: "Error", description: "Failed to save changes.", variant: "destructive" });
+    } finally { setSaving(false); }
   }, [draftCategories, draftItems, draftRestaurant, deletedCategoryIds, deletedItemIds, onSaveAll]);
 
   return {
     draftCategories, draftItems, draftRestaurant, setDraftRestaurant,
     hasChanges, catName, setCatName, editingCat, setEditingCat,
     editingItem, itemFormOpen, setItemFormOpen, itemForm, setItemForm,
-    isUploading, saving,
+    isUploading, saving, deleteConfirm, setDeleteConfirm,
     addCategory, saveEditCat,
     handleDragStart, handleDragEnter, handleDragEnd,
     openNewItem: () => { 
@@ -197,12 +209,7 @@ export function useAdminState({ categories, items, restaurant, onSaveAll }: UseA
       setItemForm({ ...item, price: String(item.price) }); 
       setItemFormOpen(true); 
     },
-    saveItem, toggleAvailability, onFileSelect: async (file: File, type: 'logo' | 'item', name: string, setter: (url: string) => void) => {
-      const url = await uploadToBucket(file, type, name);
-      if (url) { setter(url); setHasChanges(true); }
-    },
-    onUrlChange: (newUrl: string, setter: (url: string) => void) => { setter(newUrl); setHasChanges(true); },
-    saveAllChanges, handleConfirmDelete: () => { /* Logic from your snippet */ },
-    markChanged: () => setHasChanges(true)
+    saveItem, toggleAvailability, onFileSelect, onUrlChange, 
+    saveAllChanges, handleConfirmDelete, markChanged: () => setHasChanges(true)
   };
 }
