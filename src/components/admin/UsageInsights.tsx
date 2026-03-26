@@ -68,8 +68,7 @@ const UsageInsights = ({ restaurantId }: Props) => {
   const counts = Object.values(weeklyData).map(v => Number(v || 0));
   const maxCount = Math.max(...counts, 10);
 
-  const isTestingWarning = true; 
-  const showWarning = isTestingWarning || dbPct > 90 || bucketPct > 90;
+  const showWarning = dbPct > 90 || bucketPct > 90;
 
   return (
     <div className="space-y-6 mt-2 pb-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
