@@ -28,38 +28,34 @@ export function useMenuData() {
 
   // --- Analytics Logic (The Doorbell) ---
   useEffect(() => {
-    const ringDoorbell = async () => {
+    // 1. Setup the timer
+    const timer = setTimeout(async () => {
       const restId = restaurant?.id;
       if (!restId) return;
 
       const sessionKey = `doorbell_rung_${restId}`;
-      if (sessionStorage.getItem(sessionKey)) {
-        logger.info("Doorbell already rung for this session. Skipping.");
-        return;
-      }
+      if (sessionStorage.getItem(sessionKey)) return;
 
       const isAuthed = await isAuthenticated();
       if (isAuthed) {
-        logger.auth("Admin detected during page load. Blocking view count.");
         sessionStorage.setItem(sessionKey, "true");
         setAuthed(true);
         return;
       }
 
-      logger.info("Ringing doorbell for customer visit...");
+      // Ring doorbell after 5 seconds of active presence
       const { error: rpcError } = await supabase.rpc("log_customer_view", {
         target_id: restId,
       });
 
-      if (rpcError) {
-        logger.error("Failed to ring doorbell:", rpcError.message);
-      } else {
+      if (!rpcError) {
         sessionStorage.setItem(sessionKey, "true");
-        logger.info("Doorbell rung successfully.");
+        logger.info("Doorbell rung after 5s quality visit.");
       }
-    };
+    }, 5000);
 
-    ringDoorbell();
+    // 2. Cleanup: If user leaves before 5s, cancel the timer
+    return () => clearTimeout(timer);
   }, [restaurant?.id]);
 
   // --- Auth Management ---
