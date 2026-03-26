@@ -1,7 +1,7 @@
 import { CartItem } from "@/hooks/useCart";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
-import { Minus, Plus, Trash2, ClipboardList } from "lucide-react"; // Updated icons
+import { Minus, Plus, Trash2, ClipboardList } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -16,7 +16,10 @@ interface Props {
 const OrderSummaryDrawer = ({ open, onClose, cartItems, totalPrice, onAdd, onRemove, onClear }: Props) => {
   return (
     <Drawer open={open} onOpenChange={(o) => !o && onClose()}>
-      <DrawerContent className="max-h-[85vh]">
+      {/* CHANGE: Added 'max-w-md mx-auto' 
+          This restricts the width on Desktop and centers it.
+      */}
+      <DrawerContent className="max-h-[85vh] max-w-md mx-auto border-x border-t border-border/40">
         <DrawerHeader className="border-b border-border/40 pb-3">
           <div className="flex items-center gap-2">
             <ClipboardList className="w-5 h-5 text-muted-foreground/70" />
