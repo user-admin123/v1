@@ -78,7 +78,7 @@ export async function fetchAdminUsage(restaurantId: string): Promise<any> {
   const { data, error } = await supabase
     .from("admin_usage_dashboard")
     .select("*")
-    .eq("restaurant_id", restaurantId)
+    .eq("res_id", restaurantId)
     .single();
 
   if (error) {
