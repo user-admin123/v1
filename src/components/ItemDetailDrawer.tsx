@@ -27,7 +27,10 @@ const ItemDetailDrawer = ({ item, onClose }: Props) => {
 
   return (
     <Drawer open={!!item} onOpenChange={(open) => !open && onClose()}>
-      <DrawerContent className="glass-card border-t border-border/30 max-h-[85vh]">
+      {/* CHANGE: Added 'max-w-md mx-auto' and side borders 
+          This ensures the detail view looks like a clean mobile sheet even on large screens.
+      */}
+      <DrawerContent className="glass-card border-t border-x border-border/30 max-h-[85vh] max-w-md mx-auto">
         {item.image_url && !imgError && (
           <div className="w-full h-56 md:h-72 overflow-hidden bg-transparent">
             <img
