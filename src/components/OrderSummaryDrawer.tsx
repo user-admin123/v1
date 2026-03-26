@@ -25,6 +25,9 @@ const OrderSummaryDrawer = ({ open, onClose, cartItems, totalPrice, onAdd, onRem
             <ClipboardList className="w-5 h-5 text-muted-foreground/70" />
             <DrawerTitle className="text-lg font-bold text-foreground">Summary</DrawerTitle>
           </div>
+          <DrawerDescription className="sr-only">
+            A summary of your selected menu items and total price.
+          </DrawerDescription>
         </DrawerHeader>
 
         <div className="overflow-y-auto flex-1 px-4 py-3 space-y-3">
