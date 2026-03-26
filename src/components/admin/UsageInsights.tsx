@@ -37,25 +37,22 @@ const UsageInsights = ({ restaurantId }: Props) => {
     </div>
   );
 
-  // Original Limits & Logic
+  // --- UPDATED MAPPING FOR NEW SQL SCHEMA ---
   const dbLimit = 512; 
   const bucketLimit = 1024; 
-  const dbUsed = Number(usage?.storage_db_mb ?? 0.01);
-  const bucketUsed = Number(usage?.storage_bucket_mb ?? 0);
+  
+  // Maps to your raw response keys: "db_mb" and "media_mb"
+  const dbUsed = Number(usage?.db_mb ?? 0.01);
+  const bucketUsed = Number(usage?.media_mb ?? 0);
+  
   const dbPct = Math.min((dbUsed / dbLimit) * 100, 100);
   const bucketPct = Math.min((bucketUsed / bucketLimit) * 100, 100);
 
-  // Inside UsageInsights.tsx
-const rawWeeklyData = usage?.last_7_days_chart || {};
-
-// Add this: ensure it's an object (handles the double-quote string issue)
-const weeklyData = typeof rawWeeklyData === 'string' 
-    ? JSON.parse(rawWeeklyData) 
-    : rawWeeklyData;
-
-const counts = Object.values(weeklyData).map(Number);
-
-const maxCount = Math.max(...counts, 10);
+  // Maps to your raw response key: "weekly_chart"
+  const weeklyData = usage?.weekly_chart || {};
+  const counts = Object.values(weeklyData).map(v => Number(v || 0));
+  const maxCount = Math.max(...counts, 10);
+  
   const showWarning = dbPct > 90 || bucketPct > 90;
 
   return (
@@ -95,7 +92,7 @@ const maxCount = Math.max(...counts, 10);
             const date = new Date();
             date.setDate(date.getDate() - (6 - i));
             
-            // Matches SQL: Dy (Mon, Tue, Wed...)
+            // Matches SQL formatting: 'Dy' (Sun, Mon, Tue...)
             const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             const dayLabel = days[date.getDay()]; 
             const count = Number(weeklyData[dayLabel] || 0);
@@ -103,7 +100,6 @@ const maxCount = Math.max(...counts, 10);
             const isToday = i === 6;
             const isSelected = selectedDay === dayLabel;
 
-            // Log-scale hybrid: 13 views is visible (12%), 99k is full (100%)
             const barHeight = count > 0 ? Math.max((count / maxCount) * 100, 12) : 4;
 
             return (
@@ -131,7 +127,7 @@ const maxCount = Math.max(...counts, 10);
         </div>
       </div>
 
-      {/* 3. Resource Metrics (Restored Original Flow) */}
+      {/* 3. Resource Metrics */}
       <div className="space-y-4">
         <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">Cloud Resources</Label>
         
