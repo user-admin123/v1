@@ -134,7 +134,7 @@ const UsageInsights = ({ restaurantId }: Props) => {
           <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Cloud Resources</Label>
           <div className="flex items-center gap-1.5 text-muted-foreground/40 select-none">
             <Clock className="w-2.5 h-2.5" />
-            <span className="text-[9px] font-bold uppercase tabular-nums">Updated: {formatLastUpdated(usage?.last_audit))}</span>
+            <span className="text-[9px] font-bold uppercase tabular-nums">Updated: {formatLastUpdated(usage?.last_audit)}</span>
           </div>
         </div>
         
