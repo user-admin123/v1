@@ -160,7 +160,7 @@ const UsageInsights = ({ restaurantId }: Props) => {
             {/* Added Info Icon next to Allocation */}
             <div className="flex items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
                <Info className="w-2.5 h-2.5 text-muted-foreground" />
-               <span className="text-[8px] text-muted-foreground font-bold uppercase tracking-tight">Allocation: 1GB</span>
+               <span className="text-[8px] text-muted-foreground font-bold uppercase tracking-tight">Max Limit: 1 GB</span>
             </div>
           </div>
         </div>
@@ -187,7 +187,7 @@ const UsageInsights = ({ restaurantId }: Props) => {
             {/* Added Info Icon next to Allocation */}
             <div className="flex items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
                <Info className="w-2.5 h-2.5 text-muted-foreground" />
-               <span className="text-[8px] text-muted-foreground font-bold uppercase tracking-tight">Allocation: 0.5GB</span>
+               <span className="text-[8px] text-muted-foreground font-bold uppercase tracking-tight">Max Limit: 0.5 GB</span>
             </div>
           </div>
         </div>
