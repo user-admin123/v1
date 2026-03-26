@@ -3,7 +3,6 @@
 -- ==========================================
 DO $$ 
 BEGIN
-    -- Drop existing to ensure no conflicts during migration
     DROP VIEW IF EXISTS public.admin_usage_dashboard CASCADE;
     DROP TABLE IF EXISTS public.menu_items CASCADE;
     DROP TABLE IF EXISTS public.categories CASCADE;
@@ -17,7 +16,7 @@ BEGIN
 END $$;
 
 -- ==========================================
--- 1. TABLES
+-- 1. TABLES (No Triggers / No extra date cols)
 -- ==========================================
 
 CREATE TABLE public.restaurant (
@@ -28,18 +27,14 @@ CREATE TABLE public.restaurant (
     show_veg_filter boolean DEFAULT false,
     show_sold_out boolean DEFAULT true,
     show_search boolean DEFAULT true,
-    show_qr_logo boolean DEFAULT true,
-    created_at timestamptz DEFAULT now(),
-    updated_at timestamptz DEFAULT now()
+    show_qr_logo boolean DEFAULT true
 );
 
 CREATE TABLE public.categories (
     id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
     restaurant_id uuid REFERENCES public.restaurant(id) ON DELETE CASCADE,
     name text NOT NULL,
-    order_index integer DEFAULT 0,
-    created_at timestamptz DEFAULT now(),
-    updated_at timestamptz DEFAULT now()
+    order_index integer DEFAULT 0 -- Matches your interface 'order_index'
 );
 
 CREATE TABLE public.menu_items (
@@ -49,11 +44,9 @@ CREATE TABLE public.menu_items (
     name text NOT NULL,
     description text,
     price numeric NOT NULL DEFAULT 0,
-    available boolean DEFAULT true,
+    available boolean DEFAULT true, -- Matches your 'available' column
     image_url text,
-    item_type text NOT NULL DEFAULT 'veg', -- Matches your "veg" | "nonveg" type
-    created_at timestamptz DEFAULT now(),
-    updated_at timestamptz DEFAULT now()
+    item_type text NOT NULL DEFAULT 'veg' -- Matches your 'ItemType'
 );
 
 CREATE TABLE public.usage_ledger (
@@ -67,14 +60,14 @@ CREATE TABLE public.restaurant_stats (
     restaurant_id uuid PRIMARY KEY REFERENCES public.restaurant(id) ON DELETE CASCADE,
     db_mb numeric DEFAULT 0.01,
     media_mb numeric DEFAULT 0,
-    updated_at timestamptz DEFAULT now()
+    last_audit timestamptz DEFAULT now()
 );
 
 -- ==========================================
--- 2. FUNCTIONS (The Brains)
+-- 2. FUNCTIONS (Logic Check: COMPLETE)
 -- ==========================================
 
--- Function: Customer View Logger
+-- Logic: Increments view count (The Doorbell)
 CREATE OR REPLACE FUNCTION public.log_customer_view(target_id uuid)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
@@ -84,7 +77,7 @@ BEGIN
     DO UPDATE SET views = usage_ledger.views + 1;
 END; $$;
 
--- Function: Admin Undo (The Silent Eraser)
+-- Logic: Decrements view count (The Silent Eraser)
 CREATE OR REPLACE FUNCTION public.undo_admin_scan(target_id uuid)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
@@ -93,34 +86,26 @@ BEGIN
     WHERE restaurant_id = target_id AND log_date = CURRENT_DATE;
 END; $$;
 
--- Function: Storage & DB Size Auditor
+-- Logic: Measures storage sizes (The Auditor)
 CREATE OR REPLACE FUNCTION public.run_storage_audit()
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
-    INSERT INTO public.restaurant_stats (restaurant_id, db_mb, media_mb, updated_at)
+    INSERT INTO public.restaurant_stats (restaurant_id, db_mb, media_mb, last_audit)
     SELECT id,
         (SELECT ROUND((pg_database_size(current_database()) / 1024.0 / 1024.0)::numeric, 2)),
         (SELECT ROUND(COALESCE(SUM((metadata->>'size')::numeric), 0) / 1024.0 / 1024.0, 2) FROM storage.objects),
         now()
     FROM public.restaurant
     ON CONFLICT (restaurant_id) DO UPDATE SET
-        db_mb = EXCLUDED.db_mb, media_mb = EXCLUDED.media_mb, updated_at = EXCLUDED.updated_at;
+        db_mb = EXCLUDED.db_mb, media_mb = EXCLUDED.media_mb, last_audit = EXCLUDED.last_audit;
 END; $$;
 
--- Function: Auto-Timestamp Update
-CREATE OR REPLACE FUNCTION refresh_updated_at_column()
-RETURNS TRIGGER AS $$ BEGIN NEW.updated_at = now(); RETURN NEW; END; $$ LANGUAGE plpgsql;
-
 -- ==========================================
--- 3. TRIGGERS & VIEWS
+-- 3. VIEWS & STORAGE BUCKET
 -- ==========================================
-
-CREATE TRIGGER refresh_rest_time BEFORE UPDATE ON public.restaurant FOR EACH ROW EXECUTE FUNCTION refresh_updated_at_column();
-CREATE TRIGGER refresh_cat_time BEFORE UPDATE ON public.categories FOR EACH ROW EXECUTE FUNCTION refresh_updated_at_column();
-CREATE TRIGGER refresh_menu_time BEFORE UPDATE ON public.menu_items FOR EACH ROW EXECUTE FUNCTION refresh_updated_at_column();
 
 CREATE OR REPLACE VIEW public.admin_usage_dashboard AS 
-SELECT r.id AS res_id, COALESCE(s.db_mb, 0.01) AS db_mb, COALESCE(s.media_mb, 0) AS media_mb, s.updated_at, 
+SELECT r.id AS res_id, COALESCE(s.db_mb, 0.01) AS db_mb, COALESCE(s.media_mb, 0) AS media_mb, s.last_audit, 
     (SELECT jsonb_object_agg(d, v) FROM (
         SELECT to_char(g.day, 'Dy') AS d, COALESCE(ul.views, 0) AS v
         FROM (SELECT (CURRENT_DATE - i)::date AS day FROM generate_series(0, 6) AS i) g
@@ -130,19 +115,17 @@ FROM public.restaurant r LEFT JOIN public.restaurant_stats s ON r.id = s.restaur
 
 ALTER VIEW public.admin_usage_dashboard SET (security_invoker = on);
 
--- ==========================================
--- 4. STORAGE & RLS
--- ==========================================
-
--- Bucket Creation
+-- Ensure bucket exists for your Janitor function
 INSERT INTO storage.buckets (id, name, public) VALUES ('restaurant-assets', 'restaurant-assets', true) ON CONFLICT DO NOTHING;
 
--- RLS Enablement
+-- ==========================================
+-- 4. SECURITY (RLS)
+-- ==========================================
+
 ALTER TABLE public.restaurant ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.menu_items ENABLE ROW LEVEL SECURITY;
 
--- Database Policies
 CREATE POLICY "Public Read" ON public.restaurant FOR SELECT USING (true);
 CREATE POLICY "Admin All" ON public.restaurant FOR ALL TO authenticated USING (auth.uid() = id);
 CREATE POLICY "Public Categories" ON public.categories FOR SELECT USING (true);
@@ -150,25 +133,19 @@ CREATE POLICY "Admin Categories" ON public.categories FOR ALL TO authenticated U
 CREATE POLICY "Public Items" ON public.menu_items FOR SELECT USING (true);
 CREATE POLICY "Admin Items" ON public.menu_items FOR ALL TO authenticated USING (auth.uid() = restaurant_id);
 
--- Storage Policies
 CREATE POLICY "Public Assets" ON storage.objects FOR SELECT TO public USING (bucket_id = 'restaurant-assets');
 CREATE POLICY "Admin Assets" ON storage.objects FOR ALL TO authenticated USING (bucket_id = 'restaurant-assets');
 
 -- ==========================================
 -- 5. AUTOMATION (CRON)
 -- ==========================================
-
 DO $$ 
 BEGIN
-    -- Safely unschedule existing jobs
-    IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'audit-job') THEN PERFORM cron.unschedule('audit-job'); END IF;
-    IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'dynamic-worker') THEN PERFORM cron.unschedule('dynamic-worker'); END IF;
-
-    -- 1. Daily Stats Audit (14:05 UTC)
+    PERFORM cron.unschedule('audit-job');
+    PERFORM cron.unschedule('dynamic-worker');
+    
     PERFORM cron.schedule('audit-job', '5 14 * * *', 'SELECT public.run_storage_audit()');
-
-    -- 2. Daily Image Cleanup (14:00 UTC)
-    -- REPLACE PLACEHOLDERS FOR EACH NEW OWNER
+    
     PERFORM cron.schedule('dynamic-worker', '0 14 * * *', 
         $$ SELECT net.http_post(
             url:='https://[PROJECT_ID].supabase.co/functions/v1/dynamic-worker',
@@ -176,7 +153,6 @@ BEGIN
         ) $$);
 END $$;
 
--- Permissions
 GRANT EXECUTE ON FUNCTION public.log_customer_view(uuid) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.undo_admin_scan(uuid) TO authenticated;
 GRANT SELECT ON public.admin_usage_dashboard TO authenticated;
