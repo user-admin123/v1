@@ -45,16 +45,15 @@ const UsageInsights = ({ restaurantId }: Props) => {
   const dbPct = Math.min((dbUsed / dbLimit) * 100, 100);
   const bucketPct = Math.min((bucketUsed / bucketLimit) * 100, 100);
 
-  const weeklyData = usage?.last_7_days_chart || {};
-const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  // Inside UsageInsights.tsx
+const rawWeeklyData = usage?.last_7_days_chart || {};
 
-// This ensures your bars always go from [6 Days Ago] -> [Today]
-const counts = Array.from({ length: 7 }).map((_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (6 - i));
-    const label = dayNames[d.getDay()];
-    return Number(weeklyData[label] || 0);
-});
+// Add this: ensure it's an object (handles the double-quote string issue)
+const weeklyData = typeof rawWeeklyData === 'string' 
+    ? JSON.parse(rawWeeklyData) 
+    : rawWeeklyData;
+
+const counts = Object.values(weeklyData).map(Number);
 
 const maxCount = Math.max(...counts, 10);
   const showWarning = dbPct > 90 || bucketPct > 90;
