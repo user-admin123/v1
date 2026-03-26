@@ -16,7 +16,7 @@ BEGIN
 END $$;
 
 -- ==========================================
--- 1. TABLES (No Triggers / No extra date cols)
+-- 1. TABLES
 -- ==========================================
 
 CREATE TABLE public.restaurant (
@@ -34,7 +34,7 @@ CREATE TABLE public.categories (
     id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
     restaurant_id uuid REFERENCES public.restaurant(id) ON DELETE CASCADE,
     name text NOT NULL,
-    order_index integer DEFAULT 0 -- Matches your interface 'order_index'
+    order_index integer DEFAULT 0
 );
 
 CREATE TABLE public.menu_items (
@@ -44,9 +44,9 @@ CREATE TABLE public.menu_items (
     name text NOT NULL,
     description text,
     price numeric NOT NULL DEFAULT 0,
-    available boolean DEFAULT true, -- Matches your 'available' column
+    available boolean DEFAULT true,
     image_url text,
-    item_type text NOT NULL DEFAULT 'veg' -- Matches your 'ItemType'
+    item_type text NOT NULL DEFAULT 'veg'
 );
 
 CREATE TABLE public.usage_ledger (
@@ -64,10 +64,10 @@ CREATE TABLE public.restaurant_stats (
 );
 
 -- ==========================================
--- 2. FUNCTIONS (Logic Check: COMPLETE)
+-- 2. FUNCTIONS
 -- ==========================================
 
--- Logic: Increments view count (The Doorbell)
+-- Increments view count (The Doorbell)
 CREATE OR REPLACE FUNCTION public.log_customer_view(target_id uuid)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
@@ -77,7 +77,7 @@ BEGIN
     DO UPDATE SET views = usage_ledger.views + 1;
 END; $$;
 
--- Logic: Decrements view count (The Silent Eraser)
+-- Decrements view count (The Silent Eraser)
 CREATE OR REPLACE FUNCTION public.undo_admin_scan(target_id uuid)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
@@ -86,7 +86,7 @@ BEGIN
     WHERE restaurant_id = target_id AND log_date = CURRENT_DATE;
 END; $$;
 
--- Logic: Measures storage sizes (The Auditor)
+-- Measures storage sizes (The Auditor)
 CREATE OR REPLACE FUNCTION public.run_storage_audit()
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
@@ -115,30 +115,48 @@ FROM public.restaurant r LEFT JOIN public.restaurant_stats s ON r.id = s.restaur
 
 ALTER VIEW public.admin_usage_dashboard SET (security_invoker = on);
 
--- Ensure bucket exists for your Janitor function
-INSERT INTO storage.buckets (id, name, public) VALUES ('restaurant-assets', 'restaurant-assets', true) ON CONFLICT DO NOTHING;
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('restaurant-assets', 'restaurant-assets', true) 
+ON CONFLICT DO NOTHING;
 
 -- ==========================================
 -- 4. SECURITY (RLS)
 -- ==========================================
 
+-- Enable RLS on ALL tables
 ALTER TABLE public.restaurant ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.menu_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.usage_ledger ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.restaurant_stats ENABLE ROW LEVEL SECURITY;
 
+-- Restaurant Policies
 CREATE POLICY "Public Read" ON public.restaurant FOR SELECT USING (true);
 CREATE POLICY "Admin All" ON public.restaurant FOR ALL TO authenticated USING (auth.uid() = id);
+
+-- Categories Policies
 CREATE POLICY "Public Categories" ON public.categories FOR SELECT USING (true);
 CREATE POLICY "Admin Categories" ON public.categories FOR ALL TO authenticated USING (auth.uid() = restaurant_id);
+
+-- Menu Items Policies
 CREATE POLICY "Public Items" ON public.menu_items FOR SELECT USING (true);
 CREATE POLICY "Admin Items" ON public.menu_items FOR ALL TO authenticated USING (auth.uid() = restaurant_id);
 
+-- Usage Ledger Policies
+CREATE POLICY "Public View Logging" ON public.usage_ledger FOR INSERT WITH CHECK (true);
+CREATE POLICY "Admin Usage Access" ON public.usage_ledger FOR ALL TO authenticated USING (auth.uid() = restaurant_id);
+
+-- Restaurant Stats Policies
+CREATE POLICY "Admin Stats Access" ON public.restaurant_stats FOR ALL TO authenticated USING (auth.uid() = restaurant_id);
+
+-- Storage Policies
 CREATE POLICY "Public Assets" ON storage.objects FOR SELECT TO public USING (bucket_id = 'restaurant-assets');
 CREATE POLICY "Admin Assets" ON storage.objects FOR ALL TO authenticated USING (bucket_id = 'restaurant-assets');
 
 -- ==========================================
--- 5. AUTOMATION (CRON)
+-- 5. AUTOMATION & GRANTS
 -- ==========================================
+
 DO $$ 
 BEGIN
     PERFORM cron.unschedule('audit-job');
