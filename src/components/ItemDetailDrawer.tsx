@@ -1,3 +1,4 @@
+import { useState } from "react"; // Added for image error handling
 import { MenuItem } from "@/lib/types";
 import {
   Drawer,
@@ -9,6 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import VegBadge from "@/components/VegBadge";
 import { formatDescription } from "@/lib/formatDescription";
+import { ImageOff } from "lucide-react"; // Added fallback icon
 
 interface Props {
   item: MenuItem | null;
@@ -16,21 +18,30 @@ interface Props {
 }
 
 const ItemDetailDrawer = ({ item, onClose }: Props) => {
+  const [imgError, setImgError] = useState(false); // Track broken links
+
   if (!item) return null;
 
   return (
     <Drawer open={!!item} onOpenChange={(open) => !open && onClose()}>
       <DrawerContent className="glass-card border-t border-border/30 max-h-[85vh]">
         {/* Image Section */}
-        {item.image_url && (
+        {item.image_url && !imgError ? (
           <div className="w-full h-56 md:h-72 overflow-hidden">
             <img
               src={item.image_url}
               alt={item.name}
               className="w-full h-full object-cover"
+              onError={() => setImgError(true)} // Handle broken link
             />
           </div>
-        )}
+        ) : item.image_url && imgError ? (
+          /* Fallback UI for broken links */
+          <div className="w-full h-40 flex flex-col items-center justify-center bg-muted/30 border-b border-border/50 text-muted-foreground">
+            <ImageOff className="w-8 h-8 mb-2 opacity-20" />
+            <span className="text-xs font-medium opacity-40">Image not available</span>
+          </div>
+        ) : null}
 
         {/* Content Section */}
         <div className="overflow-y-auto max-h-[50vh] overscroll-contain">
