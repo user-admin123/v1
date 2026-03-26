@@ -1,4 +1,4 @@
-import { ClipboardList } from "lucide-react"; // Changed from ShoppingBag
+import { ClipboardList } from "lucide-react";
 
 interface Props {
   totalItems: number;
@@ -10,15 +10,17 @@ const FloatingOrderButton = ({ totalItems, onClick }: Props) => {
 
   return (
     <button
-  onClick={onClick}
-  className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3.5 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.2)] hover:bg-primary/90 transition-all active:scale-95 animate-in fade-in zoom-in-95 duration-300"
->
-  <ClipboardList className="w-5 h-5" />
-  <span className="font-semibold text-sm">Summary</span>
-  <span className="bg-primary-foreground text-primary text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
-    {totalItems}
-  </span>
-</button>
+      onClick={onClick}
+      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3.5 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.2)] hover:bg-primary/90 transition-all active:scale-95 animate-in fade-in zoom-in-95 duration-300"
+    >
+      <ClipboardList className="w-5 h-5" />
+      
+      <span className="font-semibold text-sm">Summary</span>
+      
+      <span className="bg-primary-foreground text-primary text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
+        {totalItems}
+      </span>
+    </button>
   );
 };
 
