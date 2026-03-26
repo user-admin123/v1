@@ -18,12 +18,12 @@ const OrderSummaryDrawer = ({ open, onClose, cartItems, totalPrice, onAdd, onRem
     <Drawer open={open} onOpenChange={(o) => !o && onClose()}>
       <DrawerContent className="max-h-[85vh]">
         <DrawerHeader className="border-b border-border/40 pb-3">
-          <DrawerTitle className="text-lg font-bold">Your Order</DrawerTitle>
+          <DrawerTitle className="text-lg font-bold">Summary</DrawerTitle>
         </DrawerHeader>
 
         <div className="overflow-y-auto flex-1 px-4 py-3 space-y-3">
           {cartItems.length === 0 ? (
-            <p className="text-center text-muted-foreground py-10 text-sm">No items in your order yet.</p>
+            <p className="text-center text-muted-foreground py-10 text-sm">Your summary is empty.</p>
           ) : (
             cartItems.map((item) => (
               <div key={item.id} className="flex items-center justify-between gap-3 py-2 border-b border-border/20 last:border-0">
@@ -61,7 +61,7 @@ const OrderSummaryDrawer = ({ open, onClose, cartItems, totalPrice, onAdd, onRem
               <span className="text-lg font-bold text-primary">${totalPrice.toFixed(2)}</span>
             </div>
             <Button variant="secondary" size="sm" className="w-auto px-4" onClick={onClear}>
-              <Trash2 className="w-3.5 h-3.5 mr-1" /> Clear Order
+              <Trash2 className="w-3.5 h-3.5 mr-1" /> Clear
             </Button>
           </DrawerFooter>
         )}
