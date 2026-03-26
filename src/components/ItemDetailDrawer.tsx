@@ -35,15 +35,16 @@ const ItemDetailDrawer = ({ item, onClose }: Props) => {
             If the link is broken (imgError), the entire <div> vanishes,
             matching the "no image" flow perfectly. */}
         {item.image_url && !imgError && (
-          <div className="w-full h-56 md:h-72 overflow-hidden">
-            <img
-              src={item.image_url}
-              alt={item.name}
-              className="w-full h-full object-cover"
-              onError={() => setImgError(true)} 
-            />
-          </div>
-        )}
+  <div className="w-full h-56 md:h-72 overflow-hidden bg-transparent"> 
+    <img
+      src={item.image_url}
+      alt={item.name}
+      className="w-full h-full object-cover"
+      style={{ display: imgError ? 'none' : 'block' }}
+      onError={() => setImgError(true)} 
+    />
+  </div>
+)}
 
         {/* Content Section */}
         <div className="overflow-y-auto max-h-[50vh] overscroll-contain">
