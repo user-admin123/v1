@@ -33,7 +33,6 @@ const UsageInsights = ({ restaurantId }: Props) => {
     if (restaurantId) loadStats();
   }, [restaurantId]);
 
-  // Helper: Detects User's Local Timezone (India, AUS, etc.) automatically
   const formatLastUpdated = (dateString: string) => {
     if (!dateString) return "Syncing...";
     try {
@@ -69,18 +68,19 @@ const UsageInsights = ({ restaurantId }: Props) => {
   const counts = Object.values(weeklyData).map(v => Number(v || 0));
   const maxCount = Math.max(...counts, 10);
 
-  const isTestingWarning = true;
+  // Set to true for testing UI, false for production
+  const isTestingWarning = true; 
   const showWarning = isTestingWarning || dbPct > 90 || bucketPct > 90;
 
   return (
     <div className="space-y-6 mt-2 pb-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
       
-      {/* 1. Global Alert Header */}
+      {/* 1. Global Alert Header - Updated Copy */}
       {showWarning && (
         <div className="mx-1 flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg animate-pulse">
           <AlertTriangle className="w-4 h-4 text-destructive" />
           <p className="text-[10px] font-bold text-destructive uppercase tracking-tight">
-            Storage almost full. Try removing old menu photos.
+            Storage almost full. Try removing unused old menu items.
           </p>
         </div>
       )}
@@ -132,7 +132,6 @@ const UsageInsights = ({ restaurantId }: Props) => {
 
       {/* 3. Resource Metrics */}
       <div className="space-y-4">
-        {/* Modern Header for Section */}
         <div className="px-1 flex justify-between items-center">
           <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Cloud Resources</Label>
           <div className="flex items-center gap-1.5 text-muted-foreground/40 select-none">
@@ -145,7 +144,7 @@ const UsageInsights = ({ restaurantId }: Props) => {
         <div className="group relative p-4 bg-muted/20 rounded-xl border border-border/40 transition-colors hover:bg-muted/30">
           <div className="absolute bottom-full left-0 mb-2 w-full max-w-[240px] scale-0 group-hover:scale-100 transition-all z-30 bg-slate-900 text-white p-3 rounded-lg text-[10px] border border-white/10 shadow-2xl pointer-events-none">
               <p className="font-bold text-amber-400 mb-1 uppercase flex items-center gap-1"><Sparkles className="w-3 h-3" /> System Info</p>
-              <p className="opacity-90 leading-relaxed font-medium">Images are optimized for fast loading. Files are cleared at midnight after item deletion.</p>
+              <p className="opacity-90 leading-relaxed font-medium">Images are optimized for fast loading. Unused photos are automatically cleared daily after items are removed.</p>
           </div>
 
           <div className="flex justify-between items-center mb-1">
@@ -160,7 +159,8 @@ const UsageInsights = ({ restaurantId }: Props) => {
             <p className="text-[9px] font-bold text-muted-foreground/70 uppercase tracking-tighter tabular-nums flex items-center gap-1.5">
               <HardDrive className="w-2.5 h-2.5" /> {bucketUsed.toFixed(1)} MB / 1,024 MB
             </p>
-            <span className="text-[8px] text-muted-foreground/40 font-bold uppercase tracking-tight">Max Capacity 1GB</span>
+            {/* Professional Label Change */}
+            <span className="text-[8px] text-muted-foreground/40 font-bold uppercase tracking-tight">Allocation: 1GB</span>
           </div>
         </div>
 
@@ -168,7 +168,7 @@ const UsageInsights = ({ restaurantId }: Props) => {
         <div className="group relative p-4 bg-muted/20 rounded-xl border border-border/40 transition-colors hover:bg-muted/30">
           <div className="absolute bottom-full left-0 mb-2 w-full max-w-[240px] scale-0 group-hover:scale-100 transition-all z-30 bg-slate-900 text-white p-3 rounded-lg text-[10px] border border-white/10 shadow-2xl pointer-events-none">
               <p className="font-bold text-blue-400 mb-1 uppercase flex items-center gap-1"><Lightbulb className="w-3 h-3" /> Data Info</p>
-              <p className="opacity-90 leading-relaxed font-medium">Text storage is incredibly efficient. You are unlikely to hit this limit even with thousands of items.</p>
+              <p className="opacity-90 leading-relaxed font-medium">Text storage is highly efficient. Your menu content and settings use very little space.</p>
           </div>
 
           <div className="flex justify-between items-center mb-1">
@@ -183,7 +183,8 @@ const UsageInsights = ({ restaurantId }: Props) => {
             <p className="text-[9px] font-bold text-muted-foreground/70 uppercase tracking-tighter tabular-nums flex items-center gap-1.5">
               <HardDrive className="w-2.5 h-2.5 text-blue-500/50" /> {dbUsed.toFixed(1)} MB / 512 MB
             </p>
-            <span className="text-[8px] text-muted-foreground/40 font-bold uppercase tracking-tight">Max Capacity 0.5GB</span>
+            {/* Professional Label Change */}
+            <span className="text-[8px] text-muted-foreground/40 font-bold uppercase tracking-tight">Allocation: 0.5GB</span>
           </div>
         </div>
       </div>
