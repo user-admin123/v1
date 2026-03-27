@@ -8,55 +8,56 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="MenuSnap">
-    <meta name="application-name" content="MenuSnap">
 
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/favicon.svg" />
-    
     <link rel="manifest" href="/manifest.json" />
 
     <title>MenuSnap | Digital Menu</title>
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
     <style>
-      /* CRITICAL: This block prevents the "White Flash" 
-         We set the background before React or Tailwind even load.
-      */
+      /* Ensure the background is dark immediately */
       html, body {
-        background-color: #14110d !important; /* Exact match to your --background */
+        background-color: #14110d;
         margin: 0;
         padding: 0;
-        width: 100%;
-        min-height: 100vh;
-        /* Scroll is enabled so users can move through the menu */
+        height: 100%;
         overflow-x: hidden;
         -webkit-tap-highlight-color: transparent;
       }
 
-      /* SMOOTH TRANSITION:
-         Since we removed the "Dots", we use a tiny fade-in 
-         so the menu doesn't just "pop" in aggressively.
-      */
-      #root {
-        transition: opacity 0.4s ease-in-out;
+      /* This container keeps the page height stable so it doesn't "jump" */
+      #initial-placeholder {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        width: 100%;
+        background-color: #14110d;
       }
 
-      /* While the app is downloading, root is empty and hidden */
-      #root:empty {
-        opacity: 0;
+      /* Minimal pulse for a premium feel while JS loads */
+      .loading-brand {
+        color: #e8911f; /* Your brand gold */
+        font-family: serif;
+        font-style: italic;
+        font-size: 1.1rem;
+        animation: pulse 2s infinite ease-in-out;
+        opacity: 0.6;
       }
-      
-      /* Once React injects HTML, it fades in */
-      #root:not(:empty) {
-        opacity: 1;
+
+      @keyframes pulse {
+        0%, 100% { opacity: 0.4; transform: scale(0.98); }
+        50% { opacity: 0.8; transform: scale(1); }
       }
     </style>
   </head>
   <body>
-    <div id="root"></div>
-
+    <div id="root">
+      <div id="initial-placeholder">
+        <div class="loading-brand">MenuSnap</div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
