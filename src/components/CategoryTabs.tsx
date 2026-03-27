@@ -48,29 +48,33 @@ const CategoryTabs = ({ categories, activeId, onSelect }: Props) => {
           ref={scrollRef}
           className="flex gap-2 px-4 py-3 overflow-x-auto scrollbar-hide"
         >
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              data-cat-id={cat.id}
-              onClick={() => onSelect(cat.id)}
-              className={cn(
-                "relative px-5 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors outline-none",
-                // Updated text color logic to override focus/active states
-                activeId === cat.id
-                  ? "text-primary-foreground"
-                  : "text-foreground/70 hover:text-foreground focus:text-foreground/70 active:text-foreground/70"
-              )}
-            >
-              {activeId === cat.id && (
-                <motion.div
-                  layoutId="activeCategoryTab"
-                  className="absolute inset-0 bg-primary rounded-full"
-                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                />
-              )}
-              <span className="relative z-10">{cat.name}</span>
-            </button>
-          ))}
+          {categories.map((cat) => {
+            // Determine active state once per item
+            const isActive = activeId === cat.id;
+
+            return (
+              <button
+                key={cat.id}
+                data-cat-id={cat.id}
+                onClick={() => onSelect(cat.id)}
+                className="relative px-5 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors outline-none"
+                style={{
+                  // PREMIUM FIX: Force the color instantly using inline styles
+                  // This prevents the "white text" snap during initial load
+                  color: isActive ? "#ffffff" : "rgba(255, 255, 255, 0.7)"
+                }}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="activeCategoryTab"
+                    className="absolute inset-0 bg-primary rounded-full shadow-sm"
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  />
+                )}
+                <span className="relative z-10">{cat.name}</span>
+              </button>
+            );
+          })}
         </div>
       </nav>
     </>
