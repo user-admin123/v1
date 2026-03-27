@@ -59,7 +59,7 @@ const CategoryTabs = ({ categories, activeId, onSelect }: Props) => {
                 onClick={() => onSelect(cat.id)}
                 className="relative px-5 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors outline-none"
                 style={{
-                  color: isActive ? "var(--primary-foreground)" : "rgba(255, 255, 255, 0.7)"
+                  color: isActive ? "var(--primary-foreground)"  : "hsl(var(--muted-foreground))" 
                 }}
               >
                 {isActive && (
