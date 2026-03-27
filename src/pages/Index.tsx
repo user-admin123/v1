@@ -46,11 +46,8 @@ const Index = () => {
 
   // Set initial active category
   useEffect(() => {
-    if (visibleCategories.length > 0) {
-      const isCurrentVisible = visibleCategories.find((c) => c.id === activeCat);
-      if (!activeCat || !isCurrentVisible) {
-        setActiveCat(visibleCategories[0].id);
-      }
+    if (visibleCategories.length > 0 && !visibleCategories.find((c) => c.id === activeCat)) {
+      setActiveCat(visibleCategories[0].id);
     }
   }, [visibleCategories, activeCat]);
 
