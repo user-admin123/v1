@@ -7,53 +7,75 @@
     <meta name="theme-color" content="#14110d" />
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-
+    
     <meta name="apple-mobile-web-app-title" content="MenuSnap">
     <meta name="application-name" content="MenuSnap">
 
-    <title>MenuSnap | Explore Our Digital Menu</title>
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+
+    <title>MenuSnap | Digital Menu</title>
 
     <style>
+      /* Base Styles - Allowing Scroll */
       body {
         background-color: #14110d;
         margin: 0;
-        overflow-x: hidden;
+        padding: 0;
+        /* Removing overflow:hidden so you can move/scroll the screen */
+        overflow-x: hidden; 
         -webkit-tap-highlight-color: transparent;
       }
 
+      /* Centering the loader specifically */
       #pre-root-loader {
+        position: fixed; /* Fixes it to the screen regardless of scroll */
+        inset: 0;
         display: flex;
-        flex-direction: column;
         justify-content: center;
         align-items: center;
-        height: 100vh;
         background-color: #14110d;
+        z-index: 9999;
       }
 
-      .pulse-text {
-        color: #d97706;
-        font-family: serif;
-        font-style: italic;
-        font-size: 1.1rem;
-        animation: pulse 1.8s infinite ease-in-out;
+      .dot-loader {
+        display: flex;
+        gap: 10px;
       }
 
-      @keyframes pulse {
-        0% { opacity: 0.3; transform: scale(0.98); }
-        50% { opacity: 1; transform: scale(1); }
-        100% { opacity: 0.3; transform: scale(0.98); }
+      .dot {
+        width: 12px;
+        height: 12px;
+        background-color: #d97706;
+        border-radius: 50%;
+        animation: dot-jump 1.4s infinite ease-in-out both;
+      }
+
+      .dot:nth-child(1) { animation-delay: -0.32s; }
+      .dot:nth-child(2) { animation-delay: -0.16s; }
+
+      @keyframes dot-jump {
+        0%, 80%, 100% { transform: scale(0.3); opacity: 0.2; }
+        40% { transform: scale(1.1); opacity: 1; }
+      }
+
+      /* When React content loads, we hide the loader */
+      #root:not(:empty) ~ #pre-root-loader {
+        display: none;
       }
     </style>
   </head>
   <body>
-    <div id="root">
-      <div id="pre-root-loader">
-        <div class="pulse-text">MenuSnap...</div>
+    <div id="root"></div>
+
+    <div id="pre-root-loader">
+      <div class="dot-loader">
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
       </div>
     </div>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
