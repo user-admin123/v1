@@ -16,46 +16,52 @@
     <title>MenuSnap | Digital Menu</title>
 
     <style>
-      /* Ensure the background is dark immediately */
-      html, body {
+      /* Ensure the background is dark immediately to prevent white flash */
+      html {
         background-color: #14110d;
+      }
+
+      body {
+        background-color: #14110d !important;
         margin: 0;
         padding: 0;
-        height: 100%;
+        /* Critical: Removed 'height: 100vh' and 'overflow: hidden' 
+           to allow your Index.tsx scroll listener to work! */
         overflow-x: hidden;
         -webkit-tap-highlight-color: transparent;
       }
 
-      /* This container keeps the page height stable so it doesn't "jump" */
-      #initial-placeholder {
+      /* This container fills the screen ONLY until React loads */
+      #pre-root-loader {
         display: flex;
+        flex-direction: column;
         justify-content: center;
         align-items: center;
-        height: 100vh;
-        width: 100%;
+        position: fixed; /* Fixed so it doesn't affect page scroll height */
+        inset: 0;
         background-color: #14110d;
+        z-index: 9999;
       }
 
-      /* Minimal pulse for a premium feel while JS loads */
-      .loading-brand {
-        color: #e8911f; /* Your brand gold */
+      .pulse-text {
+        color: #e8911f; /* Matches your brand gold */
         font-family: serif;
         font-style: italic;
-        font-size: 1.1rem;
-        animation: pulse 2s infinite ease-in-out;
-        opacity: 0.6;
+        font-size: 1.2rem;
+        animation: pulse 1.8s infinite ease-in-out;
       }
 
       @keyframes pulse {
-        0%, 100% { opacity: 0.4; transform: scale(0.98); }
-        50% { opacity: 0.8; transform: scale(1); }
+        0% { opacity: 0.3; transform: scale(0.98); }
+        50% { opacity: 1; transform: scale(1); }
+        100% { opacity: 0.3; transform: scale(0.98); }
       }
     </style>
   </head>
   <body>
     <div id="root">
-      <div id="initial-placeholder">
-        <div class="loading-brand">MenuSnap</div>
+      <div id="pre-root-loader">
+        <div class="pulse-text">MenuSnap...</div>
       </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>
