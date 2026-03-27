@@ -1,22 +1,24 @@
 <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
-  <rect width='100' height='100' rx='24' fill='#e8911f'/>
+  <rect width='100' height='100' rx='24' fill='#E89F30'/>
   
-  <rect x='32' y='18' width='36' height='64' rx='7' stroke='#14110d' stroke-width='3.5' fill='none'/>
+  <rect x='28' y='12' width='44' height='76' rx='8' stroke='#15120D' stroke-width='4' fill='none'/>
   
-  <rect x='44' y='22' width='12' height='2.5' rx='1.25' fill='#14110d' opacity='0.4'/>
+  <rect x='42' y='17' width='16' height='3' rx='1.5' fill='#15120D' opacity='0.4'/>
 
-  <g fill='#14110d'>
-    <rect x='38' y='32' width='9' height='9' rx='2'/>
-    <rect x='38' y='46' width='9' height='9' rx='2'/>
-    <rect x='38' y='60' width='9' height='9' rx='2'/>
+  <g fill='#15120D'>
+    <rect x='35' y='28' width='11' height='11' rx='2.5'/>
+    <rect x='35' y='45' width='11' height='11' rx='2.5'/>
+    <rect x='35' y='62' width='11' height='11' rx='2.5'/>
     
-    <rect x='52' y='32' width='10' height='2' rx='1' opacity='0.6'/>
-    <rect x='52' y='38' width='10' height='2' rx='1' opacity='0.6'/>
-    <rect x='52' y='46' width='10' height='2' rx='1' opacity='0.6'/>
-    <rect x='52' y='52' width='10' height='2' rx='1' opacity='0.6'/>
-    <rect x='52' y='60' width='10' height='2' rx='1' opacity='0.6'/>
-    <rect x='52' y='66' width='10' height='2' rx='1' opacity='0.6'/>
+    <rect x='52' y='28' width='13' height='2.5' rx='1.25' opacity='0.7'/>
+    <rect x='52' y='35' width='13' height='2.5' rx='1.25' opacity='0.7'/>
+    
+    <rect x='52' y='45' width='13' height='2.5' rx='1.25' opacity='0.7'/>
+    <rect x='52' y='52' width='13' height='2.5' rx='1.25' opacity='0.7'/>
+    
+    <rect x='52' y='62' width='13' height='2.5' rx='1.25' opacity='0.7'/>
+    <rect x='52' y='69' width='13' height='2.5' rx='1.25' opacity='0.7'/>
   </g>
   
-  <path d='M74 15l1.5 4.5 4.5 1.5-4.5 1.5-1.5 4.5-1.5-4.5-4.5-1.5 4.5-1.5z' fill='#14110d' />
+  <path d='M80 12l1.8 5.4 5.4 1.8-5.4 1.8-1.8 5.4-1.8-5.4-5.4-1.8 5.4-1.8z' fill='#15120D' />
 </svg>
