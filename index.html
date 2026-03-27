@@ -1,58 +1,48 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    
-    <meta name="theme-color" content="#14110d" />
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-
-    <meta name="apple-mobile-web-app-title" content="MenuSnap">
-    <meta name="application-name" content="MenuSnap">
-
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍴</text></svg>">
-    
-    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%2314110d%22/><text x=%2250%%22 y=%2250%%22 dominant-baseline=%22central%22 text-anchor=%22middle%22 font-family=%22serif%22 font-weight=%22bold%22 font-size=%2240%22 fill=%22%23d97706%22 text-anchor=%22middle%22>MS</text></svg>">
-
-    <title>MenuSnap | Explore Our Digital Menu</title>
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
     <style>
       body {
         background-color: #14110d;
         margin: 0;
-        overflow-x: hidden;
-        -webkit-tap-highlight-color: transparent;
-      }
-      #pre-root-loader {
         display: flex;
-        flex-direction: column;
         justify-content: center;
         align-items: center;
         height: 100vh;
-        background-color: #14110d;
+        -webkit-tap-highlight-color: transparent;
       }
-      .pulse-text {
-        color: #d97706;
-        font-family: serif;
-        font-style: italic;
-        font-size: 1.1rem;
-        animation: pulse 1.8s infinite ease-in-out;
+
+      /* THE PREMIUM DOT LOADER */
+      .dot-loader {
+        display: flex;
+        gap: 8px;
       }
-      @keyframes pulse {
-        0% { opacity: 0.3; transform: scale(0.98); }
-        50% { opacity: 1; transform: scale(1); }
-        100% { opacity: 0.3; transform: scale(0.98); }
+
+      .dot {
+        width: 10px;
+        height: 10px;
+        background-color: #d97706; /* Your Brand Gold */
+        border-radius: 50%;
+        animation: dot-jump 1.4s infinite ease-in-out both;
+      }
+
+      .dot:nth-child(1) { animation-delay: -0.32s; }
+      .dot:nth-child(2) { animation-delay: -0.16s; }
+
+      @keyframes dot-jump {
+        0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
+        40% { transform: scale(1); opacity: 1; }
       }
     </style>
   </head>
   <body>
     <div id="root">
       <div id="pre-root-loader">
-        <div class="pulse-text">MenuSnap...</div>
+        <div class="dot-loader">
+          <div class="dot"></div>
+          <div class="dot"></div>
+          <div class="dot"></div>
+        </div>
       </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>
