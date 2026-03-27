@@ -7,47 +7,48 @@
     <meta name="theme-color" content="#14110d" />
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    
     <meta name="apple-mobile-web-app-title" content="MenuSnap">
+    <meta name="application-name" content="MenuSnap">
 
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.json" />
 
-    <title>MenuSnap | Digital Menu</title>
+    <title>MenuSnap</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Inter:wght@400;500;600&display=swap" 
+          rel="stylesheet" 
+          crossorigin="anonymous">
 
     <style>
-      /* Ensure the background is dark immediately to prevent white flash */
-      html {
+      html, body {
         background-color: #14110d;
-      }
-
-      body {
-        background-color: #14110d !important;
         margin: 0;
         padding: 0;
-        /* Critical: Removed 'height: 100vh' and 'overflow: hidden' 
-           to allow your Index.tsx scroll listener to work! */
         overflow-x: hidden;
         -webkit-tap-highlight-color: transparent;
       }
 
-      /* This container fills the screen ONLY until React loads */
       #pre-root-loader {
         display: flex;
         flex-direction: column;
         justify-content: center;
         align-items: center;
-        position: fixed; /* Fixed so it doesn't affect page scroll height */
+        position: fixed;
         inset: 0;
         background-color: #14110d;
         z-index: 9999;
       }
 
       .pulse-text {
-        color: #e8911f; /* Matches your brand gold */
+        color: #d97706; /* Matches your brand Gold */
         font-family: serif;
         font-style: italic;
-        font-size: 1.2rem;
+        font-size: 1.1rem;
         animation: pulse 1.8s infinite ease-in-out;
       }
 
