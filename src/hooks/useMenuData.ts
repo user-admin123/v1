@@ -135,9 +135,22 @@ export function useMenuData() {
   }, [restaurant?.id]);
 
   const logout = useCallback(async () => {
-    logger.auth("Logging out...");
-    await doLogout();
-  }, []);
+  logger.auth("Logging out...");
+  
+  // 1. Clear Supabase Auth
+  await doLogout();
+  
+  // 2. Clear Local Storage to prevent "Ghost Data" for the next user
+  localStorage.removeItem("qrmenu_items");
+  localStorage.removeItem("qrmenu_categories");
+  localStorage.removeItem("qrmenu_restaurant");
+  
+  // 3. Update local state immediately
+  setAuthed(false);
+  
+  logger.info("Local storage wiped. Redirecting...");
+  window.location.reload(); // Optional: clean refresh to home state
+}, []);
 
   const saveAll = useCallback(
     async (
