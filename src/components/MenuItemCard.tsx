@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MenuItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,15 @@ interface Props {
 }
 
 const MenuItemCard = ({ item, onSelect, quantity, onAdd, onRemove }: Props) => {
+  // NEW: Track if the image is actually loaded and ready to show
+  const [isLoaded, setIsLoaded] = useState(false);
   const [imgError, setImgError] = useState(false);
+
+  // Reset states if the item changes
+  useEffect(() => {
+    setIsLoaded(false);
+    setImgError(false);
+  }, [item.id]);
 
   return (
     <motion.div
@@ -31,20 +39,30 @@ const MenuItemCard = ({ item, onSelect, quantity, onAdd, onRemove }: Props) => {
       onClick={() => onSelect(item)}
     >
       <div className="flex gap-4 p-3">
-        <div className="w-24 h-24 md:w-28 md:h-28 flex-shrink-0 rounded-xl overflow-hidden bg-muted">
-          {item.image_url && !imgError ? (
+        {/* Image Container: Stays fixed size to prevent jumping */}
+        <div className="relative w-24 h-24 md:w-28 md:h-28 flex-shrink-0 rounded-xl overflow-hidden bg-muted border border-border/10">
+          
+          {/* BASE LAYER: The "No Image" placeholder (Always there until logo covers it) */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground bg-muted/50">
+            <ImageOff className="w-5 h-5 mb-1 opacity-20" />
+            <span className="text-[9px] font-medium opacity-40 uppercase tracking-tighter">
+              {imgError ? "Not Found" : "Loading..."}
+            </span>
+          </div>
+
+          {/* TOP LAYER: The Actual Image */}
+          {item.image_url && !imgError && (
             <img
               src={item.image_url}
               alt={item.name}
-              className="w-full h-full object-cover"
               loading="lazy"
+              onLoad={() => setIsLoaded(true)}
               onError={() => setImgError(true)}
+              className={cn(
+                "absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-out",
+                isLoaded ? "opacity-100 scale-100" : "opacity-0 scale-110"
+              )}
             />
-          ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground bg-muted/50 border border-dashed border-border/50">
-              <ImageOff className="w-5 h-5 mb-1 opacity-20" />
-              <span className="text-[10px] font-medium opacity-40">No Image</span>
-            </div>
           )}
         </div>
 
@@ -53,7 +71,7 @@ const MenuItemCard = ({ item, onSelect, quantity, onAdd, onRemove }: Props) => {
             <div className="flex items-start justify-between gap-2 w-full text-left">
               <div className="flex items-center gap-1.5 min-w-0">
                 <VegBadge type={item.item_type || "veg"} />
-                <h3 className="font-semibold text-foreground text-base leading-tight font-sans line-clamp-2">
+                <h3 className="font-semibold text-foreground text-base leading-tight font-sans line-clamp-2 tracking-tight">
                   {item.name}
                 </h3>
               </div>
@@ -82,18 +100,18 @@ const MenuItemCard = ({ item, onSelect, quantity, onAdd, onRemove }: Props) => {
                   <>
                     <button
                       onClick={onRemove}
-                      className="w-8 h-8 rounded-full flex items-center justify-center bg-muted hover:bg-destructive/20 hover:text-destructive transition-colors"
+                      className="w-8 h-8 rounded-full flex items-center justify-center bg-muted hover:bg-destructive/20 hover:text-destructive transition-all active:scale-90"
                     >
                       <Minus className="w-4 h-4" />
                     </button>
-                    <span className="text-sm font-bold w-6 text-center text-foreground">
+                    <span className="text-sm font-bold w-6 text-center text-foreground tabular-nums">
                       {quantity}
                     </span>
                   </>
                 )}
                 <button
                   onClick={onAdd}
-                  className="w-8 h-8 rounded-full flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/80 transition-colors"
+                  className="w-8 h-8 rounded-full flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/80 transition-all active:scale-90"
                 >
                   <Plus className="w-4 h-4" />
                 </button>
