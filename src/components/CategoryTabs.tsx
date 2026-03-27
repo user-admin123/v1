@@ -59,9 +59,7 @@ const CategoryTabs = ({ categories, activeId, onSelect }: Props) => {
                 onClick={() => onSelect(cat.id)}
                 className="relative px-5 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors outline-none"
                 style={{
-                  // PREMIUM FIX: Force the color instantly using inline styles
-                  // This prevents the "white text" snap during initial load
-                  color: isActive ? "var(--primary-foreground)" : "var(--foreground)"
+                  color: isActive ? "var(--primary-foreground)" : "rgba(255, 255, 255, 0.7)"
                 }}
               >
                 {isActive && (
