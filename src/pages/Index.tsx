@@ -23,7 +23,7 @@ const Index = () => {
   
   const { cartItems, totalItems, totalPrice, addItem, removeItem, getQuantity, clearCart } = useCart(items);
 
-  const [activeCat, setActiveCat] = useState("");
+  const [activeCat, setActiveCat] = useState(categories[0]?.id || "");
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [vegFilter, setVegFilter] = useState<ItemType | "all">("all");
   const [orderOpen, setOrderOpen] = useState(false);
