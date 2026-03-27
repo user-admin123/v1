@@ -1,26 +1,22 @@
 <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
-  <rect width='100' height='100' rx='24' fill='#14110d'/>
+  <rect width='100' height='100' rx='24' fill='#e8911f'/>
   
-  <rect x='32' y='18' width='36' height='64' rx='7' stroke='#d97706' stroke-width='3.5' fill='none'/>
+  <rect x='32' y='18' width='36' height='64' rx='7' stroke='#14110d' stroke-width='3.5' fill='none'/>
   
-  <rect x='44' y='22' width='12' height='2.5' rx='1.25' fill='#d97706' opacity='0.4'/>
+  <rect x='44' y='22' width='12' height='2.5' rx='1.25' fill='#14110d' opacity='0.4'/>
 
-  <g fill='#d97706'>
+  <g fill='#14110d'>
     <rect x='38' y='32' width='9' height='9' rx='2'/>
     <rect x='38' y='46' width='9' height='9' rx='2'/>
     <rect x='38' y='60' width='9' height='9' rx='2'/>
     
     <rect x='52' y='32' width='10' height='2' rx='1' opacity='0.6'/>
     <rect x='52' y='38' width='10' height='2' rx='1' opacity='0.6'/>
-    
     <rect x='52' y='46' width='10' height='2' rx='1' opacity='0.6'/>
     <rect x='52' y='52' width='10' height='2' rx='1' opacity='0.6'/>
-    
     <rect x='52' y='60' width='10' height='2' rx='1' opacity='0.6'/>
     <rect x='52' y='66' width='10' height='2' rx='1' opacity='0.6'/>
   </g>
   
-  <path d='M74 15l1.5 4.5 4.5 1.5-4.5 1.5-1.5 4.5-1.5-4.5-4.5-1.5 4.5-1.5z' fill='#d97706'>
-    <animate attributeName='opacity' values='1;0.4;1' dur='3s' repeatCount='indefinite' />
-  </path>
+  <path d='M74 15l1.5 4.5 4.5 1.5-4.5 1.5-1.5 4.5-1.5-4.5-4.5-1.5 4.5-1.5z' fill='#14110d' />
 </svg>
