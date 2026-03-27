@@ -74,6 +74,19 @@ const Index = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [visibleCategories]);
 
+  // Prevent accidental refresh/navigation for Admin
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (authed) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [authed]);
+
   const scrollToCategory = useCallback((id: string) => {
     isManualScroll.current = true;
     setActiveCat(id);
