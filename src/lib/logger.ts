@@ -2,7 +2,7 @@
 
 // SIMPLE TOGGLE: Set to true to see logs on your mobile/Vercel
 // Set to false before sending to a real customer
-const SHOW_DEBUG = true; 
+const SHOW_DEBUG = false; 
 
 export const logger = {
   info: (...args: any[]) => {
