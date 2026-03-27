@@ -8,37 +8,55 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="MenuSnap">
+    <meta name="application-name" content="MenuSnap">
 
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/favicon.svg" />
+    
+    <link rel="manifest" href="/manifest.json" />
 
     <title>MenuSnap | Digital Menu</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
     <style>
-      /* Immediate Dark Background */
+      /* CRITICAL: This block prevents the "White Flash" 
+         We set the background before React or Tailwind even load.
+      */
       html, body {
-        background-color: #14110d !important;
+        background-color: #14110d !important; /* Exact match to your --background */
         margin: 0;
         padding: 0;
         width: 100%;
         min-height: 100vh;
+        /* Scroll is enabled so users can move through the menu */
         overflow-x: hidden;
         -webkit-tap-highlight-color: transparent;
       }
 
-      /* Seamless Fade-in once React Injects Content */
+      /* SMOOTH TRANSITION:
+         Since we removed the "Dots", we use a tiny fade-in 
+         so the menu doesn't just "pop" in aggressively.
+      */
       #root {
-        transition: opacity 0.3s ease-in;
+        transition: opacity 0.4s ease-in-out;
       }
 
-      /* While root is empty, keep it hidden to prevent layout jank */
+      /* While the app is downloading, root is empty and hidden */
       #root:empty {
         opacity: 0;
+      }
+      
+      /* Once React injects HTML, it fades in */
+      #root:not(:empty) {
+        opacity: 1;
       }
     </style>
   </head>
   <body>
     <div id="root"></div>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
