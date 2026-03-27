@@ -60,7 +60,7 @@
         40% { transform: scale(1.1); opacity: 1; }
       }
 
-      /* Hide loader when React content is ready */
+      /* When React injects content, we hide the loader */
       #root:not(:empty) ~ #pre-root-loader {
         display: none;
       }
