@@ -7,9 +7,7 @@
     <meta name="theme-color" content="#14110d" />
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    
     <meta name="apple-mobile-web-app-title" content="MenuSnap">
-    <meta name="application-name" content="MenuSnap">
 
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/favicon.svg" />
@@ -17,65 +15,30 @@
     <title>MenuSnap | Digital Menu</title>
 
     <style>
-      /* Base Styles - Allowing Scroll */
-      body {
-        background-color: #14110d;
+      /* Immediate Dark Background */
+      html, body {
+        background-color: #14110d !important;
         margin: 0;
         padding: 0;
-        /* Removing overflow:hidden so you can move/scroll the screen */
-        overflow-x: hidden; 
+        width: 100%;
+        min-height: 100vh;
+        overflow-x: hidden;
         -webkit-tap-highlight-color: transparent;
       }
 
-      /* Centering the loader specifically */
-      #pre-root-loader {
-        position: fixed; /* Fixes it to the screen regardless of scroll */
-        inset: 0;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        background-color: #14110d;
-        z-index: 9999;
+      /* Seamless Fade-in once React Injects Content */
+      #root {
+        transition: opacity 0.3s ease-in;
       }
 
-      .dot-loader {
-        display: flex;
-        gap: 10px;
-      }
-
-      .dot {
-        width: 12px;
-        height: 12px;
-        background-color: #d97706;
-        border-radius: 50%;
-        animation: dot-jump 1.4s infinite ease-in-out both;
-      }
-
-      .dot:nth-child(1) { animation-delay: -0.32s; }
-      .dot:nth-child(2) { animation-delay: -0.16s; }
-
-      @keyframes dot-jump {
-        0%, 80%, 100% { transform: scale(0.3); opacity: 0.2; }
-        40% { transform: scale(1.1); opacity: 1; }
-      }
-
-      /* When React content loads, we hide the loader */
-      #root:not(:empty) ~ #pre-root-loader {
-        display: none;
+      /* While root is empty, keep it hidden to prevent layout jank */
+      #root:empty {
+        opacity: 0;
       }
     </style>
   </head>
   <body>
     <div id="root"></div>
-
-    <div id="pre-root-loader">
-      <div class="dot-loader">
-        <div class="dot"></div>
-        <div class="dot"></div>
-        <div class="dot"></div>
-      </div>
-    </div>
-
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
