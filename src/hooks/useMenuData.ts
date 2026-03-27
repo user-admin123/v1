@@ -137,19 +137,19 @@ export function useMenuData() {
   const logout = useCallback(async () => {
   logger.auth("Logging out...");
   
-  // 1. Clear Supabase Auth
+  // 1. Clear Database Session
   await doLogout();
-  
-  // 2. Clear Local Storage to prevent "Ghost Data" for the next user
-  localStorage.removeItem("qrmenu_items");
-  localStorage.removeItem("qrmenu_categories");
-  localStorage.removeItem("qrmenu_restaurant");
-  
-  // 3. Update local state immediately
+
+  // 2. Wipe ALL local data (Admin cache)
+  localStorage.clear(); 
+
+  // 3. Wipe Session data (Allows Doorbell to ring for the next user)
+  sessionStorage.clear();
+
   setAuthed(false);
   
-  logger.info("Local storage wiped. Redirecting...");
-  window.location.reload(); // Optional: clean refresh to home state
+  // 4. Reset the app to a fresh "Customer" state
+  window.location.reload();
 }, []);
 
   const saveAll = useCallback(
