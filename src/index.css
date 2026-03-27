@@ -6,11 +6,6 @@
 
 @layer base {
   
-  html {
-    scroll-behavior: smooth;
-    scroll-padding-top: 5rem; 
-  }
-  
   :root {
     --background: 30 20% 7%;
     --foreground: 35 30% 92%;
