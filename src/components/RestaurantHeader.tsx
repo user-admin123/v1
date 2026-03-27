@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { RestaurantInfo } from "@/lib/types";
 import { UtensilsCrossed } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface Props {
   restaurant: RestaurantInfo;
@@ -8,6 +9,7 @@ interface Props {
 }
 
 const RestaurantHeader = ({ restaurant, onTripleTap }: Props) => {
+  const [isLoaded, setIsLoaded] = useState(false);
   const tapCount = React.useRef(0);
   const tapTimer = React.useRef<ReturnType<typeof setTimeout>>();
 
@@ -27,7 +29,6 @@ const RestaurantHeader = ({ restaurant, onTripleTap }: Props) => {
 
   return (
     <header className="relative pt-12 pb-8 px-6 text-center overflow-hidden">
-      {/* Decorative gradient orb */}
       <div 
         className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-primary/20 rounded-full blur-3xl pointer-events-none" 
         aria-hidden="true"
@@ -37,35 +38,37 @@ const RestaurantHeader = ({ restaurant, onTripleTap }: Props) => {
         {/* Logo Section */}
         <div
           onClick={handleLogoTap}
-          className="cursor-pointer select-none active:scale-95 transition-transform inline-block"
+          className="cursor-pointer select-none active:scale-95 transition-transform inline-block relative"
         >
-          {restaurant.logo_url ? (
+          {/* BASE LAYER: The Default Icon (Always exists, fades out if logo loads) */}
+          <div className={cn(
+            "w-20 h-20 mx-auto mb-4 rounded-full glass-card flex items-center justify-center border-2 border-primary/10 transition-opacity duration-500",
+            isLoaded ? "opacity-0" : "opacity-100"
+          )}>
+            <UtensilsCrossed className="w-9 h-9 text-primary/40" />
+          </div>
+
+          {/* TOP LAYER: The Actual Logo (Hidden until verified) */}
+          {restaurant.logo_url && (
             <img
               src={restaurant.logo_url}
               alt={`${restaurant.name} logo`}
-              className="w-20 h-20 mx-auto mb-4 rounded-full object-cover border-2 border-primary/30 shadow-sm"
+              onLoad={() => setIsLoaded(true)}
+              onError={() => setIsLoaded(false)}
+              className={cn(
+                "absolute top-0 left-0 w-20 h-20 rounded-full object-cover border-2 border-primary/30 shadow-sm transition-all duration-700 ease-in-out",
+                isLoaded ? "opacity-100 scale-100" : "opacity-0 scale-90 pointer-events-none"
+              )}
             />
-          ) : (
-            <div className="w-20 h-20 mx-auto mb-4 rounded-full glass-card flex items-center justify-center border-2 border-primary/10">
-              <UtensilsCrossed className="w-9 h-9 text-primary" />
-            </div>
           )}
         </div>
 
-        {/* Restaurant Name: Handles up to 40 chars, max 2-line target */}
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground 
-                       tracking-tight leading-tight text-balance
-                       [overflow-wrap:anywhere] break-words
-                       max-w-[25ch] sm:max-w-none mx-auto">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground tracking-tight leading-tight text-balance [overflow-wrap:anywhere] break-words max-w-[25ch] sm:max-w-none mx-auto">
           {restaurant.name}
         </h1>
 
-        {/* Tagline: Handles up to 60 chars, max 1-2 line target */}
         {restaurant.tagline && (
-          <p className="mt-2 text-sm sm:text-base md:text-lg 
-                        text-muted-foreground italic tracking-wide leading-relaxed
-                        [overflow-wrap:anywhere] break-words 
-                        max-w-[50ch] md:max-w-[65ch] mx-auto opacity-90">
+          <p className="mt-2 text-sm sm:text-base md:text-lg text-muted-foreground italic tracking-wide leading-relaxed [overflow-wrap:anywhere] break-words max-w-[50ch] md:max-w-[65ch] mx-auto opacity-90">
             {restaurant.tagline}
           </p>
         )}
