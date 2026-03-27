@@ -4,7 +4,7 @@ import App from "./App.tsx";
 import "./index.css";
 
 // SIMPLE TOGGLE: Set to true to see the vConsole button on your phone
-const SHOW_DEBUG = true;
+const SHOW_DEBUG = false;
 
 if (SHOW_DEBUG) {
   import("vconsole").then(({ default: VConsole }) => {
