@@ -4,9 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     
-    <meta name="theme-color" content="#E89F30" />
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     
     <meta name="apple-mobile-web-app-title" content="MenuSnap">
     <meta name="application-name" content="MenuSnap">
@@ -19,33 +18,32 @@
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Inter:wght@400;500;600&display=swap" 
-          rel="stylesheet" 
-          crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" crossorigin="anonymous">
 
     <style>
+      /* CLEAN SCROLLING: Removed height: 100vh and overflow-x: hidden 
+         to ensure window.scrollY works for your category highlights */
       html, body {
         background-color: #14110d;
         margin: 0;
         padding: 0;
-        overflow-x: hidden;
         -webkit-tap-highlight-color: transparent;
       }
 
+      /* Minimal loader that stays hidden until content is ready, 
+         then vanishes instantly when React loads */
       #pre-root-loader {
         display: flex;
-        flex-direction: column;
         justify-content: center;
         align-items: center;
         position: fixed;
         inset: 0;
-        background-color: #E89F30;
+        background-color: #14110d; /* Changed to match your app background */
         z-index: 9999;
       }
 
       .pulse-text {
-        color: #15120D; /* Matches your brand Gold */
+        color: #E89F30;
         font-family: serif;
         font-style: italic;
         font-size: 1.1rem;
@@ -53,16 +51,16 @@
       }
 
       @keyframes pulse {
-        0% { opacity: 0.3; transform: scale(0.98); }
-        50% { opacity: 1; transform: scale(1); }
-        100% { opacity: 0.3; transform: scale(0.98); }
+        0% { opacity: 0.3; }
+        50% { opacity: 1; }
+        100% { opacity: 0.3; }
       }
     </style>
   </head>
   <body>
     <div id="root">
       <div id="pre-root-loader">
-        <div class="pulse-text">MenuSnap...</div>
+        <div class="pulse-text">MenuSnap</div>
       </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>
