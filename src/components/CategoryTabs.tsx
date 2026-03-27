@@ -61,7 +61,7 @@ const CategoryTabs = ({ categories, activeId, onSelect }: Props) => {
                 style={{
                   // PREMIUM FIX: Force the color instantly using inline styles
                   // This prevents the "white text" snap during initial load
-                  color: isActive ? "#ffffff" : "rgba(255, 255, 255, 0.7)"
+                  color: isActive ? "var(--primary-foreground)" : "var(--foreground)"
                 }}
               >
                 {isActive && (
