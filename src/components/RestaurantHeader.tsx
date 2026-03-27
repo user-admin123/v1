@@ -28,7 +28,7 @@ const RestaurantHeader = ({ restaurant, onTripleTap }: Props) => {
   };
 
   return (
-    <header className="relative pt-12 pb-8 px-6 text-center overflow-hidden">
+    <header className="relative pt-[calc(env(safe-area-inset-top)+1rem)] pb-8 px-6 text-center overflow-hidden">
       <div 
         className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-primary/20 rounded-full blur-3xl pointer-events-none" 
         aria-hidden="true"
