@@ -1,0 +1,17 @@
+{
+  "short_name": "MenuSnap",
+  "name": "MenuSnap Digital Menu",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#14110d",
+  "background_color": "#14110d",
+  "orientation": "portrait"
+}
